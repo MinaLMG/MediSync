@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'dashboard_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,11 +15,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Note: Selection is now primarily for UI feedback or registration later,
-  // as login role comes from backend. However, user might want to filter login?
-  // For now we will keep it but rely on backend role for redirection.
-  String _userType = 'manager';
 
   @override
   void dispose() {
@@ -44,10 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => Scaffold(
-                appBar: AppBar(title: Text('Admin Dashboard')),
-                body: Center(child: Text('Admin View')),
-              ),
+              builder: (context) => const AdminDashboardScreen(),
             ),
           );
         } else {
@@ -101,37 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-
-                  // User Type Selection (Visual only for login as backend determines role)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('Pharmacy'),
-                          value: 'manager',
-                          groupValue: _userType,
-                          onChanged: (value) {
-                            setState(() {
-                              _userType = value!;
-                            });
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('Admin'),
-                          value: 'admin',
-                          groupValue: _userType,
-                          onChanged: (value) {
-                            setState(() {
-                              _userType = value!;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
 
                   // Email/Phone Input
                   TextFormField(
