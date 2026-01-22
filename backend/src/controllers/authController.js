@@ -70,7 +70,6 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
         // Check for user email
         const user = await User.findOne({ email }).populate('pharmacy', 'name status');
 
