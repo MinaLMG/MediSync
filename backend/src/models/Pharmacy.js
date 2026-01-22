@@ -1,0 +1,100 @@
+const mongoose = require('mongoose');
+
+const pharmacySchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    phone: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    email: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true
+    },
+    ownerName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    nationalId: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    pharmacistCard: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    commercialRegistry: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    taxCard: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    pharmacyLicense: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    signImage: {
+        type: String,
+        trim: true
+    },
+    address: {
+        street: { type: String, trim: true },
+        city: { type: String, trim: true },
+        governorate: { type: String, trim: true },
+        postalCode: { type: String, trim: true }
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
+        }
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'active', 'suspended', 'rejected'],
+        default: 'pending'
+    },
+    verified: {
+        type: Boolean,
+        default: false
+    },
+    rating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+    },
+    totalTransactions: {
+        type: Number,
+        default: 0
+    }
+}, {
+    timestamps: true
+});
+
+// Index for geospatial queries
+pharmacySchema.index({ location: '2dsphere' });
+
+// Index for searching
+pharmacySchema.index({ name: 'text', 'address.city': 'text', 'address.governorate': 'text' });
+
+module.exports = mongoose.model('Pharmacy', pharmacySchema);
