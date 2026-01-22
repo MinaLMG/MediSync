@@ -31,13 +31,10 @@ const seedData = async () => {
         ]);
         console.log('🧹 Cleared existing data');
 
-        // 1. Create Volumes
-        const volumeNames = ['كرتونة', 'علبة', 'شريط', 'قرص', 'زجاجة', 'كيس', 'امبول', 'فيال'];
-        const volumes = await Volume.insertMany(
-            volumeNames.map(name => ({ name }))
-        );
-        const volumeMap = volumes.reduce((acc, v) => ({ ...acc, [v.name]: v._id }), {});
-        console.log('📦 Volumes created');
+        // 1. Create Volume (Only 'unit')
+        const unitVolume = await Volume.create({ name: 'unit' });
+        const unitId = unitVolume._id;
+        console.log('📦 Volume "unit" created');
 
         // 2. Create Categories & Manufacturers
         const categories = await Category.insertMany([
@@ -54,7 +51,7 @@ const seedData = async () => {
         ]);
         console.log('🏭 Categories & Manufacturers created');
 
-        // 3. Create Products with Conversions
+        // 3. Create Products with Simplified Conversions
         // Helper to get random item from array
         const random = arr => arr[Math.floor(Math.random() * arr.length)];
 
@@ -63,54 +60,26 @@ const seedData = async () => {
                 name: 'Panadol Extra',
                 description: 'Pain reliever and fever reducer',
                 activeIngredient: 'Paracetamol + Caffeine',
-                conversions: [
-                    { from: 'قرص', to: 'قرص', value: 1 }, // Base unit
-                    { from: 'شريط', to: 'قرص', value: 10 },
-                    { from: 'علبة', to: 'شريط', value: 2 }, // 2 strips per box = 20 tablets
-                    { from: 'كرتونة', to: 'علبة', value: 50 }
-                ]
             },
             {
                 name: 'Augmentin 1g',
                 description: 'Broad spectrum antibiotic',
                 activeIngredient: 'Amoxicillin + Clavulanic acid',
-                conversions: [
-                    { from: 'قرص', to: 'قرص', value: 1 },
-                    { from: 'شريط', to: 'قرص', value: 7 },
-                    { from: 'علبة', to: 'شريط', value: 2 },
-                    { from: 'كرتونة', to: 'علبة', value: 40 }
-                ]
             },
             {
                 name: 'Cataflam 50mg',
                 description: 'Non-steroidal anti-inflammatory drug',
                 activeIngredient: 'Diclofenac Potassium',
-                conversions: [
-                    { from: 'قرص', to: 'قرص', value: 1 },
-                    { from: 'شريط', to: 'قرص', value: 10 },
-                    { from: 'علبة', to: 'شريط', value: 2 }
-                ]
             },
              {
                 name: 'Omez 20mg',
                 description: 'Proton pump inhibitor',
                 activeIngredient: 'Omeprazole',
-                 conversions: [
-                    { from: 'كبسولة', to: 'كبسولة', value: 1 }, // assuming capsule is base like tablet
-                     // mapping 'كبسولة' to 'قرص' conceptually for the seed or just use 'قرص' if volume not strictly typed as capsule
-                    { from: 'شريط', to: 'قرص', value: 7 }, // mixed naming, let's stick to existing volumes
-                    { from: 'علبة', to: 'شريط', value: 2 }
-                ].map(c => c.from === 'كبسولة' || c.to === 'كبسولة' ? {...c, from: c.from==='كبسولة'?'قرص':c.from, to: c.to==='كبسولة'?'قرص':c.to} : c)
             },
             {
                 name: 'Antinal',
                 description: 'Intestinal antiseptic',
                 activeIngredient: 'Nifuroxazide',
-                conversions: [
-                    { from: 'قرص', to: 'قرص', value: 1 },
-                    { from: 'شريط', to: 'قرص', value: 12 },
-                    { from: 'علبة', to: 'شريط', value: 2 }
-                ]
             }
         ];
 
@@ -122,50 +91,24 @@ const seedData = async () => {
                 activeIngredient: p.activeIngredient,
                 manufacturer: random(manufacturers)._id,
                 category: random(categories)._id,
-                conversions: p.conversions
+                // Simplified conversions: One item, 'unit' (reference id), value 1
+                conversions: [
+                    { 
+                        from: unitId.toString(), 
+                        to: unitId.toString(), 
+                        value: 1 
+                    }
+                ]
             });
             products.push(product);
 
-            // Create HasVolume entries for each conversion unit available for the product
-            for (const conv of p.conversions) {
-                 if(volumeMap[conv.from]) {
-                     // Calculate mock price based on value relative to base (value 1)
-                     // Base price approx 5 EGP
-                     const basePrice = 5;
-                     
-                     // We need the cumulative value for pricing references usually, 
-                     // but here the conversion logic in the prompt ("higher to lower with value") 
-                     // implies the value IS the multiplier.
-                     // The prompt: "1-3 conversion the first one is the base volume, with a value 1 then from the higher quantity to the lower quantity with a vaue"
-                     // My data: from: 'علبة', to: 'شريط', value: 2. This creates a chain.
-                     // To simplify pricing for seed, allow me to estimate.
-                     
-                     let multiplier = 1;
-                     // Simple logic: if value > 1, it's a bigger unit container.
-                     // A real recursive calculator is overengineering for a seed.
-                     // I'll assign price = value * 5. If it's a carton (value 50 relative to box?), it gets expensive.
-                     
-                     // Wait, my conversion structure in seed `conversions: [{ from: 'كرتونة', to: 'علبة', value: 50 }]`
-                     // This means 1 Carton = 50 Boxes.
-                     // If 1 Box = 2 Strips.
-                     // If 1 Strip = 10 Tablets.
-                     // Price should reflect total scale.
-                     
-                     // Let's just set arbitrary prices for the seed to look realistic enough.
-                     let price = 10;
-                     if (conv.from === 'قرص') price = 2;
-                     if (conv.from === 'شريط') price = 20;
-                     if (conv.from === 'علبة') price = 45;
-                     if (conv.from === 'كرتونة') price = 1500;
-
-                     await HasVolume.create({
-                         product: product._id,
-                         volume: volumeMap[conv.from],
-                         value: conv.value, // This stores the direct conversion value as per schema
-                         price: price
-                     });
-                 }
-            }
+            // Create HasVolume entry: One volume 'unit', val 1
+            await HasVolume.create({
+                product: product._id,
+                volume: unitId,
+                value: 1, 
+                prices: [50, 45, 55] // Example array of prices
+            });
         }
         console.log('💊 Products & HasVolumes created');
 
@@ -220,7 +163,7 @@ const seedData = async () => {
                 phone: pharmacies[i].phone, // Using pharmacy phone for simplicity
                 email: `manager${i + 1}@medisync.com`,
                 hashedPassword: 'password123',
-                role: 'pharmacy_owner', // Mapping "manager" to owner role based on prompt context (admin + managers) usually implies the top level pharmacy user
+                role: 'pharmacy_owner', 
                 pharmacy: pharmacies[i]._id,
                 status: 'active'
             });

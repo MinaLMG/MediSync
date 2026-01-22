@@ -16,11 +16,11 @@ const hasVolumeSchema = new mongoose.Schema({
         required: true,
         min: 1
     },
-    price: {
+    prices: [{
         type: Number,
         required: true,
         min: 0
-    }
+    }]
 }, {
     timestamps: true
 });

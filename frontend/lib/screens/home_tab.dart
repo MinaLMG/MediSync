@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_excess_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -129,10 +130,16 @@ class HomeTab extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to respective screen
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
+          if (title == 'Add Excess') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddExcessScreen()),
+            );
+          } else {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
+          }
         },
         borderRadius: BorderRadius.circular(16),
         child: Column(

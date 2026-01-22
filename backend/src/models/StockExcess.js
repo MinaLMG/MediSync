@@ -16,33 +16,46 @@ const stockExcessSchema = new mongoose.Schema({
         ref: 'Volume',
         required: true
     },
-    quantity: {
+    originalQuantity: {
         type: Number,
         required: true,
         min: 1
+    },
+    remainingQuantity: {
+        type: Number,
+        required: true,
+        min: 0
     },
     expiryDate: {
         type: Date,
         required: true
     },
-    sellingPrice: {
+    // The specific price selected by the pharmacist or manually entered
+    selectedPrice: {
         type: Number,
         required: true,
         min: 0
     },
-    minPrice: {
+    salePercentage: {
         type: Number,
-        required: true,
+        required: false,
+        min: 0,
+        max: 30
+    },
+    saleAmount: {
+        type: Number,
+        required: false,
         min: 0
     },
-    accepted: {
+    // To track if this price was manually entered and not in origin list
+    isNewPrice: {
         type: Boolean,
         default: false
     },
     status: {
         type: String,
-        enum: ['available', 'reserved', 'sold', 'expired'],
-        default: 'available'
+        enum: ['pending', 'available', 'reserved', 'sold', 'expired', 'rejected'],
+        default: 'pending'
     }
 }, {
     timestamps: true
@@ -50,7 +63,7 @@ const stockExcessSchema = new mongoose.Schema({
 
 // Indexes for efficient querying
 stockExcessSchema.index({ pharmacy: 1, status: 1 });
-stockExcessSchema.index({ product: 1, volume: 1, status: 1, accepted: 1 });
+stockExcessSchema.index({ status: 1 }); // For admin fetching pending/available
 stockExcessSchema.index({ expiryDate: 1 });
 
 module.exports = mongoose.model('StockExcess', stockExcessSchema);

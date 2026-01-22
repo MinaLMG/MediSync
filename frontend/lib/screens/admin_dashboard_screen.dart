@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'excess_followup_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -118,9 +119,18 @@ class AdminHomeTab extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
+          if (title == 'Follow-up Excesses') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ExcessFollowUpScreen(),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
+          }
         },
         borderRadius: BorderRadius.circular(16),
         child: Column(
