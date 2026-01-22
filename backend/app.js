@@ -22,9 +22,9 @@ app.get('/health', (req, res) => {
     });
 });
 
-// API Routes will be added here
+// API Routes
+app.use('/api/auth', require('./src/routes/authRoutes'));
 // app.use('/api/pharmacies', require('./src/routes/pharmacyRoutes'));
-// app.use('/api/users', require('./src/routes/userRoutes'));
 // app.use('/api/products', require('./src/routes/productRoutes'));
 // etc.
 
