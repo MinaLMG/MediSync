@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'add_excess_screen.dart';
+import 'add_shortage_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -134,6 +135,11 @@ class HomeTab extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddExcessScreen()),
+            );
+          } else if (title == 'Add Shortage') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddShortageScreen()),
             );
           } else {
             ScaffoldMessenger.of(

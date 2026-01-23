@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'excess_followup_screen.dart';
+import 'shortage_followup_screen.dart'; // Import
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -124,6 +125,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const ExcessFollowUpScreen(),
+              ),
+            );
+          } else if (title == 'Follow-up Shortages') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ShortageFollowUpScreen(),
               ),
             );
           } else {

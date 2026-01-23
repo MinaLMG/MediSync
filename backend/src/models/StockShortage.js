@@ -21,19 +21,11 @@ const stockShortageSchema = new mongoose.Schema({
         required: true,
         min: 1
     },
-    expiryDate: {
-        type: Date,
-        default: function() {
-            // Default to 10 years from now
-            const date = new Date();
-            date.setFullYear(date.getFullYear() + 10);
-            return date;
-        }
-    },
-    maxPrice: {
+    // Optional max surplus user is willing to pay
+    maxSurplus: {
         type: Number,
-        default: 0,
-        min: 0
+        min: 0,
+        required: false
     },
     status: {
         type: String,
