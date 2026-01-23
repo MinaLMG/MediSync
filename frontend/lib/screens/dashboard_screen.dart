@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_tab.dart';
 
+import 'orders_history_screen.dart'; // Import
+
 class DashboardScreen extends StatefulWidget {
   final String userType;
 
@@ -19,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Placeholder pages for other tabs
   final List<Widget> _pages = [
     const HomeTab(),
-    const Center(child: Text('Order History (Coming Soon)')),
+    const OrdersHistoryScreen(), // Replaced placeholder
     const Center(child: Text('Pending Cart (Coming Soon)')),
     const Center(child: Text('Account (Coming Soon)')),
   ];

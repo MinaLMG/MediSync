@@ -1,9 +1,24 @@
-const { StockShortage } = require('../models');
+const { StockShortage, StockExcess } = require('../models');
 
 // Create new shortage
 exports.createShortage = async (req, res) => {
     try {
         const { product, volume, quantity, maxSurplus, notes } = req.body;
+
+        // Check if an Excess exists for this product (Constraint)
+        // Check for 'pending' or 'available' statuses
+        const existingExcess = await StockExcess.findOne({
+            pharmacy: req.user.pharmacy,
+            product,
+            status: { $in: ['pending', 'available'] }
+        });
+
+        if (existingExcess) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You cannot add a shortage for this product because you already have an excess for it.' 
+            });
+        }
 
         const shortage = await StockShortage.create({
             pharmacy: req.user.pharmacy, // From authMiddleware
@@ -50,14 +65,51 @@ exports.getMyShortages = async (req, res) => {
     }
 };
 
-// Delete shortage (Admin/Owner)
-exports.deleteShortage = async (req, res) => {
+// Update shortage (Manager/Owner)
+exports.updateShortage = async (req, res) => {
     try {
-        const shortage = await StockShortage.findByIdAndDelete(req.params.id);
+        const { quantity, maxSurplus, notes } = req.body;
+
+        const shortage = await StockShortage.findById(req.params.id);
 
         if (!shortage) {
             return res.status(404).json({ success: false, message: 'Shortage not found' });
         }
+
+        if (shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
+            return res.status(403).json({ success: false, message: 'Not authorized to update this shortage' });
+        }
+
+        if (shortage.status !== 'active') {
+             return res.status(400).json({ success: false, message: 'Cannot update non-active shortage' });
+        }
+
+        shortage.quantity = quantity || shortage.quantity;
+        shortage.maxSurplus = maxSurplus !== undefined ? maxSurplus : shortage.maxSurplus;
+        shortage.notes = notes || shortage.notes;
+
+        await shortage.save();
+
+        res.status(200).json({ success: true, data: shortage });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete shortage (Admin/Owner/Manager)
+exports.deleteShortage = async (req, res) => {
+    try {
+        const shortage = await StockShortage.findById(req.params.id);
+
+        if (!shortage) {
+            return res.status(404).json({ success: false, message: 'Shortage not found' });
+        }
+
+        if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
+             return res.status(403).json({ success: false, message: 'Not authorized to delete this shortage' });
+        }
+
+        await shortage.deleteOne();
 
         res.status(200).json({ success: true, message: 'Shortage deleted successfully' });
     } catch (error) {

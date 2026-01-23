@@ -4,7 +4,9 @@ import '../providers/product_provider.dart';
 import '../providers/shortage_provider.dart';
 
 class AddShortageScreen extends StatefulWidget {
-  const AddShortageScreen({super.key});
+  final Map<String, dynamic>? initialData;
+
+  const AddShortageScreen({super.key, this.initialData});
 
   @override
   State<AddShortageScreen> createState() => _AddShortageScreenState();
@@ -18,13 +20,27 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _maxSurplusController = TextEditingController();
 
+  bool get isEditMode => widget.initialData != null;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () =>
-          Provider.of<ProductProvider>(context, listen: false).fetchProducts(),
-    );
+    Future.microtask(() async {
+      await Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).fetchProducts();
+
+      if (isEditMode) {
+        final data = widget.initialData!;
+        setState(() {
+          _selectedProductId = data['product']['_id'];
+          _selectedVolumeId = data['volume']['_id'];
+          _quantityController.text = data['quantity'].toString();
+          _maxSurplusController.text = data['maxSurplus']?.toString() ?? '';
+        });
+      }
+    });
   }
 
   @override
@@ -52,16 +68,27 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
             : null,
       };
 
-      final success = await Provider.of<ShortageProvider>(
-        context,
-        listen: false,
-      ).addShortage(shortageData);
+      final success = isEditMode
+          ? await Provider.of<ShortageProvider>(
+              context,
+              listen: false,
+            ).updateShortage(widget.initialData!['_id'], shortageData)
+          : await Provider.of<ShortageProvider>(
+              context,
+              listen: false,
+            ).addShortage(shortageData);
 
       if (mounted) {
         if (success) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Shortage added successfully')),
+            SnackBar(
+              content: Text(
+                isEditMode
+                    ? 'Shortage updated successfully'
+                    : 'Shortage added successfully',
+              ),
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +98,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error adding shortage',
+                    'Error processing request',
               ),
             ),
           );
@@ -104,7 +131,9 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Shortage')),
+      appBar: AppBar(
+        title: Text(isEditMode ? 'Edit Shortage' : 'Add Shortage'),
+      ),
       body: productProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -195,7 +224,11 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text('Submit Shortage'),
+                            : Text(
+                                isEditMode
+                                    ? 'Update Shortage'
+                                    : 'Submit Shortage',
+                              ),
                       ),
                     ),
                   ],

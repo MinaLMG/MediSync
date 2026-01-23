@@ -5,7 +5,9 @@ import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
 
 class AddExcessScreen extends StatefulWidget {
-  const AddExcessScreen({super.key});
+  final Map<String, dynamic>? initialData;
+
+  const AddExcessScreen({super.key, this.initialData});
 
   @override
   State<AddExcessScreen> createState() => _AddExcessScreenState();
@@ -26,13 +28,37 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   String _saleType = 'percentage'; // or 'price'
   final TextEditingController _saleValueController = TextEditingController();
 
+  bool get isEditMode => widget.initialData != null;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () =>
-          Provider.of<ProductProvider>(context, listen: false).fetchProducts(),
-    );
+    Future.microtask(() async {
+      await Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).fetchProducts();
+
+      if (isEditMode) {
+        final data = widget.initialData!;
+        setState(() {
+          _selectedProductId = data['product']['_id'];
+          _selectedVolumeId = data['volume']['_id'];
+          _expiryDate = DateTime.parse(data['expiryDate']);
+          _quantityController.text = data['originalQuantity'].toString();
+
+          // Price logic
+          final price = data['selectedPrice'].toDouble();
+          _selectedPrice =
+              price; // We'll check if it exists in list during build
+
+          if (data['saleType'] != null) {
+            _saleType = data['saleType'];
+            _saleValueController.text = data['saleValue'].toString();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -125,16 +151,27 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         'saleValue': saleVal,
       };
 
-      final success = await Provider.of<ExcessProvider>(
-        context,
-        listen: false,
-      ).addExcess(excessData);
+      final success = isEditMode
+          ? await Provider.of<ExcessProvider>(
+              context,
+              listen: false,
+            ).updateExcess(widget.initialData!['_id'], excessData)
+          : await Provider.of<ExcessProvider>(
+              context,
+              listen: false,
+            ).addExcess(excessData);
 
       if (mounted) {
         if (success) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Excess added successfully')),
+            SnackBar(
+              content: Text(
+                isEditMode
+                    ? 'Excess updated successfully'
+                    : 'Excess added successfully',
+              ),
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +181,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error adding excess',
+                    'Error processing request',
               ),
             ),
           );
@@ -188,14 +225,28 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       (v) => v['volumeId'] == _selectedVolumeId,
       orElse: () => null,
     );
-    final prices =
+    final List<String> prices =
         (currentVolume?['prices'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
         [];
 
+    // Price logic for Edit Mode: If the price isn't in the list, treat as manual
+    if (isEditMode &&
+        _selectedPrice != null &&
+        !_isManualPrice &&
+        prices.isNotEmpty) {
+      if (!prices.contains(_selectedPrice.toString())) {
+        _isManualPrice = true;
+        _manualPriceController.text = _selectedPrice!.toString();
+        _selectedPrice = null;
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Excess Stock')),
+      appBar: AppBar(
+        title: Text(isEditMode ? 'Edit Excess Stock' : 'Add Excess Stock'),
+      ),
       body: productProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -426,7 +477,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text('Submit Excess'),
+                            : Text(
+                                isEditMode ? 'Update Excess' : 'Submit Excess',
+                              ),
                       ),
                     ),
                   ],

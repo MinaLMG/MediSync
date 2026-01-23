@@ -4,6 +4,7 @@ import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/excess_provider.dart';
 import 'providers/shortage_provider.dart';
+import 'providers/order_provider.dart';
 import 'screens/login_screen.dart';
 
 void main() {
@@ -18,6 +19,11 @@ void main() {
             Provider.of<AuthProvider>(context, listen: false),
           ),
           update: (context, auth, previous) => ShortageProvider(auth),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, OrderProvider>(
+          create: (context) =>
+              OrderProvider(Provider.of<AuthProvider>(context, listen: false)),
+          update: (context, auth, previous) => OrderProvider(auth),
         ),
       ],
       child: const MyApp(),

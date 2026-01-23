@@ -109,6 +109,42 @@ class ShortageProvider with ChangeNotifier {
     }
   }
 
+  // Manager: Update Shortage
+  Future<bool> updateShortage(
+    String id,
+    Map<String, dynamic> updateData,
+  ) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/shortage/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode(updateData),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update shortage';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Admin/Manager: Delete Shortage
   Future<bool> deleteShortage(String id) async {
     try {

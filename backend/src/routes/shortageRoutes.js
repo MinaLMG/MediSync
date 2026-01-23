@@ -5,6 +5,7 @@ const {
     createShortage, 
     getActiveShortages, 
     getMyShortages,
+    updateShortage,
     deleteShortage 
 } = require('../controllers/shortageController');
 
@@ -12,8 +13,9 @@ const {
 router.use(protect);
 
 // Pharmacy Owner Routes
-router.post('/', authorize( 'pharmacy_owner'), createShortage);
-router.get('/my', authorize( 'pharmacy_owner'), getMyShortages);
+router.post('/', authorize('pharmacy_owner', 'manager'), createShortage);
+router.put('/:id', authorize('pharmacy_owner', 'manager'), updateShortage); // Add Update
+router.get('/my', authorize('pharmacy_owner', 'manager'), getMyShortages);
 
 // Admin Routes
 router.get('/active', authorize('admin'), getActiveShortages);

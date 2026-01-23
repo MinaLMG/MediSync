@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
+import 'orders_history_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -140,6 +141,13 @@ class HomeTab extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => AddShortageScreen()),
+            );
+          } else if (title == 'Orders History') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const OrdersHistoryScreen(),
+              ),
             );
           } else {
             ScaffoldMessenger.of(

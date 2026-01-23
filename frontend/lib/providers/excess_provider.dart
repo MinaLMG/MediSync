@@ -105,6 +105,38 @@ class ExcessProvider with ChangeNotifier {
     }
   }
 
+  // Update Excess
+  Future<bool> updateExcess(String id, Map<String, dynamic> updateData) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(Constants.tokenKey);
+
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/excess/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(updateData),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        fetchPendingExcesses();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Update failed';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Approve Excess
   Future<bool> approveExcess(String id) async {
     return await _performAction('/excess/$id/approve', 'PUT');
