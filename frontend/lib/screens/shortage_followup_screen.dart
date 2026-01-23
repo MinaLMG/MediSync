@@ -70,7 +70,31 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
                         children: [
                           TextButton(
                             onPressed: () {
-                              provider.deleteShortage(item['_id']);
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Confirm Delete'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this shortage?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        provider.deleteShortage(item['_id']);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,

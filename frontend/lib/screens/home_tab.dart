@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import 'orders_history_screen.dart';
+import 'admin_matchable_products_screen.dart';
+import 'follow_up_transactions_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin =
+        Provider.of<AuthProvider>(context, listen: false).userRole == 'admin';
+
     final List<Map<String, dynamic>> menuItems = [
       {'title': 'Orders History', 'icon': Icons.history, 'color': Colors.blue},
       {
@@ -20,6 +27,18 @@ class HomeTab extends StatelessWidget {
         'icon': Icons.add_circle_outline,
         'color': Colors.green,
       },
+      if (isAdmin) ...[
+        {
+          'title': 'Start Transactions',
+          'icon': Icons.swap_horiz,
+          'color': Colors.indigo,
+        },
+        {
+          'title': 'View Transactions',
+          'icon': Icons.track_changes,
+          'color': Colors.deepOrange,
+        },
+      ],
       {'title': 'Search Product', 'icon': Icons.search, 'color': Colors.orange},
       {
         'title': 'Suggest Product',
@@ -147,6 +166,20 @@ class HomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const OrdersHistoryScreen(),
+              ),
+            );
+          } else if (title == 'Start Transactions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminMatchableProductsScreen(),
+              ),
+            );
+          } else if (title == 'View Transactions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FollowUpTransactionsScreen(),
               ),
             );
           } else {

@@ -79,4 +79,27 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> refreshProfile() async {
+    if (_token == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/auth/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = data['data'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing profile: $e');
+    }
+  }
 }

@@ -140,7 +140,31 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                       children: [
                         TextButton(
                           onPressed: () {
-                            provider.deleteExcess(item['_id']);
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Delete'),
+                                content: const Text(
+                                  'Are you sure you want to delete this excess?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      provider.deleteExcess(item['_id']);
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.red,

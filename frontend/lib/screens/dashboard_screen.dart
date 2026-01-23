@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_tab.dart';
+import 'package:intl/intl.dart';
 
 import 'orders_history_screen.dart'; // Import
 
@@ -17,6 +18,18 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.userType != 'admin') {
+      Future.microtask(() {
+        if (mounted) {
+          Provider.of<AuthProvider>(context, listen: false).refreshProfile();
+        }
+      });
+    }
+  }
 
   // Placeholder pages for other tabs
   final List<Widget> _pages = [
@@ -43,21 +56,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Image.asset('assets/images/medisync.png'),
         ),
         title: widget.userType != 'admin'
-            ? Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Balance: 5,000 EGP', // Placeholder balance
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ),
+            ? Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  final balance =
+                      auth.currentUser?['pharmacy']?['balance'] ?? 0;
+                  return Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Balance: ${NumberFormat("#,##0").format(balance)} EGP',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               )
             : null,
         actions: [

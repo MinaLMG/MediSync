@@ -86,6 +86,10 @@ const pharmacySchema = new mongoose.Schema({
     totalTransactions: {
         type: Number,
         default: 0
+    },
+    balance: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true

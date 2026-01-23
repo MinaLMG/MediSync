@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'excess_followup_screen.dart';
-import 'shortage_followup_screen.dart'; // Import
+import 'shortage_followup_screen.dart';
+import 'admin_matchable_products_screen.dart';
+import 'follow_up_transactions_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -55,6 +57,11 @@ class AdminHomeTab extends StatelessWidget {
         'color': Colors.blue,
       },
       {
+        'title': 'View Transactions',
+        'icon': Icons.track_changes,
+        'color': Colors.deepOrange,
+      },
+      {
         'title': 'Follow-up Excesses',
         'icon': Icons.trending_up,
         'color': Colors.green,
@@ -75,16 +82,6 @@ class AdminHomeTab extends StatelessWidget {
         'color': Colors.teal,
       },
       {'title': 'Manage Users', 'icon': Icons.people, 'color': Colors.purple},
-      {
-        'title': 'Manage Volumes',
-        'icon': Icons.category,
-        'color': Colors.indigo,
-      },
-      {
-        'title': 'Manage Manufacturers',
-        'icon': Icons.factory,
-        'color': Colors.brown,
-      },
     ];
 
     return Padding(
@@ -120,7 +117,21 @@ class AdminHomeTab extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          if (title == 'Follow-up Excesses') {
+          if (title == 'Start Transactions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminMatchableProductsScreen(),
+              ),
+            );
+          } else if (title == 'View Transactions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FollowUpTransactionsScreen(),
+              ),
+            );
+          } else if (title == 'Follow-up Excesses') {
             Navigator.push(
               context,
               MaterialPageRoute(

@@ -21,6 +21,11 @@ const stockShortageSchema = new mongoose.Schema({
         required: true,
         min: 1
     },
+    remainingQuantity: {
+        type: Number,
+        required: true,
+        min: 0
+    },
     // Optional max surplus user is willing to pay
     maxSurplus: {
         type: Number,
@@ -29,7 +34,7 @@ const stockShortageSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'in_progress', 'fulfilled', 'cancelled'],
+        enum: ['active', 'in_progress', 'fulfilled', 'partially_fulfilled', 'cancelled'],
         default: 'active'
     },
     notes: {

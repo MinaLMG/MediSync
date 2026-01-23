@@ -2,9 +2,16 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
     stockShortage: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'StockShortage',
-        required: true
+        shortage: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'StockShortage',
+            required: true
+        },
+        quantityTaken: {
+            type: Number,
+            required: true,
+            min: 1
+        }
     },
     stockExcessSources: [
         {
@@ -30,27 +37,6 @@ const transactionSchema = new mongoose.Schema({
             }
         }
     ],
-    buyerPharmacy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pharmacy',
-        required: true
-    },
-    sellerPharmacies: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Pharmacy'
-        }
-    ],
-    product: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-        required: true
-    },
-    volume: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Volume',
-        required: true
-    },
     totalQuantity: {
         type: Number,
         required: true,
@@ -65,15 +51,17 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'],
         default: 'pending'
+    },
+    commissionRatio: {
+        type: Number,
+        default: 0.01
     }
 }, {
     timestamps: true
 });
 
 // Indexes for efficient querying
-transactionSchema.index({ stockShortage: 1 });
-transactionSchema.index({ buyerPharmacy: 1, status: 1 });
-transactionSchema.index({ sellerPharmacies: 1, status: 1 });
-transactionSchema.index({ product: 1, status: 1 });
+transactionSchema.index({ 'stockShortage.shortage': 1 });
+transactionSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

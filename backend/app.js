@@ -28,6 +28,7 @@ app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/excess', require('./src/routes/excessRoutes'));
 app.use('/api/shortage', require('./src/routes/shortageRoutes'));
 app.use('/api/orders', require('./src/routes/orderRoutes'));
+app.use('/api/transaction', require('./src/routes/transactionRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -25,6 +25,7 @@ exports.createShortage = async (req, res) => {
             product,
             volume,
             quantity,
+            remainingQuantity: quantity,
             maxSurplus: maxSurplus || undefined,
             notes,
             status: 'active'
@@ -39,7 +40,7 @@ exports.createShortage = async (req, res) => {
 // Get active shortages (Admin)
 exports.getActiveShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ status: 'active' })
+        const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } })
             .populate('pharmacy', 'name')
             .populate('product', 'name')
             .populate('volume', 'name')
@@ -84,7 +85,9 @@ exports.updateShortage = async (req, res) => {
              return res.status(400).json({ success: false, message: 'Cannot update non-active shortage' });
         }
 
+        const qtyDiff = (quantity || shortage.quantity) - shortage.quantity;
         shortage.quantity = quantity || shortage.quantity;
+        shortage.remainingQuantity += qtyDiff;
         shortage.maxSurplus = maxSurplus !== undefined ? maxSurplus : shortage.maxSurplus;
         shortage.notes = notes || shortage.notes;
 

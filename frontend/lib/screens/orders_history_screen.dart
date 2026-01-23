@@ -197,9 +197,15 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
               _detailRow('Type', isExcess ? 'Excess' : 'Shortage'),
               _detailRow('Volume', item['volume']['name']),
               _detailRow(
-                'Quantity',
+                'Total Quantity',
                 (isExcess ? item['originalQuantity'] : item['quantity'])
                     .toString(),
+              ),
+              _detailRow(
+                'Remaining',
+                item['remainingQuantity'].toString(),
+                color: Colors.blue[800],
+                isBold: true,
               ),
               if (isExcess) ...[
                 _detailRow('Price', '${item['selectedPrice']} EGP'),
@@ -355,85 +361,6 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEditDialog(BuildContext context, Map<String, dynamic> item) {
-    final bool isExcess = item['type'] == 'excess';
-    final TextEditingController quantityController = TextEditingController(
-      text: (isExcess ? item['originalQuantity'] : item['quantity']).toString(),
-    );
-    final TextEditingController maxPriceController = TextEditingController(
-      text: (isExcess ? item['selectedPrice'] : item['maxSurplus']).toString(),
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Edit ${isExcess ? 'Excess' : 'Shortage'}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: quantityController,
-              decoration: const InputDecoration(labelText: 'Quantity'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: maxPriceController,
-              decoration: InputDecoration(
-                labelText: isExcess ? 'Price (EGP)' : 'Max Surplus (EGP)',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final Map<String, dynamic> updateData = {
-                'quantity': int.tryParse(quantityController.text),
-              };
-
-              if (isExcess) {
-                updateData['selectedPrice'] = double.tryParse(
-                  maxPriceController.text,
-                );
-              } else {
-                updateData['maxSurplus'] = double.tryParse(
-                  maxPriceController.text,
-                );
-              }
-
-              final success = isExcess
-                  ? await Provider.of<ExcessProvider>(
-                      context,
-                      listen: false,
-                    ).updateExcess(item['_id'], updateData)
-                  : await Provider.of<ShortageProvider>(
-                      context,
-                      listen: false,
-                    ).updateShortage(item['_id'], updateData);
-
-              if (success) {
-                Navigator.pop(ctx);
-                Provider.of<OrderProvider>(
-                  context,
-                  listen: false,
-                ).fetchMyOrders();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Updated successfully')),
-                );
-              }
-            },
-            child: const Text('Save'),
           ),
         ],
       ),

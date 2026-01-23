@@ -1,0 +1,178 @@
+import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
+import 'auth_provider.dart';
+
+class TransactionProvider with ChangeNotifier {
+  final AuthProvider authProvider;
+  List<dynamic> matchableProducts = [];
+  Map<String, dynamic> currentMatches = {'shortages': [], 'excesses': []};
+  List<dynamic> transactions = [];
+  bool isLoading = false;
+  String? errorMessage;
+
+  TransactionProvider(this.authProvider);
+
+  String get _token => authProvider.token ?? '';
+
+  // Get products with potential matches
+  Future<void> fetchMatchableProducts() async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/transaction/matchable'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        matchableProducts = data['data'];
+      } else {
+        errorMessage = data['message'] ?? 'Failed to fetch matchable products';
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Get details for a specific product matching
+  Future<void> fetchMatchesForProduct(String productId) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/transaction/matches/$productId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        currentMatches = data['data'];
+      } else {
+        errorMessage = data['message'] ?? 'Failed to fetch matches';
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Create Transaction
+  Future<bool> createTransaction(Map<String, dynamic> transactionData) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.baseUrl}/transaction'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode(transactionData),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to create transaction';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Fetch Transactions with filter
+  Future<void> fetchTransactions({String? status}) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      String url = '${Constants.baseUrl}/transaction';
+      if (status != null) url += '?status=$status';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        transactions = data['data'];
+      } else {
+        errorMessage = data['message'] ?? 'Failed to fetch transactions';
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update Transaction Status
+  Future<bool> updateTransactionStatus(String id, String status) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/transaction/$id/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode({'status': status}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        fetchTransactions(); // Refresh
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update status';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+}
