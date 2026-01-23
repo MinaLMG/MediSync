@@ -16,6 +16,7 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? get currentUser => _currentUser;
   String? get errorMessage => _errorMessage;
   String? get userRole => _currentUser?['role'];
+  String? get userStatus => _currentUser?['status'];
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;
@@ -45,6 +46,109 @@ class AuthProvider with ChangeNotifier {
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Login failed';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.baseUrl}/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'phone': phone,
+        }),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        _token = data['data']['token'];
+        _currentUser = data['data'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(Constants.tokenKey, _token!);
+        await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Registration failed';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> linkPharmacy(
+    Map<String, String> fields,
+    Map<String, String> filePaths,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final uri = Uri.parse('${Constants.baseUrl}/auth/link-pharmacy');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.headers['Authorization'] = 'Bearer $_token';
+
+      // Add fields
+      fields.forEach((key, value) {
+        request.fields[key] = value;
+      });
+
+      // Add files
+      for (var entry in filePaths.entries) {
+        if (entry.value.isNotEmpty) {
+          request.files.add(
+            await http.MultipartFile.fromPath(entry.key, entry.value),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = data['data']['user'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to link pharmacy';
         _isLoading = false;
         notifyListeners();
         return false;

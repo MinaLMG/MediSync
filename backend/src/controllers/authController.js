@@ -27,22 +27,20 @@ const register = async (req, res) => {
             });
         }
 
-        // If role is not admin, pharmacy is required
-        if (role !== 'admin' && !pharmacyId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Pharmacy ID is required for non-admin users'
-            });
-        }
+        // If role is admin, pharmacy is not required. 
+        // For others, it's initially not required (status: pending)
+        // But role must be assigned.
+        const userRole = role || 'pharmacy_owner';
 
         // Create user
         const user = await User.create({
             name,
-            phone,
+            phone: phone || `temp_${Date.now()}`, // Fallback for social login if not provided initially
             email,
-            hashedPassword: password, // Will be hashed by pre-save hook
-            role,
-            pharmacy: pharmacyId
+            hashedPassword: password || `social_${Math.random()}`, // Random pass for social login placeholders
+            role: userRole,
+            pharmacy: pharmacyId || undefined,
+            status: 'pending'
         });
 
         if (user) {
@@ -53,6 +51,7 @@ const register = async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    status: user.status,
                     token: generateToken(user._id)
                 }
             });
@@ -85,6 +84,7 @@ const login = async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    status: user.status,
                     pharmacy: user.pharmacy,
                     token: generateToken(user._id)
                 }
@@ -117,8 +117,123 @@ const getProfile = async (req, res) => {
     }
 };
 
+// @desc    Link pharmacy to a pending user
+// @route   POST /api/auth/link-pharmacy
+// @access  Private (Pending/Waiting)
+const linkPharmacy = async (req, res) => {
+    try {
+        const { 
+            name, ownerName, nationalId, phone, email,
+            location 
+        } = req.body;
+
+        // Parse address and location if they are strings (Multipart/form-data often sends objects as strings)
+        let address = req.body.address;
+        if (typeof address === 'string') {
+            try { address = JSON.parse(address); } catch (e) {}
+        }
+        let parsedLocation = location;
+        if (typeof parsedLocation === 'string') {
+            try { parsedLocation = JSON.parse(parsedLocation); } catch (e) {}
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (nationalId && !/^\d{14}$/.test(nationalId)) {
+            return res.status(400).json({ success: false, message: 'National ID must be exactly 14 digits' });
+        }
+
+        if (user.status === 'active') {
+            return res.status(400).json({ success: false, message: 'Account already active' });
+        }
+
+        // Extract file paths
+        const pharmacistCard = req.files['pharmacistCard'] ? req.files['pharmacistCard'][0].path : null;
+        const commercialRegistry = req.files['commercialRegistry'] ? req.files['commercialRegistry'][0].path : null;
+        const taxCard = req.files['taxCard'] ? req.files['taxCard'][0].path : null;
+        const pharmacyLicense = req.files['pharmacyLicense'] ? req.files['pharmacyLicense'][0].path : null;
+
+        if (!pharmacistCard || !commercialRegistry || !taxCard || !pharmacyLicense) {
+            return res.status(400).json({ success: false, message: 'All 4 documents are required' });
+        }
+
+        // Create new pharmacy record
+        const pharmacy = await Pharmacy.create({
+            name,
+            ownerName,
+            nationalId,
+            phone: phone || user.phone,
+            email: email || user.email,
+            pharmacistCard,
+            commercialRegistry,
+            taxCard,
+            pharmacyLicense,
+            address,
+            location: parsedLocation,
+            status: 'pending'
+        });
+
+        // Update user
+        user.pharmacy = pharmacy._id;
+        user.status = 'waiting';
+        await user.save();
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Pharmacy linked. Awaiting admin approval.',
+            data: { user, pharmacy }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Google/Social Login Placeholder
+// @route   POST /api/auth/social-login
+// @access  Public
+const socialLogin = async (req, res) => {
+    try {
+        const { email, name, provider, providerId } = req.body;
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Create user if not exists
+            user = await User.create({
+                email,
+                name,
+                phone: `social_${Date.now()}`, // User needs to update this later
+                hashedPassword: `social_${Math.random()}`,
+                role: 'pharmacy_owner',
+                status: 'pending'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                status: user.status,
+                pharmacy: user.pharmacy,
+                token: generateToken(user._id)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     register,
     login,
-    getProfile
+    getProfile,
+    linkPharmacy,
+    socialLogin
 };

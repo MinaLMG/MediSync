@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import 'dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';
+import 'registration_screen.dart';
+import 'onboarding_screen.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,6 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (success) {
         final role = authProvider.userRole;
+        final status = authProvider.userStatus;
+
         if (role == 'admin') {
           Navigator.pushReplacement(
             context,
@@ -43,12 +47,18 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (context) => const AdminDashboardScreen(),
             ),
           );
-        } else {
+        } else if (status == 'active') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => const DashboardScreen(userType: 'manager'),
             ),
+          );
+        } else {
+          // Status is pending or waiting
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
           );
         }
       } else {
@@ -149,6 +159,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : const Text('Login'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegistrationScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text("Don't have an account? Sign up"),
                   ),
                 ],
               ),

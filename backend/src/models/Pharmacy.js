@@ -25,7 +25,8 @@ const pharmacySchema = new mongoose.Schema({
     nationalId: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        match: [/^\d{14}$/, 'National ID must be exactly 14 digits']
     },
     pharmacistCard: {
         type: String,

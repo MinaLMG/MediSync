@@ -31,15 +31,12 @@ const userSchema = new mongoose.Schema({
     },
     pharmacy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pharmacy',
-        required: function() {
-            return this.role !== 'admin';
-        }
+        ref: 'Pharmacy'
     },
     status: {
         type: String,
-        enum: ['active', 'inactive', 'suspended'],
-        default: 'active'
+        enum: ['pending', 'waiting', 'active', 'inactive', 'suspended'],
+        default: 'pending'
     },
     lastLogin: {
         type: Date

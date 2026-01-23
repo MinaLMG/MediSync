@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 require('dotenv').config();
 const connectDB = require('./src/db/mongoose');
@@ -9,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static folder for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB
 connectDB();
@@ -29,6 +33,7 @@ app.use('/api/excess', require('./src/routes/excessRoutes'));
 app.use('/api/shortage', require('./src/routes/shortageRoutes'));
 app.use('/api/orders', require('./src/routes/orderRoutes'));
 app.use('/api/transaction', require('./src/routes/transactionRoutes'));
+app.use('/api/admin', require('./src/routes/adminRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

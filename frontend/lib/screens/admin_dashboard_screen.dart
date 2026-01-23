@@ -6,6 +6,8 @@ import 'excess_followup_screen.dart';
 import 'shortage_followup_screen.dart';
 import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
+import 'admin_manage_users_screen.dart';
+import 'admin_pharmacies_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -143,6 +145,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const ShortageFollowUpScreen(),
+              ),
+            );
+          } else if (title == 'Manage Users') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminManageUsersScreen(),
               ),
             );
           } else {
