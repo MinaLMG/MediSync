@@ -231,8 +231,6 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                   ),
                 ],
               ],
-              if (!isExcess && item['maxSurplus'] != null)
-                _detailRow('Max Surplus', '${item['maxSurplus']} EGP'),
 
               const Divider(),
               _detailRow(

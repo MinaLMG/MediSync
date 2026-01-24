@@ -13,5 +13,6 @@ module.exports = {
     Notification: require('./Notification'),
     Review: require('./Review'),
     AuditLog: require('./AuditLog'),
-    Settings: require('./Settings')
+    Settings: require('./Settings'),
+    ProductSuggestion: require('./ProductSuggestion')
 };

@@ -271,6 +271,19 @@ exports.updateTransactionStatus = async (req, res) => {
                 // current balance - (100+shortage_commision)/100 * transaction
                 buyerPh.balance -= (1 + shortageCommRatio) * transaction.totalAmount;
                 await buyerPh.save({ session });
+
+                // Emit balance update to buyer's users
+                try {
+                    const { sendToUser } = require('../utils/socketManager');
+                    const buyerUsers = await mongoose.model('User').find({ pharmacy: buyerPh._id });
+                    for (const user of buyerUsers) {
+                        sendToUser(user._id.toString(), 'balanceUpdate', {
+                            balance: buyerPh.balance
+                        });
+                    }
+                } catch (err) {
+                    console.error('Error emitting balance update to buyer:', err);
+                }
             }
 
             // Sellers: Add full balance if shortage_fulfillment, else (100 - minComm)%
@@ -293,6 +306,19 @@ exports.updateTransactionStatus = async (req, res) => {
                      }
                     
                     await sellerPh.save({ session });
+
+                    // Emit balance update to seller's users
+                    try {
+                        const { sendToUser } = require('../utils/socketManager');
+                        const sellerUsers = await mongoose.model('User').find({ pharmacy: sellerPh._id });
+                        for (const user of sellerUsers) {
+                            sendToUser(user._id.toString(), 'balanceUpdate', {
+                                balance: sellerPh.balance
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error emitting balance update to seller:', err);
+                    }
                 }
             }
             // Check if shortage is fully done

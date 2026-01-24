@@ -80,6 +80,12 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
     });
 
+    _socket!.on('balanceUpdate', (data) {
+      print('💰 Real-time balance update received: $data');
+      final newBalance = (data['balance'] as num).toDouble();
+      authProvider.updateBalance(newBalance);
+    });
+
     _socket!.onDisconnect((_) {
       print('🔌 Disconnected from Notification Socket');
     });

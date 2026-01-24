@@ -3,7 +3,7 @@ const { StockShortage, StockExcess } = require('../models');
 // Create new shortage
 exports.createShortage = async (req, res) => {
     try {
-        const { product, volume, quantity, maxSurplus, notes } = req.body;
+        const { product, volume, quantity, notes } = req.body;
 
         // Check if an Excess exists for this product (Constraint)
         const existingExcess = await StockExcess.findOne({
@@ -25,7 +25,6 @@ exports.createShortage = async (req, res) => {
             volume,
             quantity,
             remainingQuantity: quantity,
-            maxSurplus: maxSurplus || undefined,
             notes,
             status: 'active'
         });
@@ -68,7 +67,7 @@ exports.getMyShortages = async (req, res) => {
 // Update shortage (Manager/Owner)
 exports.updateShortage = async (req, res) => {
     try {
-        const { quantity, maxSurplus, notes } = req.body;
+        const { quantity, notes } = req.body;
 
         const shortage = await StockShortage.findById(req.params.id);
 
@@ -87,7 +86,6 @@ exports.updateShortage = async (req, res) => {
         const qtyDiff = (quantity || shortage.quantity) - shortage.quantity;
         shortage.quantity = quantity || shortage.quantity;
         shortage.remainingQuantity += qtyDiff;
-        shortage.maxSurplus = maxSurplus !== undefined ? maxSurplus : shortage.maxSurplus;
         shortage.notes = notes || shortage.notes;
 
         await shortage.save();

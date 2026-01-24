@@ -54,12 +54,6 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         comparison = DateTime.parse(
           b['createdAt'],
         ).compareTo(DateTime.parse(a['createdAt']));
-      } else if (criteria == 'Value') {
-        if (isExcess) {
-          comparison = (b['saleAmount'] ?? 0).compareTo(a['saleAmount'] ?? 0);
-        } else {
-          comparison = (b['maxSurplus'] ?? 0).compareTo(a['maxSurplus'] ?? 0);
-        }
       } else if (criteria == 'Quantity') {
         if (isExcess) {
           comparison = b['remainingQuantity'].compareTo(a['remainingQuantity']);
@@ -223,7 +217,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       child: DropdownButton<String>(
                         value: currentSort,
                         isDense: true,
-                        items: ['Time', 'Value', 'Quantity']
+                        items: ['Time', 'Quantity']
                             .map(
                               (e) => DropdownMenuItem(
                                 value: e,
@@ -380,11 +374,6 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                   fontSize: 14,
                 ),
               ),
-              if (!isExcess)
-                Text(
-                  'Max Surplus: ${item['maxSurplus'] ?? 0}',
-                  style: const TextStyle(fontSize: 11),
-                ),
               if (isExcess)
                 Text(
                   'Price: ${item['selectedPrice']}',

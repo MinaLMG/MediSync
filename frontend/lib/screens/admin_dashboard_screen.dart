@@ -8,6 +8,8 @@ import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
 import 'admin_manage_users_screen.dart';
 import 'admin_pharmacies_screen.dart';
+import 'admin_product_list_screen.dart';
+import 'manage_suggestions_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -77,6 +79,11 @@ class AdminHomeTab extends StatelessWidget {
         'title': 'Manage Products',
         'icon': Icons.inventory_2,
         'color': Colors.orange,
+      },
+      {
+        'title': 'Product Suggestions',
+        'icon': Icons.lightbulb,
+        'color': Colors.amber,
       },
       {
         'title': 'Manage Pharmacies',
@@ -152,6 +159,27 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminManageUsersScreen(),
+              ),
+            );
+          } else if (title == 'Manage Pharmacies') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminPharmaciesScreen(),
+              ),
+            );
+          } else if (title == 'Manage Products') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminProductListScreen(),
+              ),
+            );
+          } else if (title == 'Product Suggestions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ManageSuggestionsScreen(),
               ),
             );
           } else {

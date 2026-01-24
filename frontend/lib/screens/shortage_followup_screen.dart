@@ -58,11 +58,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
                       const SizedBox(height: 8),
                       Text('Quantity Needed: ${item['quantity']}'),
 
-                      if (item['maxSurplus'] != null)
-                        Text(
-                          'Max Surplus: ${item['maxSurplus']} EGP',
-                          style: const TextStyle(color: Colors.blue),
-                        ),
+                      Text('Quantity Needed: ${item['quantity']}'),
 
                       const Divider(),
                       Row(

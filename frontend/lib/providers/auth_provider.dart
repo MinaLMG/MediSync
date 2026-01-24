@@ -207,4 +207,16 @@ class AuthProvider with ChangeNotifier {
       debugPrint('Error refreshing profile: $e');
     }
   }
+
+  void updateBalance(double newBalance) {
+    if (_currentUser != null && _currentUser!['pharmacy'] != null) {
+      _currentUser!['pharmacy']['balance'] = newBalance;
+      notifyListeners();
+
+      // Persist to storage
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+      });
+    }
+  }
 }

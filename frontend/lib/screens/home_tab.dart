@@ -8,6 +8,7 @@ import 'add_shortage_screen.dart';
 import 'orders_history_screen.dart';
 import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
+import 'suggest_product_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -282,6 +283,13 @@ class _HomeTabState extends State<HomeTab> {
               context,
               MaterialPageRoute(
                 builder: (context) => const FollowUpTransactionsScreen(),
+              ),
+            );
+          } else if (title == 'Suggest Product') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SuggestProductScreen(),
               ),
             );
           } else {

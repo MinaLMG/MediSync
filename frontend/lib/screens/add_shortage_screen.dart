@@ -18,7 +18,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   String? _selectedProductId;
   String? _selectedVolumeId;
   final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _maxSurplusController = TextEditingController();
 
   bool get isEditMode => widget.initialData != null;
 
@@ -37,7 +36,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
           _selectedProductId = data['product']['_id'];
           _selectedVolumeId = data['volume']['_id'];
           _quantityController.text = data['quantity'].toString();
-          _maxSurplusController.text = data['maxSurplus']?.toString() ?? '';
         });
       }
     });
@@ -46,7 +44,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   @override
   void dispose() {
     _quantityController.dispose();
-    _maxSurplusController.dispose();
     super.dispose();
   }
 
@@ -63,9 +60,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
         'product': _selectedProductId,
         'volume': _selectedVolumeId,
         'quantity': int.parse(_quantityController.text),
-        'maxSurplus': _maxSurplusController.text.isNotEmpty
-            ? double.parse(_maxSurplusController.text)
-            : null,
       };
 
       final success = isEditMode
@@ -194,19 +188,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                       keyboardType: TextInputType.number,
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-
-                    // Max Surplus (Optional)
-                    TextFormField(
-                      controller: _maxSurplusController,
-                      decoration: const InputDecoration(
-                        labelText: 'Max Surplus (Optional)',
-                        helperText:
-                            'Maximum extra amount you are willing to pay per item',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
