@@ -47,7 +47,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       return SearchUtils.matches(ph['name'], _searchQuery) ||
           SearchUtils.matches(ph['email'], _searchQuery) ||
           SearchUtils.matches(ph['phone'], _searchQuery) ||
-          SearchUtils.matches(ph['address']?['city'], _searchQuery);
+          SearchUtils.matches(ph['address'], _searchQuery);
     }).toList();
 
     return Scaffold(
@@ -85,9 +85,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                             child: Icon(Icons.local_pharmacy),
                           ),
                           title: Text(ph['name']),
-                          subtitle: Text(
-                            ph['address']?['city'] ?? 'No Address info',
-                          ),
+                          subtitle: Text(ph['address'] ?? 'No Address info'),
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(16.0),

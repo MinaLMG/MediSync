@@ -94,6 +94,13 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           ),
         ],
       ),
+      floatingActionButton: _tabController.index == 0
+          ? FloatingActionButton(
+              onPressed: _showCreateDeliveryDialog,
+              child: const Icon(Icons.add),
+              tooltip: 'Create Delivery Account',
+            )
+          : null,
     );
   }
 
@@ -173,6 +180,10 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                 title: const Text('National ID'),
                 subtitle: Text(pharmacy['nationalId']),
               ),
+              ListTile(
+                title: const Text('Pharmacy Address'),
+                subtitle: Text(pharmacy['address'] ?? 'N/A'),
+              ),
               _buildImageSection('Pharmacist Card', pharmacy['pharmacistCard']),
               _buildImageSection(
                 'Commercial Registry',
@@ -211,6 +222,103 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showCreateDeliveryDialog() {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Delivery Account'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(labelText: 'Phone'),
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                  validator: (v) =>
+                      v == null || v.length < 6 ? 'Min 6 chars' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final token = Provider.of<AuthProvider>(
+                  context,
+                  listen: false,
+                ).token;
+                final response = await http.post(
+                  Uri.parse('${Constants.baseUrl}/admin/create-delivery'),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer $token',
+                  },
+                  body: json.encode({
+                    'name': nameController.text,
+                    'email': emailController.text,
+                    'phone': phoneController.text,
+                    'password': passwordController.text,
+                  }),
+                );
+                final data = json.decode(response.body);
+                if (data['success']) {
+                  Navigator.pop(context);
+                  _fetchUsers();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Delivery user created and pending approval',
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(data['message'] ?? 'Failed to create user'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
   }

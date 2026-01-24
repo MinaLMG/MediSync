@@ -4,6 +4,7 @@ import 'dashboard_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'registration_screen.dart';
 import 'onboarding_screen.dart';
+import 'delivery_dashboard_screen.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,6 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (context) => const AdminDashboardScreen(),
             ),
           );
+        } else if (role == 'delivery') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DeliveryDashboardScreen(),
+            ),
+          );
         } else if (status == 'active') {
           Navigator.pushReplacement(
             context,
@@ -55,7 +63,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         } else {
-          // Status is pending or waiting
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const OnboardingScreen()),
@@ -88,7 +95,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 48),
-                  // Logo
                   Center(
                     child: Image.asset(
                       'assets/images/medisync.png',
@@ -96,16 +102,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-
-                  // Title
                   const Text(
                     'Welcome to MediSync',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-
-                  // Email/Phone Input
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -122,8 +124,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-
-                  // Password Input
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
@@ -140,8 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-
-                  // Login Button
                   ElevatedButton(
                     onPressed: isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(

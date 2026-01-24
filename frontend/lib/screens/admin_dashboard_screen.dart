@@ -14,6 +14,7 @@ import '../providers/app_suggestion_provider.dart';
 import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
 import 'admin_view_suggestions_screen.dart';
+import 'admin_delivery_requests_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -41,7 +42,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
-        backgroundColor: Colors.blue[900], // Slightly darker for Admin
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -114,7 +115,6 @@ class AdminHomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Menu items for Admin
     final List<Map<String, dynamic>> menuItems = [
       {
         'title': 'Start Transactions',
@@ -135,6 +135,11 @@ class AdminHomeTab extends StatelessWidget {
         'title': 'Follow-up Shortages',
         'icon': Icons.trending_down,
         'color': Colors.red,
+      },
+      {
+        'title': 'Delivery Requests',
+        'icon': Icons.local_shipping,
+        'color': Colors.blueGrey,
       },
       {
         'title': 'Manage Products',
@@ -182,6 +187,8 @@ class AdminHomeTab extends StatelessWidget {
                 badgeCount = suggestionProvider.waitingUsersCount;
               } else if (item['title'] == 'App Suggestions') {
                 badgeCount = suggestionProvider.appSuggestionsCount;
+              } else if (item['title'] == 'Delivery Requests') {
+                badgeCount = suggestionProvider.deliveryRequestsCount;
               }
 
               return _buildMenuCard(
@@ -273,10 +280,13 @@ class AdminHomeTab extends StatelessWidget {
                 builder: (context) => const AdminViewSuggestionsScreen(),
               ),
             );
-          } else {
-            ScaffoldMessenger.of(
+          } else if (title == 'Delivery Requests') {
+            Navigator.push(
               context,
-            ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
+              MaterialPageRoute(
+                builder: (context) => const AdminDeliveryRequestsScreen(),
+              ),
+            );
           }
         },
         borderRadius: BorderRadius.circular(16),

@@ -18,6 +18,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
   final _nameController = TextEditingController();
   final _ownerController = TextEditingController();
   final _nationalIdController = TextEditingController();
+  final _addressController = TextEditingController();
 
   String? pharmacistCardPath;
   String? registryPath;
@@ -81,6 +82,26 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
               ),
 
               const SizedBox(height: 16),
+              const Text(
+                'Detailed Address',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: 'Detailed Address (العنوان بالتفصيل)',
+                  hintText: 'e.g. 123 Madinet Nasr, Cairo, Egypt',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                  border: OutlineInputBorder(),
+                  counterText: "",
+                ),
+                maxLines: 3,
+                maxLength: 200,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+
+              const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
 
@@ -114,7 +135,14 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
                   foregroundColor: Colors.white,
                 ),
                 child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text('Submit for Approval'),
               ),
             ],
@@ -198,6 +226,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
               'name': _nameController.text,
               'ownerName': _ownerController.text,
               'nationalId': _nationalIdController.text,
+              'address': _addressController.text,
             },
             {
               'pharmacistCard': pharmacistCardPath!,

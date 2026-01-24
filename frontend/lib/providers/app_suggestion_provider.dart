@@ -14,6 +14,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int _pendingExcessCount = 0;
   int _pendingProductSuggestionsCount = 0;
   int _appSuggestionsCount = 0;
+  int _deliveryRequestsCount = 0;
 
   List<dynamic> get suggestions => _suggestions;
   bool get isLoading => _isLoading;
@@ -23,6 +24,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int get pendingExcessCount => _pendingExcessCount;
   int get pendingProductSuggestionsCount => _pendingProductSuggestionsCount;
   int get appSuggestionsCount => _appSuggestionsCount;
+  int get deliveryRequestsCount => _deliveryRequestsCount;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,6 +51,7 @@ class AppSuggestionProvider with ChangeNotifier {
         _pendingProductSuggestionsCount =
             data['data']['pendingSuggestions'] ?? 0;
         _appSuggestionsCount = data['data']['appSuggestions'] ?? 0;
+        _deliveryRequestsCount = data['data']['deliveryRequests'] ?? 0;
         notifyListeners();
       }
     } catch (e) {
@@ -130,11 +133,9 @@ class AppSuggestionProvider with ChangeNotifier {
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        // Update local list
         final index = _suggestions.indexWhere((s) => s['_id'] == id);
         if (index != -1) {
           _suggestions[index]['seen'] = true;
-          // Decrement pending count locally for immediate feedback
           if (_appSuggestionsCount > 0) {
             _appSuggestionsCount--;
           }

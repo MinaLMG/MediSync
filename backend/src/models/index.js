@@ -12,5 +12,6 @@ module.exports = {
     AuditLog: require('./AuditLog'),
     Settings: require('./Settings'),
     ProductSuggestion: require('./ProductSuggestion'),
-    AppSuggestion: require('./AppSuggestion')
+    AppSuggestion: require('./AppSuggestion'),
+    DeliveryRequest: require('./DeliveryRequest')
 };

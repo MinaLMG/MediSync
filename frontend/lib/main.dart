@@ -9,6 +9,7 @@ import 'providers/order_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/app_suggestion_provider.dart';
+import 'providers/delivery_request_provider.dart';
 import 'screens/login_screen.dart';
 
 void main() {
@@ -20,6 +21,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ExcessProvider()),
         ChangeNotifierProvider(create: (_) => AppSuggestionProvider()),
+        ChangeNotifierProvider(create: (_) => DeliveryRequestProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ShortageProvider>(
           create: (context) => ShortageProvider(
             Provider.of<AuthProvider>(context, listen: false),
@@ -56,6 +58,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MediSync',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

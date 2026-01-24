@@ -53,10 +53,10 @@ const pharmacySchema = new mongoose.Schema({
         trim: true
     },
     address: {
-        street: { type: String, trim: true },
-        city: { type: String, trim: true },
-        governorate: { type: String, trim: true },
-        postalCode: { type: String, trim: true }
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 200
     },
     location: {
         type: {

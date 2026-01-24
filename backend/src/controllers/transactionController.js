@@ -401,13 +401,50 @@ exports.updateTransactionStatus = async (req, res) => {
 exports.getTransactions = async (req, res) => {
     try {
         const { status } = req.query;
-        const query = status ? { status } : {};
+        let query = status ? { status } : {};
 
-        const transactions = await Transaction.find(query)
+        // Role-based filtering
+        if (req.user.role === 'pharmacy_owner' && req.user.pharmacy) {
+            // Find transactions where the user's pharmacy is the buyer (shortage)
+            // or one of the sellers (excess).
+            // This is complex due to nested populate, but we can use $lookup or find IDs first.
+            // Simplified: Filter results after find or use a complex query.
+            // Let's use a query on IDs.
+            
+            // For now, let's use a more direct approach:
+            // Shortage pharmacy is inside stockShortage.shortage
+            // Excess pharmacy is inside stockExcessSources.stockExcess
+            // Since we can't easily query nested model fields in find() without populate first or aggregate,
+            // we will fetch all and filter, or use an aggregate.
+            
+            // Efficient way:
+            const myPharmacyId = req.user.pharmacy;
+            
+            // We need to find transactions where:
+            // 1. Transaction.stockShortage.shortage.pharmacy == myPharmacyId
+            // 2. Any Transaction.stockExcessSources.stockExcess.pharmacy == myPharmacyId
+            
+            // This requires nested paths. We'll use a slightly broader query and filter if needed,
+            // or use the fact that we can query populated fields if we use aggregate.
+            // But let's keep it simple for now:
+            
+            /* 
+            query = {
+                $or: [
+                    { 'placeholder_for_shortage_ph': myPharmacyId },
+                    { 'placeholder_for_excess_ph': myPharmacyId }
+                ]
+            };
+            */
+            // Actually, the easiest is to fetch all for the status and filter in JS 
+            // since transaction volume is likely low per status.
+        }
+
+        let transactions = await Transaction.find(query)
             .populate({
                 path: 'stockShortage.shortage',
                 populate: [
-                    { path: 'pharmacy', select: 'name' },
+                    { path: 'pharmacy', select: 'name address phone' },
                     { path: 'product', select: 'name' },
                     { path: 'volume', select: 'name' }
                 ]
@@ -415,10 +452,26 @@ exports.getTransactions = async (req, res) => {
             .populate({
                 path: 'stockExcessSources.stockExcess',
                 populate: [
-                    { path: 'pharmacy', select: 'name' }
+                    { path: 'pharmacy', select: 'name address phone' }
                 ]
             })
             .sort({ createdAt: -1 });
+
+        // Post-fetch filtering for pharmacy owners
+        if (req.user.role === 'pharmacy_owner' && req.user.pharmacy) {
+            const myPharmacyId = req.user.pharmacy.toString();
+            transactions = transactions.filter(t => {
+                // Check if user's pharmacy is buyer
+                const buyerPhId = t.stockShortage?.shortage?.pharmacy?._id?.toString();
+                if (buyerPhId === myPharmacyId) return true;
+
+                // Check if user's pharmacy is one of the sellers
+                const isSeller = t.stockExcessSources?.some(source => 
+                    source.stockExcess?.pharmacy?._id?.toString() === myPharmacyId
+                );
+                return isSeller;
+            });
+        }
 
         res.status(200).json({ success: true, count: transactions.length, data: transactions });
     } catch (error) {

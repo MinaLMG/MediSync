@@ -1,11 +1,11 @@
-const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion } = require('../models');
+const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion, DeliveryRequest } = require('../models');
 const { deleteFiles } = require('../utils/fileHelper');
 const { addNotificationJob } = require('../utils/queueManager');
 
 // @desc    Get users waiting for approval
 // @route   GET /api/admin/waiting-users
 // @access  Admin
-exports.getWaitingUsers = async (req, res) => {
+const getWaitingUsers = async (req, res) => {
     try {
         const users = await User.find({ status: 'waiting' }).populate('pharmacy');
         res.status(200).json({ success: true, count: users.length, data: users });
@@ -17,7 +17,7 @@ exports.getWaitingUsers = async (req, res) => {
 // @desc    Get active users
 // @route   GET /api/admin/active-users
 // @access  Admin
-exports.getActiveUsers = async (req, res) => {
+const getActiveUsers = async (req, res) => {
     try {
         const users = await User.find({ status: 'active' }).populate('pharmacy');
         res.status(200).json({ success: true, count: users.length, data: users });
@@ -29,9 +29,9 @@ exports.getActiveUsers = async (req, res) => {
 // @desc    Approve or Reject a user/pharmacy
 // @route   PUT /api/admin/review-user/:id
 // @access  Admin
-exports.reviewUser = async (req, res) => {
+const reviewUser = async (req, res) => {
     try {
-        const { status } = req.body; // 'active' or 'rejected'
+        const { status } = req.body; 
         if (!['active', 'rejected'].includes(status)) {
             return res.status(400).json({ success: false, message: 'Invalid status' });
         }
@@ -45,7 +45,6 @@ exports.reviewUser = async (req, res) => {
             if (user.pharmacy) {
                 const pharmacy = await Pharmacy.findById(user.pharmacy);
                 if (pharmacy) {
-                    // Collect all possible file paths to delete
                     const filesToDelete = [
                         pharmacy.pharmacistCard,
                         pharmacy.commercialRegistry,
@@ -54,26 +53,21 @@ exports.reviewUser = async (req, res) => {
                         pharmacy.signImage
                     ].filter(Boolean);
 
-                    // Delete physical files
                     deleteFiles(filesToDelete);
-
                     await pharmacy.deleteOne();
                 }
 
-                // Push Notification to user
                 await addNotificationJob(
                     user._id.toString(),
                     'system',
-                    `Your pharmacy "${pharmacy.name}" registration request was rejected. You can now re-submit your documents.`,
+                    `Your pharmacy "${pharmacy?.name || 'registration'}" registration request was rejected. You can now re-submit your documents.`,
                     { priority: 'high' }
                 );
 
-                // Reset user to pending status and remove pharmacy link
                 user.pharmacy = undefined;
                 user.status = 'pending';
             }
         } else {
-            // Approving logic (status === 'active')
             user.status = status;
             if (user.pharmacy) {
                 const pharmacy = await Pharmacy.findById(user.pharmacy);
@@ -82,7 +76,6 @@ exports.reviewUser = async (req, res) => {
                     pharmacy.verified = true;
                     await pharmacy.save();
 
-                    // Push Notification to user
                     await addNotificationJob(
                         user._id.toString(),
                         'system',
@@ -107,9 +100,8 @@ exports.reviewUser = async (req, res) => {
 // @desc    Get all pharmacies with owners
 // @route   GET /api/admin/pharmacies
 // @access  Admin
-exports.getAllPharmacies = async (req, res) => {
+const getAllPharmacies = async (req, res) => {
     try {
-        // Find all pharmacies and find their linked users
         const pharmacies = await Pharmacy.find();
         const data = [];
 
@@ -130,12 +122,13 @@ exports.getAllPharmacies = async (req, res) => {
 // @desc    Get counts of pending items for dashboard
 // @route   GET /api/admin/pending-counts
 // @access  Admin
-exports.getPendingCounts = async (req, res) => {
+const getPendingCounts = async (req, res) => {
     try {
         const waitingUsers = await User.countDocuments({ status: 'waiting' });
         const pendingExcesses = await StockExcess.countDocuments({ status: 'pending' });
         const pendingSuggestions = await ProductSuggestion.countDocuments({ status: 'pending' });
         const appSuggestions = await AppSuggestion.countDocuments({ seen: false });
+        const deliveryRequests = await DeliveryRequest.countDocuments({ status: 'pending' });
 
         res.status(200).json({
             success: true,
@@ -143,10 +136,53 @@ exports.getPendingCounts = async (req, res) => {
                 waitingUsers,
                 pendingExcesses,
                 pendingSuggestions,
-                appSuggestions
+                appSuggestions,
+                deliveryRequests
             }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
+};
+
+// @desc    Create a delivery user manually
+// @route   POST /api/admin/create-delivery
+// @access  Admin
+const createDeliveryUser = async (req, res) => {
+    try {
+        const { name, email, phone, password } = req.body;
+
+        const userExists = await User.findOne({ 
+            $or: [{ email: email.toLowerCase() }, { phone }] 
+        });
+
+        if (userExists) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User already exists with this email or phone' 
+            });
+        }
+
+        const user = await User.create({
+            name,
+            email: email.toLowerCase(),
+            phone,
+            hashedPassword: password,
+            role: 'delivery',
+            status: 'waiting'
+        });
+
+        res.status(201).json({ success: true, data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = {
+    getWaitingUsers,
+    getActiveUsers,
+    reviewUser,
+    getAllPharmacies,
+    getPendingCounts,
+    createDeliveryUser
 };

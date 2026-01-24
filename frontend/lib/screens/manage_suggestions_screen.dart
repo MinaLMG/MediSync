@@ -174,7 +174,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                         ),
                                         child: const Center(
                                           child: Text(
-                                            'APPROVE & CREATE',
+                                            'APPROVE',
                                             textAlign: TextAlign.center,
                                           ),
                                         ),

@@ -129,11 +129,7 @@ const linkPharmacy = async (req, res) => {
             location 
         } = req.body;
 
-        // Parse address and location if they are strings (Multipart/form-data often sends objects as strings)
-        let address = req.body.address;
-        if (typeof address === 'string') {
-            try { address = JSON.parse(address); } catch (e) {}
-        }
+        // Parse location if it is a string
         let parsedLocation = location;
         if (typeof parsedLocation === 'string') {
             try { parsedLocation = JSON.parse(parsedLocation); } catch (e) {}
