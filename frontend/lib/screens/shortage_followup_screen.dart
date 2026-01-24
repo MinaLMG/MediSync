@@ -57,8 +57,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
                       Text('Volume: ${item['volume']['name']}'),
                       const SizedBox(height: 8),
                       Text('Quantity Needed: ${item['quantity']}'),
-
-                      Text('Quantity Needed: ${item['quantity']}'),
+                      Text('Remaining Quantity: ${item['remainingQuantity']}'),
 
                       const Divider(),
                       Row(

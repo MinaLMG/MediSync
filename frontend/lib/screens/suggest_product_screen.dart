@@ -12,21 +12,11 @@ class SuggestProductScreen extends StatefulWidget {
 class _SuggestProductScreenState extends State<SuggestProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _ingredientController = TextEditingController();
-  final _manufacturerController = TextEditingController();
-  final _categoryController = TextEditingController();
-  final _volumeController = TextEditingController();
-  final _valueController = TextEditingController(text: '1');
   final _priceController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _ingredientController.dispose();
-    _manufacturerController.dispose();
-    _categoryController.dispose();
-    _volumeController.dispose();
-    _valueController.dispose();
     _priceController.dispose();
     super.dispose();
   }
@@ -36,13 +26,9 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
       final success = await Provider.of<ProductProvider>(context, listen: false)
           .suggestProduct({
             'name': _nameController.text.trim(),
-            'activeIngredient': _ingredientController.text.trim(),
-            'manufacturerName': _manufacturerController.text.trim(),
-            'categoryName': _categoryController.text.trim(),
-            'volumeName': _volumeController.text.trim(),
-            'value': int.parse(_valueController.text),
             'price': double.parse(_priceController.text),
           });
+      // ... rest of the method is unchanged but need context for tool
 
       if (mounted) {
         if (success) {
@@ -87,51 +73,6 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                   labelText: 'Product Name',
                   helperText: 'e.g. Panadol 500mg',
                 ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _ingredientController,
-                decoration: const InputDecoration(
-                  labelText: 'Active Ingredient',
-                  helperText: 'e.g. Paracetamol',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _manufacturerController,
-                decoration: const InputDecoration(
-                  labelText: 'Manufacturer',
-                  helperText: 'e.g. GlaxoSmithKline',
-                ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  helperText: 'e.g. Analgesic',
-                ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _volumeController,
-                decoration: const InputDecoration(
-                  labelText: 'Volume Name',
-                  helperText: 'e.g. Box, Bottle',
-                ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _valueController,
-                decoration: const InputDecoration(
-                  labelText: 'Units per Volume',
-                  helperText: 'e.g. 24 (tablets per box)',
-                ),
-                keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),

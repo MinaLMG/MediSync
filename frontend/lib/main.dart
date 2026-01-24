@@ -22,18 +22,18 @@ void main() {
           create: (context) => ShortageProvider(
             Provider.of<AuthProvider>(context, listen: false),
           ),
-          update: (context, auth, previous) => ShortageProvider(auth),
+          update: (context, auth, previous) => previous!..update(auth),
         ),
         ChangeNotifierProxyProvider<AuthProvider, OrderProvider>(
           create: (context) =>
               OrderProvider(Provider.of<AuthProvider>(context, listen: false)),
-          update: (context, auth, previous) => OrderProvider(auth),
+          update: (context, auth, previous) => previous!..update(auth),
         ),
         ChangeNotifierProxyProvider<AuthProvider, TransactionProvider>(
           create: (context) => TransactionProvider(
             Provider.of<AuthProvider>(context, listen: false),
           ),
-          update: (context, auth, previous) => TransactionProvider(auth),
+          update: (context, auth, previous) => previous!..update(auth),
         ),
         ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
           create: (context) => NotificationProvider(

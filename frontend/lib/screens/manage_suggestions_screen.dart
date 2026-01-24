@@ -108,19 +108,6 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                         ),
                         const SizedBox(height: 8),
                         _InfoRow(
-                          label: 'Ingredient',
-                          value: s['activeIngredient'] ?? 'N/A',
-                        ),
-                        _InfoRow(
-                          label: 'Manufacturer',
-                          value: s['manufacturerName'],
-                        ),
-                        _InfoRow(label: 'Category', value: s['categoryName']),
-                        _InfoRow(
-                          label: 'Volume',
-                          value: '${s['volumeName']} (${s['value']} units)',
-                        ),
-                        _InfoRow(
                           label: 'Proposed Price',
                           value: '${s['price']} EGP',
                         ),

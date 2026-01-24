@@ -11,20 +11,6 @@ const productSuggestionSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    activeIngredient: {
-        type: String,
-        trim: true
-    },
-    manufacturerName: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    categoryName: {
-        type: String,
-        required: true,
-        trim: true
-    },
     volumeName: {
         type: String,
         required: true,

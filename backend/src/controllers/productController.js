@@ -4,9 +4,7 @@ const mongoose = require('mongoose');
 // Get all products with their volumes and prices
 exports.getAllProducts = async (req, res) => {
     try {
-        const products = await Product.find()
-            .populate('category', 'name')
-            .populate('manufacturer', 'name');
+        const products = await Product.find();
 
         const productsWithVolumes = await Promise.all(products.map(async (product) => {
             const hasVolumes = await HasVolume.find({ product: product._id })
@@ -35,6 +33,8 @@ exports.suggestProduct = async (req, res) => {
     try {
         const suggestion = await ProductSuggestion.create({
             ...req.body,
+            volumeName: 'unit',
+            value: 1,
             suggestedBy: req.user._id
         });
         res.status(201).json({ success: true, data: suggestion });
@@ -72,53 +72,29 @@ exports.updateSuggestionStatus = async (req, res) => {
         suggestion.adminNotes = adminNotes;
 
         if (status === 'approved') {
-            // 1. Find or Create Category
-            let category = await Category.findOne({ name: suggestion.categoryName }).session(session);
-            if (!category) {
-                category = await Category.create([{ name: suggestion.categoryName }], { session });
-                category = category[0];
-            }
-
-            // 2. Find or Create Manufacturer
-            let manufacturer = await Manufacturer.findOne({ name: suggestion.manufacturerName }).session(session);
-            if (!manufacturer) {
-                manufacturer = await Manufacturer.create([{ name: suggestion.manufacturerName }], { session });
-                manufacturer = manufacturer[0];
-            }
-
-            // 3. Find or Create Base Volume ('unit')
+            // Find or Create Base Volume ('unit')
             let unitVolume = await Volume.findOne({ name: 'unit' }).session(session);
             if (!unitVolume) {
                 unitVolume = await Volume.create([{ name: 'unit' }], { session });
                 unitVolume = unitVolume[0];
             }
 
-            // 4. Find or Create Suggested Volume
-            let suggestedVolume = await Volume.findOne({ name: suggestion.volumeName }).session(session);
-            if (!suggestedVolume) {
-                suggestedVolume = await Volume.create([{ name: suggestion.volumeName }], { session });
-                suggestedVolume = suggestedVolume[0];
-            }
-
-            // 5. Create Product with Conversion
+            // Create Product linked only to 'unit'
             const product = await Product.create([{
                 name: suggestion.name,
-                activeIngredient: suggestion.activeIngredient,
-                category: category._id,
-                manufacturer: manufacturer._id,
                 status: 'active',
                 conversions: [{
-                    from: suggestedVolume._id.toString(),
+                    from: unitVolume._id.toString(),
                     to: unitVolume._id.toString(),
-                    value: suggestion.value
+                    value: 1
                 }]
             }], { session });
 
-            // 6. Create HasVolume for the suggested volume
+            // Create HasVolume for the 'unit' volume
             await HasVolume.create([{
                 product: product[0]._id,
-                volume: suggestedVolume._id,
-                value: suggestion.value,
+                volume: unitVolume._id,
+                value: 1,
                 prices: [suggestion.price]
             }], { session });
         }
@@ -139,19 +115,28 @@ exports.createProduct = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { name, activeIngredient, categoryId, manufacturerId, volumeId, value, prices } = req.body;
+        const { name, prices } = req.body;
+
+        // Find unit volume
+        let unitVolume = await Volume.findOne({ name: 'unit' }).session(session);
+        if (!unitVolume) {
+            unitVolume = await Volume.create([{ name: 'unit' }], { session });
+            unitVolume = unitVolume[0];
+        }
 
         const product = await Product.create([{
             name,
-            activeIngredient,
-            category: categoryId,
-            manufacturer: manufacturerId
+            conversions: [{
+                from: unitVolume._id.toString(),
+                to: unitVolume._id.toString(),
+                value: 1
+            }]
         }], { session });
 
         await HasVolume.create([{
             product: product[0]._id,
-            volume: volumeId,
-            value,
+            volume: unitVolume._id,
+            value: 1,
             prices: prices || []
         }], { session });
 
@@ -202,46 +187,5 @@ exports.removePriceFromVolume = async (req, res) => {
         res.status(200).json({ success: true, data: hv });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
-    }
-};
-
-// Add a new Volume to an existing Product (Admin)
-exports.addVolumeToProduct = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        const { volumeId, value, prices } = req.body;
-        const productId = req.params.id;
-
-        const product = await Product.findById(productId).session(session);
-        if (!product) throw new Error('Product not found');
-
-        const existingHV = await HasVolume.findOne({ product: productId, volume: volumeId }).session(session);
-        if (existingHV) throw new Error('Product already has this volume');
-
-        const unitVolume = await Volume.findOne({ name: 'unit' }).session(session);
-        if (!unitVolume) throw new Error('Base unit volume not found');
-
-        const hv = await HasVolume.create([{
-            product: productId,
-            volume: volumeId,
-            value,
-            prices: prices || []
-        }], { session });
-
-        product.conversions.push({
-            from: volumeId,
-            to: unitVolume._id.toString(),
-            value
-        });
-        await product.save({ session });
-
-        await session.commitTransaction();
-        res.status(201).json({ success: true, data: hv[0] });
-    } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
-    } finally {
-        session.endSession();
     }
 };

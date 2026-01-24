@@ -10,19 +10,9 @@ const productSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-    activeIngredient: {
+    description: {
         type: String,
         trim: true
-    },
-    manufacturer: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Manufacturer',
-        required: true
-    },
-    category: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
-        required: true
     },
     conversions: [
         {
@@ -53,6 +43,6 @@ const productSchema = new mongoose.Schema({
 });
 
 // Index for searching
-productSchema.index({ name: 'text', activeIngredient: 'text', description: 'text' });
+productSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);

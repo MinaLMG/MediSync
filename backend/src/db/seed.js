@@ -36,51 +36,13 @@ const seedData = async () => {
         const unitId = unitVolume._id;
         console.log('📦 Volume "unit" created');
 
-        // 2. Create Categories & Manufacturers
-        const categories = await Category.insertMany([
-            { name: 'Antibiotics', nameAr: 'مضاد حيوي', description: 'Fight bacterial infections', icon: 'pill' },
-            { name: 'Painkillers', nameAr: 'مسكنات', description: 'Relieve pain', icon: 'analgesic' },
-            { name: 'Vitamins', nameAr: 'فيتامينات', description: 'Nutritional supplements', icon: 'vitamin' }
-        ]);
-
-        const manufacturers = await Manufacturer.insertMany([
-            { name: 'Pharco', nameAr: 'فاركو', country: 'Egypt' },
-            { name: 'Eipico', nameAr: 'يبيكو', country: 'Egypt' },
-            { name: 'Amoun', nameAr: 'آمون', country: 'Egypt' },
-            { name: 'Pfizer', nameAr: 'فايزر', country: 'USA' }
-        ]);
-        console.log('🏭 Categories & Manufacturers created');
-
-        // 3. Create Products with Simplified Conversions
-        // Helper to get random item from array
-        const random = arr => arr[Math.floor(Math.random() * arr.length)];
-
+        // 2. Products Data (Simplified)
         const productData = [
-            {
-                name: 'Panadol Extra',
-                description: 'Pain reliever and fever reducer',
-                activeIngredient: 'Paracetamol + Caffeine',
-            },
-            {
-                name: 'Augmentin 1g',
-                description: 'Broad spectrum antibiotic',
-                activeIngredient: 'Amoxicillin + Clavulanic acid',
-            },
-            {
-                name: 'Cataflam 50mg',
-                description: 'Non-steroidal anti-inflammatory drug',
-                activeIngredient: 'Diclofenac Potassium',
-            },
-             {
-                name: 'Omez 20mg',
-                description: 'Proton pump inhibitor',
-                activeIngredient: 'Omeprazole',
-            },
-            {
-                name: 'Antinal',
-                description: 'Intestinal antiseptic',
-                activeIngredient: 'Nifuroxazide',
-            }
+            { name: 'Panadol Extra', description: 'Pain reliever and fever reducer' },
+            { name: 'Augmentin 1g', description: 'Broad spectrum antibiotic' },
+            { name: 'Cataflam 50mg', description: 'Non-steroidal anti-inflammatory drug' },
+            { name: 'Omez 20mg', description: 'Proton pump inhibitor' },
+            { name: 'Antinal', description: 'Intestinal antiseptic' }
         ];
 
         const products = [];
@@ -88,10 +50,6 @@ const seedData = async () => {
             const product = await Product.create({
                 name: p.name,
                 description: p.description,
-                activeIngredient: p.activeIngredient,
-                manufacturer: random(manufacturers)._id,
-                category: random(categories)._id,
-                // Simplified conversions: One item, 'unit' (reference id), value 1
                 conversions: [
                     { 
                         from: unitId.toString(), 
@@ -102,12 +60,11 @@ const seedData = async () => {
             });
             products.push(product);
 
-            // Create HasVolume entry: One volume 'unit', val 1
             await HasVolume.create({
                 product: product._id,
                 volume: unitId,
                 value: 1, 
-                prices: [50, 45, 55] // Example array of prices
+                prices: [50, 45, 55]
             });
         }
         console.log('💊 Products & HasVolumes created');

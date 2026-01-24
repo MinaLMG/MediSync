@@ -5,12 +5,16 @@ import '../utils/constants.dart';
 import 'auth_provider.dart';
 
 class TransactionProvider with ChangeNotifier {
-  final AuthProvider authProvider;
+  AuthProvider authProvider;
   List<dynamic> matchableProducts = [];
   Map<String, dynamic> currentMatches = {'shortages': [], 'excesses': []};
   List<dynamic> transactions = [];
   bool isLoading = false;
   String? errorMessage;
+
+  void update(AuthProvider auth) {
+    authProvider = auth;
+  }
 
   TransactionProvider(this.authProvider);
 

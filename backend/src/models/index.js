@@ -2,10 +2,8 @@
 module.exports = {
     Pharmacy: require('./Pharmacy'),
     User: require('./User'),
-    Category: require('./Category'),
-    Manufacturer: require('./Manufacturer'),
-    Product: require('./Product'),
     Volume: require('./Volume'),
+    Product: require('./Product'),
     HasVolume: require('./HasVolume'),
     StockShortage: require('./StockShortage'),
     StockExcess: require('./StockExcess'),

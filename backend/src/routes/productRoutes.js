@@ -16,7 +16,6 @@ router.put('/suggestions/:id', authorize('admin'), productController.updateSugge
 // Admin Direct CRUD
 router.post('/', authorize('admin'), productController.createProduct);
 router.put('/:id', authorize('admin'), productController.updateProduct);
-router.post('/:id/volume', authorize('admin'), productController.addVolumeToProduct);
 
 // Price Management
 router.post('/volume/:hasVolumeId/price', authorize('admin'), productController.addPriceToVolume);

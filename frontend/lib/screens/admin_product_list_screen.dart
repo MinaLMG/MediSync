@@ -112,9 +112,6 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
 
   void _showEditProductDialog(Map<String, dynamic> product) {
     final nameController = TextEditingController(text: product['name']);
-    final ingredientController = TextEditingController(
-      text: product['activeIngredient']?.toString() ?? '',
-    );
 
     showDialog(
       context: context,
@@ -126,10 +123,6 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
             TextField(
               controller: nameController,
               decoration: const InputDecoration(labelText: 'Product Name'),
-            ),
-            TextField(
-              controller: ingredientController,
-              decoration: const InputDecoration(labelText: 'Active Ingredient'),
             ),
           ],
         ),
@@ -146,7 +139,6 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                     listen: false,
                   ).updateProduct(product['_id'], {
                     'name': nameController.text.trim(),
-                    'activeIngredient': ingredientController.text.trim(),
                   });
               if (success && mounted) Navigator.pop(ctx);
             },
@@ -162,11 +154,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     final provider = Provider.of<ProductProvider>(context);
     final filteredProducts = provider.products
         .where(
-          (p) =>
-              p['name'].toLowerCase().contains(searchQuery.toLowerCase()) ||
-              p['activeIngredient'].toString().toLowerCase().contains(
-                searchQuery.toLowerCase(),
-              ),
+          (p) => p['name'].toLowerCase().contains(searchQuery.toLowerCase()),
         )
         .toList();
 
@@ -192,7 +180,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final p = filteredProducts[index];
-                      return ExpansionTile(
+                      return ListTile(
                         leading: const CircleAvatar(
                           child: Icon(Icons.medication),
                         ),
@@ -217,30 +205,15 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                           ],
                         ),
                         subtitle: Text(
-                          '${p['activeIngredient'] ?? ""} • ${p['manufacturer']['name']}',
+                          'Price: ${p['volumes'][0]['prices'].isEmpty ? "No prices set" : p['volumes'][0]['prices'].join(", ")} EGP',
                         ),
-                        children: (p['volumes'] as List)
-                            .map(
-                              (v) => ListTile(
-                                title: Text(
-                                  '${v['volumeName']} (${v['value']} units)',
-                                ),
-                                subtitle: Text(
-                                  'Prices: ${v['prices'].isEmpty ? "No prices set" : v['prices'].join(", ")} EGP',
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_note,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () => _showPriceDialog(
-                                    v['hasVolumeId'],
-                                    List.from(v['prices']),
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit_note, color: Colors.blue),
+                          onPressed: () => _showPriceDialog(
+                            p['volumes'][0]['hasVolumeId'],
+                            List.from(p['volumes'][0]['prices']),
+                          ),
+                        ),
                       );
                     },
                   ),

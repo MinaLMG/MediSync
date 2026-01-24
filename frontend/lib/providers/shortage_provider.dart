@@ -5,12 +5,23 @@ import '../utils/constants.dart';
 import 'auth_provider.dart';
 
 class ShortageProvider with ChangeNotifier {
-  final AuthProvider _authProvider;
+  AuthProvider _authProvider;
   List<dynamic> _myShortages = [];
   List<dynamic> _activeShortages = [];
   List<String> _globalShortages = [];
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isDisposed = false;
+
+  void update(AuthProvider auth) {
+    _authProvider = auth;
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
 
   ShortageProvider(this._authProvider);
 
@@ -22,13 +33,13 @@ class ShortageProvider with ChangeNotifier {
 
   set isLoading(bool value) {
     _isLoading = value;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
   }
 
   Future<void> fetchMyShortages() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.get(
@@ -44,23 +55,23 @@ class ShortageProvider with ChangeNotifier {
       if (response.statusCode == 200 && data['success'] == true) {
         _myShortages = data['data'];
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       } else {
         _errorMessage = data['message'] ?? 'Failed to fetch shortages';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
   }
 
   Future<void> fetchActiveShortages() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.get(
@@ -76,23 +87,23 @@ class ShortageProvider with ChangeNotifier {
       if (response.statusCode == 200 && data['success'] == true) {
         _activeShortages = data['data'];
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       } else {
         _errorMessage = data['message'] ?? 'Failed to fetch active shortages';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
   }
 
   Future<bool> createShortage(Map<String, dynamic> shortageData) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.post(
@@ -108,18 +119,18 @@ class ShortageProvider with ChangeNotifier {
 
       if (response.statusCode == 201 && data['success'] == true) {
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Failed to create shortage';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
       return false;
     }
   }
@@ -130,7 +141,7 @@ class ShortageProvider with ChangeNotifier {
   ) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.put(
@@ -146,18 +157,18 @@ class ShortageProvider with ChangeNotifier {
 
       if (response.statusCode == 200 && data['success'] == true) {
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Failed to update shortage';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
       return false;
     }
   }
@@ -165,7 +176,7 @@ class ShortageProvider with ChangeNotifier {
   Future<bool> deleteShortage(String id) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.delete(
@@ -180,25 +191,25 @@ class ShortageProvider with ChangeNotifier {
 
       if (response.statusCode == 200 && data['success'] == true) {
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Failed to delete shortage';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
       return false;
     }
   }
 
   Future<void> fetchGlobalActiveShortages() async {
     _isLoading = true;
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
 
     try {
       final response = await http.get(
@@ -210,20 +221,19 @@ class ShortageProvider with ChangeNotifier {
       );
 
       final data = json.decode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
         _globalShortages = List<String>.from(data['data']);
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       } else {
         _errorMessage = data['message'] ?? 'Failed to fetch news';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
   }
 }

@@ -5,10 +5,14 @@ import '../utils/constants.dart';
 import 'auth_provider.dart';
 
 class OrderProvider with ChangeNotifier {
-  final AuthProvider authProvider;
+  AuthProvider authProvider;
   List<dynamic> orders = [];
   bool isLoading = false;
   String? errorMessage;
+
+  void update(AuthProvider auth) {
+    authProvider = auth;
+  }
 
   OrderProvider(this.authProvider);
 

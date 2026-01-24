@@ -128,7 +128,7 @@ exports.getGlobalActiveShortages = async (req, res) => {
 
         // Extract unique names
         const productNames = [...new Set(shortages.map(s => s.product?.name).filter(Boolean))];
-
+        console.log("shortage productnames:",productNames)
         res.status(200).json({ success: true, count: productNames.length, data: productNames });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

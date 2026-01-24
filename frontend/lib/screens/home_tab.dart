@@ -34,13 +34,14 @@ class _HomeTabState extends State<HomeTab> {
     _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
       if (!mounted) return;
       final provider = Provider.of<ShortageProvider>(context, listen: false);
-      if (provider.globalShortages.isNotEmpty) {
-        if (_currentPage < provider.globalShortages.length - 1) {
-          _currentPage++;
-        } else {
-          _currentPage = 0;
-        }
+      if (provider.globalShortages.length > 1) {
         if (_pageController.hasClients) {
+          int nextPage = _currentPage + 1;
+          if (nextPage >= provider.globalShortages.length) {
+            nextPage = 0;
+          }
+
+          _currentPage = nextPage;
           _pageController.animateToPage(
             _currentPage,
             duration: const Duration(milliseconds: 800),
@@ -61,8 +62,9 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final provider = Provider.of<ShortageProvider>(context);
     final isAdmin = authProvider.userRole == 'admin';
-    final shortages = Provider.of<ShortageProvider>(context).globalShortages;
+    final shortages = provider.globalShortages;
 
     final List<Map<String, dynamic>> menuItems = [
       {'title': 'Orders History', 'icon': Icons.history, 'color': Colors.blue},
@@ -125,7 +127,18 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                 ),
                 Expanded(
-                  child: shortages.isEmpty
+                  child: provider.isLoading && shortages.isEmpty
+                      ? const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        )
+                      : shortages.isEmpty
                       ? const Center(
                           child: Text(
                             'No current shortages reported',
@@ -140,12 +153,18 @@ class _HomeTabState extends State<HomeTab> {
                           itemCount: shortages.length,
                           itemBuilder: (context, index) {
                             return Center(
-                              child: Text(
-                                shortages[index],
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
+                                child: Text(
+                                  '• ${shortages[index]} •',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             );
