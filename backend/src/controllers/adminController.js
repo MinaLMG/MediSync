@@ -1,4 +1,4 @@
-const { User, Pharmacy } = require('../models');
+const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion } = require('../models');
 const { deleteFiles } = require('../utils/fileHelper');
 const { addNotificationJob } = require('../utils/queueManager');
 
@@ -122,6 +122,30 @@ exports.getAllPharmacies = async (req, res) => {
         }
 
         res.status(200).json({ success: true, count: data.length, data });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get counts of pending items for dashboard
+// @route   GET /api/admin/pending-counts
+// @access  Admin
+exports.getPendingCounts = async (req, res) => {
+    try {
+        const waitingUsers = await User.countDocuments({ status: 'waiting' });
+        const pendingExcesses = await StockExcess.countDocuments({ status: 'pending' });
+        const pendingSuggestions = await ProductSuggestion.countDocuments({ status: 'pending' });
+        const appSuggestions = await AppSuggestion.countDocuments({ seen: false });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                waitingUsers,
+                pendingExcesses,
+                pendingSuggestions,
+                appSuggestions
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

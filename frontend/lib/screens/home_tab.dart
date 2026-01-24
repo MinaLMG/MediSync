@@ -11,6 +11,10 @@ import 'orders_history_screen.dart';
 import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
 import 'suggest_product_screen.dart';
+import 'suggestions_complaints_screen.dart';
+import 'admin_view_suggestions_screen.dart';
+import 'admin_manage_users_screen.dart';
+import '../providers/app_suggestion_provider.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -34,6 +38,10 @@ class _HomeTabState extends State<HomeTab> {
         listen: false,
       ).fetchGlobalActiveShortages();
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+      Provider.of<AppSuggestionProvider>(
+        context,
+        listen: false,
+      ).fetchPendingCounts();
     });
     _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
       if (!mounted) return;
@@ -101,10 +109,16 @@ class _HomeTabState extends State<HomeTab> {
         'color': Colors.purple,
       },
       {
-        'title': 'Suggestions to Portal',
+        'title': 'Suggestions/Complaints',
         'icon': Icons.lightbulb_outline,
         'color': Colors.teal,
       },
+      if (isAdmin)
+        {
+          'title': 'Manage Users',
+          'icon': Icons.people,
+          'color': Colors.blueGrey,
+        },
     ];
 
     final filteredProducts = _searchQuery.isEmpty
@@ -232,9 +246,7 @@ class _HomeTabState extends State<HomeTab> {
                               return ListTile(
                                 leading: const Icon(Icons.medication),
                                 title: Text(p['name']),
-                                subtitle: Text(
-                                  'Category: ${p['category']?['name'] ?? 'N/A'}',
-                                ),
+                                subtitle: const Text('Tap to view details'),
                                 onTap: () {
                                   // Clear search or navigate
                                   setState(() => _searchQuery = '');
@@ -298,11 +310,27 @@ class _HomeTabState extends State<HomeTab> {
                 ),
                 itemCount: menuItems.length,
                 itemBuilder: (context, index) {
+                  final item = menuItems[index];
+                  int badgeCount = 0;
+                  if (isAdmin) {
+                    final suggestionProvider =
+                        Provider.of<AppSuggestionProvider>(context);
+                    if (item['title'] == 'Suggest Product') {
+                      badgeCount =
+                          suggestionProvider.pendingProductSuggestionsCount;
+                    } else if (item['title'] == 'View Transactions') {
+                      badgeCount = suggestionProvider.pendingExcessCount;
+                    } else if (item['title'] == 'Manage Users') {
+                      badgeCount = suggestionProvider.waitingUsersCount;
+                    }
+                  }
+
                   return _buildMenuCard(
                     context,
-                    menuItems[index]['title'],
-                    menuItems[index]['icon'],
-                    menuItems[index]['color'],
+                    item['title'],
+                    item['icon'],
+                    item['color'],
+                    badgeCount: badgeCount,
                   );
                 },
               ),
@@ -318,8 +346,12 @@ class _HomeTabState extends State<HomeTab> {
     BuildContext context,
     String title,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    int badgeCount = 0,
+  }) {
+    final isAdmin =
+        Provider.of<AuthProvider>(context, listen: false).userRole == 'admin';
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -365,6 +397,22 @@ class _HomeTabState extends State<HomeTab> {
                 builder: (context) => const SuggestProductScreen(),
               ),
             );
+          } else if (title == 'Suggestions/Complaints') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => isAdmin
+                    ? const AdminViewSuggestionsScreen()
+                    : const SuggestionsComplaintsScreen(),
+              ),
+            );
+          } else if (title == 'Manage Users') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminManageUsersScreen(),
+              ),
+            );
           } else {
             ScaffoldMessenger.of(
               context,
@@ -381,7 +429,37 @@ class _HomeTabState extends State<HomeTab> {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 32, color: color),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, size: 32, color: color),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -5,
+                      top: -5,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Text(

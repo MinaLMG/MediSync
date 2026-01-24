@@ -8,6 +8,7 @@ import 'providers/shortage_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/app_suggestion_provider.dart';
 import 'screens/login_screen.dart';
 
 void main() {
@@ -18,6 +19,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ExcessProvider()),
+        ChangeNotifierProvider(create: (_) => AppSuggestionProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ShortageProvider>(
           create: (context) => ShortageProvider(
             Provider.of<AuthProvider>(context, listen: false),

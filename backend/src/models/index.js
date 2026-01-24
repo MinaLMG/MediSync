@@ -9,8 +9,8 @@ module.exports = {
     StockExcess: require('./StockExcess'),
     Transaction: require('./Transaction'),
     Notification: require('./Notification'),
-    Review: require('./Review'),
     AuditLog: require('./AuditLog'),
     Settings: require('./Settings'),
-    ProductSuggestion: require('./ProductSuggestion')
+    ProductSuggestion: require('./ProductSuggestion'),
+    AppSuggestion: require('./AppSuggestion')
 };

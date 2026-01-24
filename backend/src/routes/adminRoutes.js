@@ -4,7 +4,8 @@ const {
     getWaitingUsers, 
     getActiveUsers, 
     reviewUser, 
-    getAllPharmacies 
+    getAllPharmacies,
+    getPendingCounts 
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -15,5 +16,6 @@ router.get('/waiting-users', getWaitingUsers);
 router.get('/active-users', getActiveUsers);
 router.put('/review-user/:id', reviewUser);
 router.get('/pharmacies', getAllPharmacies);
+router.get('/pending-counts', getPendingCounts);
 
 module.exports = router;

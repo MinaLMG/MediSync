@@ -10,9 +10,31 @@ import 'admin_manage_users_screen.dart';
 import 'admin_pharmacies_screen.dart';
 import 'admin_product_list_screen.dart';
 import 'manage_suggestions_screen.dart';
+import '../providers/app_suggestion_provider.dart';
+import '../providers/notification_provider.dart';
+import 'notifications_screen.dart';
+import 'admin_view_suggestions_screen.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<AppSuggestionProvider>(
+          context,
+          listen: false,
+        ).fetchPendingCounts();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +48,49 @@ class AdminDashboardScreen extends StatelessWidget {
           child: Image.asset('assets/images/medisync.png'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // TODO: Notifications
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, _) {
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (notificationProvider.unreadCount > 0)
+                    Positioned(
+                      left: 5,
+                      top: 5,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          notificationProvider.unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
           ),
           IconButton(
@@ -91,24 +152,46 @@ class AdminHomeTab extends StatelessWidget {
         'color': Colors.teal,
       },
       {'title': 'Manage Users', 'icon': Icons.people, 'color': Colors.purple},
+      {
+        'title': 'App Suggestions',
+        'icon': Icons.feedback,
+        'color': Colors.indigo,
+      },
     ];
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.0,
-        ),
-        itemCount: menuItems.length,
-        itemBuilder: (context, index) {
-          return _buildMenuCard(
-            context,
-            menuItems[index]['title'],
-            menuItems[index]['icon'],
-            menuItems[index]['color'],
+      child: Consumer<AppSuggestionProvider>(
+        builder: (context, suggestionProvider, _) {
+          return GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: menuItems.length,
+            itemBuilder: (context, index) {
+              final item = menuItems[index];
+              int badgeCount = 0;
+              if (item['title'] == 'Follow-up Excesses') {
+                badgeCount = suggestionProvider.pendingExcessCount;
+              } else if (item['title'] == 'Product Suggestions') {
+                badgeCount = suggestionProvider.pendingProductSuggestionsCount;
+              } else if (item['title'] == 'Manage Users') {
+                badgeCount = suggestionProvider.waitingUsersCount;
+              } else if (item['title'] == 'App Suggestions') {
+                badgeCount = suggestionProvider.appSuggestionsCount;
+              }
+
+              return _buildMenuCard(
+                context,
+                item['title'],
+                item['icon'],
+                item['color'],
+                badgeCount: badgeCount,
+              );
+            },
           );
         },
       ),
@@ -119,8 +202,9 @@ class AdminHomeTab extends StatelessWidget {
     BuildContext context,
     String title,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    int badgeCount = 0,
+  }) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -182,6 +266,13 @@ class AdminHomeTab extends StatelessWidget {
                 builder: (context) => const ManageSuggestionsScreen(),
               ),
             );
+          } else if (title == 'App Suggestions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminViewSuggestionsScreen(),
+              ),
+            );
           } else {
             ScaffoldMessenger.of(
               context,
@@ -198,7 +289,37 @@ class AdminHomeTab extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 32, color: color),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, size: 32, color: color),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -5,
+                      top: -5,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Text(
