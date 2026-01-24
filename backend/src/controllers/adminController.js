@@ -64,7 +64,7 @@ exports.reviewUser = async (req, res) => {
                 await addNotificationJob(
                     user._id.toString(),
                     'system',
-                    'Your pharmacy registration request was rejected. You can now re-submit your documents.',
+                    `Your pharmacy "${pharmacy.name}" registration request was rejected. You can now re-submit your documents.`,
                     { priority: 'high' }
                 );
 
@@ -86,7 +86,7 @@ exports.reviewUser = async (req, res) => {
                     await addNotificationJob(
                         user._id.toString(),
                         'system',
-                        'Congratulations! Your pharmacy has been approved.',
+                        `Congratulations! Your pharmacy "${pharmacy.name}" has been approved.`,
                         { 
                             priority: 'high',
                             relatedEntity: pharmacy._id,

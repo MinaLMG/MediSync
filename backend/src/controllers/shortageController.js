@@ -1,14 +1,23 @@
-const { StockShortage, StockExcess } = require('../models');
+const { StockShortage, StockExcess, Product } = require('../models');
 
 // Create new shortage
 exports.createShortage = async (req, res) => {
     try {
-        const { product, volume, quantity, notes } = req.body;
+        const { product: productId, volume, quantity, notes } = req.body;
+
+        // Check product status
+        const product = await Product.findById(productId);
+        if (!product || product.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'This product is currently inactive and cannot be added as a shortage.'
+            });
+        }
 
         // Check if an Excess exists for this product (Constraint)
         const existingExcess = await StockExcess.findOne({
             pharmacy: req.user.pharmacy,
-            product,
+            product: productId,
             status: { $in: ['pending', 'available'] }
         });
 

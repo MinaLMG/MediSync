@@ -1,10 +1,10 @@
-const { StockExcess, HasVolume, StockShortage, Settings } = require('../models');
+const { StockExcess, HasVolume, StockShortage, Settings, Product } = require('../models');
 
 // Create new excess
 exports.createExcess = async (req, res) => {
     try {
         const { 
-            product, 
+            product: productId, 
             volume, 
             quantity, 
             expiryDate, 
@@ -12,6 +12,15 @@ exports.createExcess = async (req, res) => {
             salePercentage, // Using direct salePercentage from request
             shortage_fulfillment // New field
         } = req.body;
+
+        // Check product status
+        const productObj = await Product.findById(productId);
+        if (!productObj || productObj.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'This product is currently inactive and cannot be added as an excess.'
+            });
+        }
 
         const settings = await Settings.getSettings();
         const minComm = settings.minimumCommission;

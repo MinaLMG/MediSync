@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
+import '../utils/search_utils.dart';
 
 class AdminProductListScreen extends StatefulWidget {
   const AdminProductListScreen({super.key});
@@ -153,9 +154,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<ProductProvider>(context);
     final filteredProducts = provider.products
-        .where(
-          (p) => p['name'].toLowerCase().contains(searchQuery.toLowerCase()),
-        )
+        .where((p) => SearchUtils.matches(p['name'], searchQuery))
         .toList();
 
     return Scaffold(
@@ -193,6 +192,49 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: p['status'] == 'active'
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: p['status'] == 'active'
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                              child: Text(
+                                (p['status'] ?? 'active').toUpperCase(),
+                                style: TextStyle(
+                                  color: p['status'] == 'active'
+                                      ? Colors.green
+                                      : Colors.red,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                p['status'] == 'active'
+                                    ? Icons.block
+                                    : Icons.check_circle_outline,
+                                size: 18,
+                                color: p['status'] == 'active'
+                                    ? Colors.red
+                                    : Colors.green,
+                              ),
+                              tooltip: p['status'] == 'active'
+                                  ? 'Deactivate'
+                                  : 'Activate',
+                              onPressed: () =>
+                                  provider.toggleProductStatus(p['_id']),
                             ),
                             IconButton(
                               icon: const Icon(

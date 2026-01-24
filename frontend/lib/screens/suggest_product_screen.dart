@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 
@@ -23,11 +24,18 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      final success = await Provider.of<ProductProvider>(context, listen: false)
-          .suggestProduct({
-            'name': _nameController.text.trim(),
-            'price': double.parse(_priceController.text),
-          });
+      final price = double.tryParse(_priceController.text);
+      if (price == null || price <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid price')),
+        );
+        return;
+      }
+
+      final success = await Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).suggestProduct({'name': _nameController.text.trim(), 'price': price});
       // ... rest of the method is unchanged but need context for tool
 
       if (mounted) {
@@ -82,6 +90,9 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                   labelText: 'Store Price (EGP)',
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 32),

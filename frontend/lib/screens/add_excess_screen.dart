@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/product_provider.dart';
@@ -87,12 +88,12 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       }
 
       final price = _isManualPrice
-          ? double.parse(_manualPriceController.text)
+          ? double.tryParse(_manualPriceController.text)
           : _selectedPrice;
 
-      if (price == null) {
+      if (price == null || price <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select or enter a price')),
+          const SnackBar(content: Text('Please enter a valid price')),
         );
         return;
       }
@@ -125,10 +126,18 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         saleVal = 0;
       }
 
+      final quantity = int.tryParse(_quantityController.text);
+      if (quantity == null || quantity <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid quantity')),
+        );
+        return;
+      }
+
       final excessData = {
         'product': _selectedProductId,
         'volume': _selectedVolumeId,
-        'quantity': int.parse(_quantityController.text),
+        'quantity': quantity,
         'expiryDate': _expiryDate!.toIso8601String(),
         'selectedPrice': price,
         'salePercentage': saleVal,
@@ -333,6 +342,11 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             labelText: 'Manual Price',
                           ),
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d*'),
+                            ),
+                          ],
                           validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
                     ],
@@ -343,6 +357,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       controller: _quantityController,
                       decoration: const InputDecoration(labelText: 'Quantity'),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
@@ -457,6 +472,11 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                                 filled: true,
                               ),
                               keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
+                              ],
                               validator: (v) => null, // Optional
                             ),
                           ],

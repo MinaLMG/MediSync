@@ -234,4 +234,25 @@ class ProductProvider with ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> toggleProductStatus(String id) async {
+    try {
+      final token = await _getToken();
+      final response = await http.patch(
+        Uri.parse('${Constants.baseUrl}/products/$id/toggle-status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        fetchProducts(); // Refresh
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

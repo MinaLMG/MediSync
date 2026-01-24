@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
+import '../utils/search_utils.dart';
 
 class AdminManageUsersScreen extends StatefulWidget {
   const AdminManageUsersScreen({super.key});
@@ -18,6 +19,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   bool _isLoading = false;
   List<dynamic> _waitingUsers = [];
   List<dynamic> _activeUsers = [];
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -68,11 +70,28 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildUserList(_waitingUsers, isWaiting: true),
-          _buildUserList(_activeUsers, isWaiting: false),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search users (* for wildcard)...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUserList(_waitingUsers, isWaiting: true),
+                _buildUserList(_activeUsers, isWaiting: false),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -80,12 +99,26 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
 
   Widget _buildUserList(List<dynamic> users, {required bool isWaiting}) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (users.isEmpty) return const Center(child: Text('No users found.'));
+
+    final filteredUsers = users.where((u) {
+      return SearchUtils.matches(u['name'], _searchQuery) ||
+          SearchUtils.matches(u['email'], _searchQuery) ||
+          SearchUtils.matches(u['phone'], _searchQuery) ||
+          SearchUtils.matches(u['pharmacy']?['name'], _searchQuery);
+    }).toList();
+
+    if (filteredUsers.isEmpty) {
+      return Center(
+        child: Text(
+          _searchQuery.isEmpty ? 'No users found.' : 'No matches found.',
+        ),
+      );
+    }
 
     return ListView.builder(
-      itemCount: users.length,
+      itemCount: filteredUsers.length,
       itemBuilder: (context, index) {
-        final user = users[index];
+        final user = filteredUsers[index];
         final pharmacy = user['pharmacy'];
         return Card(
           margin: const EdgeInsets.all(8),

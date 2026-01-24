@@ -10,10 +10,6 @@ const productSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-    description: {
-        type: String,
-        trim: true
-    },
     conversions: [
         {
             from: {
@@ -35,7 +31,7 @@ const productSchema = new mongoose.Schema({
     ],
     status: {
         type: String,
-        enum: ['active', 'discontinued'],
+        enum: ['active', 'inactive'],
         default: 'active'
     }
 }, {

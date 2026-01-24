@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
+import '../utils/search_utils.dart';
 
 class ManageSuggestionsScreen extends StatefulWidget {
   const ManageSuggestionsScreen({super.key});
@@ -11,6 +12,8 @@ class ManageSuggestionsScreen extends StatefulWidget {
 }
 
 class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -71,96 +74,124 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<ProductProvider>(context);
 
+    final filteredSuggestions = provider.suggestions.where((s) {
+      return SearchUtils.matches(s['name'], _searchQuery) ||
+          SearchUtils.matches(s['suggestedBy']['name'], _searchQuery);
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('New Product Suggestions')),
-      body: provider.isLoading && provider.suggestions.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : provider.suggestions.isEmpty
-          ? const Center(child: Text('No new suggestions'))
-          : ListView.builder(
-              itemCount: provider.suggestions.length,
-              itemBuilder: (context, index) {
-                final s = provider.suggestions[index];
-                final isPending = s['status'] == 'pending';
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search suggestions (* for wildcard)...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
+          Expanded(
+            child: provider.isLoading && provider.suggestions.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : filteredSuggestions.isEmpty
+                ? const Center(child: Text('No suggestions found.'))
+                : ListView.builder(
+                    itemCount: filteredSuggestions.length,
+                    itemBuilder: (context, index) {
+                      final s = filteredSuggestions[index];
+                      final isPending = s['status'] == 'pending';
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              s['name'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                            _StatusBadge(status: s['status']),
-                          ],
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                        const SizedBox(height: 8),
-                        _InfoRow(
-                          label: 'Proposed Price',
-                          value: '${s['price']} EGP',
-                        ),
-                        const Divider(),
-                        _InfoRow(
-                          label: 'Suggested By',
-                          value: s['suggestedBy']['name'],
-                        ),
-                        if (s['adminNotes'] != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Admin Notes: ${s['adminNotes']}',
-                            style: const TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                        if (isPending) ...[
-                          const SizedBox(height: 16),
-                          Row(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () =>
-                                      _handleStatus(s['_id'], 'rejected'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    s['name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
                                   ),
-                                  child: const Text('REJECT'),
-                                ),
+                                  _StatusBadge(status: s['status']),
+                                ],
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () =>
-                                      _handleStatus(s['_id'], 'approved'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
+                              const SizedBox(height: 8),
+                              _InfoRow(
+                                label: 'Proposed Price',
+                                value: '${s['price']} EGP',
+                              ),
+                              const Divider(),
+                              _InfoRow(
+                                label: 'Suggested By',
+                                value: s['suggestedBy']['name'],
+                              ),
+                              if (s['adminNotes'] != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Admin Notes: ${s['adminNotes']}',
+                                  style: const TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey,
                                   ),
-                                  child: const Text('APPROVE & CREATE'),
                                 ),
-                              ),
+                              ],
+                              if (isPending) ...[
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () =>
+                                            _handleStatus(s['_id'], 'rejected'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                        child: const Text('REJECT'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () =>
+                                            _handleStatus(s['_id'], 'approved'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            'APPROVE & CREATE',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
     );
   }
 }

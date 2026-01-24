@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shortage_provider.dart';
+import '../providers/product_provider.dart';
+import '../utils/search_utils.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import 'orders_history_screen.dart';
@@ -21,6 +23,7 @@ class _HomeTabState extends State<HomeTab> {
   final PageController _pageController = PageController();
   Timer? _timer;
   int _currentPage = 0;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -30,6 +33,7 @@ class _HomeTabState extends State<HomeTab> {
         context,
         listen: false,
       ).fetchGlobalActiveShortages();
+      Provider.of<ProductProvider>(context, listen: false).fetchProducts();
     });
     _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
       if (!mounted) return;
@@ -63,6 +67,7 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final provider = Provider.of<ShortageProvider>(context);
+    final productProvider = Provider.of<ProductProvider>(context);
     final isAdmin = authProvider.userRole == 'admin';
     final shortages = provider.globalShortages;
 
@@ -90,7 +95,6 @@ class _HomeTabState extends State<HomeTab> {
           'color': Colors.deepOrange,
         },
       ],
-      {'title': 'Search Product', 'icon': Icons.search, 'color': Colors.orange},
       {
         'title': 'Suggest Product',
         'icon': Icons.recommend,
@@ -102,6 +106,13 @@ class _HomeTabState extends State<HomeTab> {
         'color': Colors.teal,
       },
     ];
+
+    final filteredProducts = _searchQuery.isEmpty
+        ? []
+        : productProvider.products.where((p) {
+            if (p is! Map) return false;
+            return SearchUtils.matches(p['name']?.toString(), _searchQuery);
+          }).toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -178,82 +189,125 @@ class _HomeTabState extends State<HomeTab> {
           // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  icon: Icon(Icons.search),
-                  border: InputBorder.none,
-                  hintText: 'Search for product',
-                  suffixIcon: Icon(Icons.qr_code_scanner),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    decoration: const InputDecoration(
+                      icon: Icon(Icons.search),
+                      border: InputBorder.none,
+                      hintText: 'Search for product (* for wildcard)',
+                      suffixIcon: Icon(Icons.qr_code_scanner),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-
-          // Advertisement space (Reduced height)
-          Container(
-            height: 120,
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue[400]!, Colors.blue[800]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: const Offset(0, 3),
-                ),
+                if (_searchQuery.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: filteredProducts.isEmpty
+                        ? const ListTile(title: Text('No matches found'))
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final p = filteredProducts[index];
+                              return ListTile(
+                                leading: const Icon(Icons.medication),
+                                title: Text(p['name']),
+                                subtitle: Text(
+                                  'Category: ${p['category']?['name'] ?? 'N/A'}',
+                                ),
+                                onTap: () {
+                                  // Clear search or navigate
+                                  setState(() => _searchQuery = '');
+                                  FocusScope.of(context).unfocus();
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ],
             ),
-            child: const Center(
-              child: Text(
-                'Advertisement Space\n(Promotions & Offers)',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+          ),
+
+          if (_searchQuery.isEmpty) ...[
+            // Advertisement space
+            Container(
+              height: 120,
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[400]!, Colors.blue[800]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'Advertisement Space\n(Promotions & Offers)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Menu Grid
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.0,
+            const SizedBox(height: 24),
+            // Menu Grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: menuItems.length,
+                itemBuilder: (context, index) {
+                  return _buildMenuCard(
+                    context,
+                    menuItems[index]['title'],
+                    menuItems[index]['icon'],
+                    menuItems[index]['color'],
+                  );
+                },
               ),
-              itemCount: menuItems.length,
-              itemBuilder: (context, index) {
-                return _buildMenuCard(
-                  context,
-                  menuItems[index]['title'],
-                  menuItems[index]['icon'],
-                  menuItems[index]['color'],
-                );
-              },
             ),
-          ),
+          ],
           const SizedBox(height: 24),
         ],
       ),

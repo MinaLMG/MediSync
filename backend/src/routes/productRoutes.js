@@ -21,4 +21,6 @@ router.put('/:id', authorize('admin'), productController.updateProduct);
 router.post('/volume/:hasVolumeId/price', authorize('admin'), productController.addPriceToVolume);
 router.delete('/volume/:hasVolumeId/price', authorize('admin'), productController.removePriceFromVolume);
 
+router.patch('/:id/toggle-status', protect, authorize('admin'), productController.toggleProductStatus);
+
 module.exports = router;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/shortage_provider.dart';
@@ -56,10 +57,18 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
         return;
       }
 
+      final quantity = int.tryParse(_quantityController.text);
+      if (quantity == null || quantity <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid quantity')),
+        );
+        return;
+      }
+
       final shortageData = {
         'product': _selectedProductId,
         'volume': _selectedVolumeId,
-        'quantity': int.parse(_quantityController.text),
+        'quantity': quantity,
       };
 
       final success = isEditMode
@@ -186,6 +195,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                         labelText: 'Quantity Needed',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 32),

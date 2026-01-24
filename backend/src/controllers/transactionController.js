@@ -36,7 +36,8 @@ exports.getMatchableProducts = async (req, res) => {
                 if (commonVolumes.length > 0) {
                     // Get product details
                     const product = await mongoose.model('Product').findById(s._id);
-                    if (product) {
+                    // CHECK: Product must be active
+                    if (product && product.status === 'active') {
                         matchable.push({
                             product,
                             volumes: commonVolumes,
@@ -97,6 +98,12 @@ exports.createTransaction = async (req, res) => {
         const shortage = await StockShortage.findById(shortageId).session(session);
         if (!shortage || !['active', 'partially_fulfilled'].includes(shortage.status)) {
             throw new Error('Shortage not found or not active');
+        }
+
+        // 1.1 Check Product Status
+        const productObj = await mongoose.model('Product').findById(shortage.product).session(session);
+        if (!productObj || productObj.status !== 'active') {
+            throw new Error('This product is currently inactive and cannot be transacted.');
         }
 
         const remainingNeeded = shortage.remainingQuantity;
@@ -165,12 +172,14 @@ exports.createTransaction = async (req, res) => {
         // Notify Buyer about transaction creation
         try {
             const product = await mongoose.model('Product').findById(shortage.product);
+            const buyerPharmacy = await Pharmacy.findById(shortage.pharmacy);
             const buyerUsers = await User.find({ pharmacy: shortage.pharmacy });
+            
             for (const buyer of buyerUsers) {
                 await addNotificationJob(
                     buyer._id.toString(),
                     'transaction',
-                    `A new transaction has been created for your shortage of ${product?.name || 'a product'}.`,
+                    `A new transaction has been created for your shortage of "${product?.name || 'unknown medicine'}".`,
                     {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction'
@@ -180,14 +189,14 @@ exports.createTransaction = async (req, res) => {
 
             // Notify Seller(s) about new transaction request
             for (const source of transaction.stockExcessSources) {
-                const excess = await StockExcess.findById(source.stockExcess);
+                const excess = await StockExcess.findById(source.stockExcess).populate('pharmacy');
                 if (excess) {
-                    const sellerUsers = await User.find({ pharmacy: excess.pharmacy });
+                    const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
                     for (const seller of sellerUsers) {
                         await addNotificationJob(
                             seller._id.toString(),
                             'transaction',
-                            `New transaction request for ${product?.name || 'a product'}.`,
+                            `New transaction request for "${product?.name || 'unknown medicine'}" from ${buyerPharmacy?.name || 'a pharmacy'}.`,
                             {
                                 relatedEntity: transaction._id,
                                 relatedEntityType: 'Transaction'
@@ -197,7 +206,7 @@ exports.createTransaction = async (req, res) => {
                 }
             }
         } catch (notifErr) {
-            console.error('Non-critical notification error in createTransaction:', notifErr);
+            console.error('Notification error in createTransaction:', notifErr);
         }
 
         res.status(201).json({ success: true, data: transaction });
@@ -332,27 +341,47 @@ exports.updateTransactionStatus = async (req, res) => {
         await transaction.save({ session });
         await session.commitTransaction();
 
-        // Notify relevant parties about status change (Non-critical, outside transaction)
+        // Notify relevant parties about status change
         try {
             const shortageData = await StockShortage.findById(transaction.stockShortage.shortage);
             if (shortageData) {
-                const buyerId = shortageData.pharmacy;
-                const buyerUsers = await User.find({ pharmacy: buyerId });
+                const product = await mongoose.model('Product').findById(shortageData.product);
                 
+                // 1. Notify Buyer
+                const buyerUsers = await User.find({ pharmacy: shortageData.pharmacy });
                 for (const buyer of buyerUsers) {
                     await addNotificationJob(
                         buyer._id.toString(),
                         'transaction',
-                        `Transaction for ${transaction._id} has been ${status}.`,
+                        `Transaction for "${product?.name || 'medicine'}" has been ${status}.`,
                         {
                             relatedEntity: transaction._id,
                             relatedEntityType: 'Transaction'
                         }
                     );
                 }
+
+                // 2. Notify Sellers
+                for (const source of transaction.stockExcessSources) {
+                    const excess = await StockExcess.findById(source.stockExcess);
+                    if (excess) {
+                        const sellerUsers = await User.find({ pharmacy: excess.pharmacy });
+                        for (const seller of sellerUsers) {
+                            await addNotificationJob(
+                                seller._id.toString(),
+                                'transaction',
+                                `Your transaction for "${product?.name || 'medicine'}" has been ${status}.`,
+                                {
+                                    relatedEntity: transaction._id,
+                                    relatedEntityType: 'Transaction'
+                                }
+                            );
+                        }
+                    }
+                }
             }
         } catch (notifErr) {
-            console.error('Non-critical notification error:', notifErr);
+            console.error('Notification error in updateTransactionStatus:', notifErr);
         }
 
         res.status(200).json({ success: true, data: transaction });

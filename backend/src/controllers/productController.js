@@ -1,10 +1,15 @@
-const { Product, HasVolume, Category, Manufacturer, Volume, ProductSuggestion } = require('../models');
+const { Product, HasVolume, Category, Manufacturer, Volume, ProductSuggestion, User } = require('../models');
+const { addNotificationJob } = require('../utils/queueManager');
 const mongoose = require('mongoose');
 
 // Get all products with their volumes and prices
 exports.getAllProducts = async (req, res) => {
     try {
-        const products = await Product.find();
+        let query = {};
+        if (req.user.role !== 'admin') {
+            query.status = 'active';
+        }
+        const products = await Product.find(query);
 
         const productsWithVolumes = await Promise.all(products.map(async (product) => {
             const hasVolumes = await HasVolume.find({ product: product._id })
@@ -101,6 +106,23 @@ exports.updateSuggestionStatus = async (req, res) => {
 
         await suggestion.save({ session });
         await session.commitTransaction();
+
+        // Notify the user who suggested the product
+        try {
+            await addNotificationJob(
+                suggestion.suggestedBy.toString(),
+                'system',
+                `Your product suggestion for "${suggestion.name}" has been ${status}.`,
+                {
+                    adminNotes: adminNotes,
+                    relatedEntity: status === 'approved' ? (product && product[0] ? product[0]._id : suggestion._id) : suggestion._id,
+                    relatedEntityType: status === 'approved' ? 'Product' : 'ProductSuggestion'
+                }
+            );
+        } catch (notifErr) {
+            console.error('Notification error in updateSuggestionStatus:', notifErr);
+        }
+
         res.status(200).json({ success: true, data: suggestion });
     } catch (error) {
         await session.abortTransaction();
@@ -154,6 +176,21 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
     try {
         const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.status(200).json({ success: true, data: product });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// Toggle Product Status (Admin)
+exports.toggleProductStatus = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) throw new Error('Product not found');
+
+        product.status = product.status === 'active' ? 'inactive' : 'active';
+        await product.save();
+
         res.status(200).json({ success: true, data: product });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
