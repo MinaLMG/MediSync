@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_tab.dart';
+import 'notifications_screen.dart';
+import '../providers/notification_provider.dart';
 import 'package:intl/intl.dart';
 
-import 'orders_history_screen.dart'; // Import
+import 'orders_history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userType;
@@ -83,10 +85,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // TODO: Open notifications
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, _) {
+              return Badge(
+                label: Text(notificationProvider.unreadCount.toString()),
+                isLabelVisible: notificationProvider.unreadCount > 0,
+                child: IconButton(
+                  icon: const Icon(Icons.notifications),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              );
             },
           ),
           IconButton(

@@ -1,5 +1,6 @@
-const { Transaction, StockShortage, StockExcess, Pharmacy, Settings } = require('../models');
+const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User } = require('../models');
 const mongoose = require('mongoose');
+const { addNotificationJob } = require('../utils/queueManager');
 
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
@@ -160,6 +161,45 @@ exports.createTransaction = async (req, res) => {
         await transaction.save({ session });
 
         await session.commitTransaction();
+
+        // Notify Buyer about transaction creation
+        try {
+            const product = await mongoose.model('Product').findById(shortage.product);
+            const buyerUsers = await User.find({ pharmacy: shortage.pharmacy });
+            for (const buyer of buyerUsers) {
+                await addNotificationJob(
+                    buyer._id.toString(),
+                    'transaction',
+                    `A new transaction has been created for your shortage of ${product?.name || 'a product'}.`,
+                    {
+                        relatedEntity: transaction._id,
+                        relatedEntityType: 'Transaction'
+                    }
+                );
+            }
+
+            // Notify Seller(s) about new transaction request
+            for (const source of transaction.stockExcessSources) {
+                const excess = await StockExcess.findById(source.stockExcess);
+                if (excess) {
+                    const sellerUsers = await User.find({ pharmacy: excess.pharmacy });
+                    for (const seller of sellerUsers) {
+                        await addNotificationJob(
+                            seller._id.toString(),
+                            'transaction',
+                            `New transaction request for ${product?.name || 'a product'}.`,
+                            {
+                                relatedEntity: transaction._id,
+                                relatedEntityType: 'Transaction'
+                            }
+                        );
+                    }
+                }
+            }
+        } catch (notifErr) {
+            console.error('Non-critical notification error in createTransaction:', notifErr);
+        }
+
         res.status(201).json({ success: true, data: transaction });
     } catch (error) {
         await session.abortTransaction();
@@ -241,6 +281,7 @@ exports.updateTransactionStatus = async (req, res) => {
                     if (transaction.shortage_fulfillment) {
                         // Full balance
                         sellerPh.balance += source.totalAmount;
+                  
                     } else {
                         // Use excess-specific sale percentage if it exists, otherwise use system minimum
                         const excessComm = excess.salePercentage;
@@ -249,11 +290,11 @@ exports.updateTransactionStatus = async (req, res) => {
                             : minCommRatio;
                         
                         sellerPh.balance += (1 - finalCommRatio) * source.totalAmount;
-                    }
+                     }
+                    
                     await sellerPh.save({ session });
                 }
             }
-
             // Check if shortage is fully done
             const shortageObj = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             if (shortageObj) {
@@ -264,9 +305,35 @@ exports.updateTransactionStatus = async (req, res) => {
 
         await transaction.save({ session });
         await session.commitTransaction();
+
+        // Notify relevant parties about status change (Non-critical, outside transaction)
+        try {
+            const shortageData = await StockShortage.findById(transaction.stockShortage.shortage);
+            if (shortageData) {
+                const buyerId = shortageData.pharmacy;
+                const buyerUsers = await User.find({ pharmacy: buyerId });
+                
+                for (const buyer of buyerUsers) {
+                    await addNotificationJob(
+                        buyer._id.toString(),
+                        'transaction',
+                        `Transaction for ${transaction._id} has been ${status}.`,
+                        {
+                            relatedEntity: transaction._id,
+                            relatedEntityType: 'Transaction'
+                        }
+                    );
+                }
+            }
+        } catch (notifErr) {
+            console.error('Non-critical notification error:', notifErr);
+        }
+
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         res.status(400).json({ success: false, message: error.message });
     } finally {
         session.endSession();

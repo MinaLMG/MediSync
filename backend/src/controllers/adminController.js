@@ -1,5 +1,6 @@
 const { User, Pharmacy } = require('../models');
 const { deleteFiles } = require('../utils/fileHelper');
+const { addNotificationJob } = require('../utils/queueManager');
 
 // @desc    Get users waiting for approval
 // @route   GET /api/admin/waiting-users
@@ -56,9 +57,16 @@ exports.reviewUser = async (req, res) => {
                     // Delete physical files
                     deleteFiles(filesToDelete);
 
-                    // Remove pharmacy record from DB
                     await pharmacy.deleteOne();
                 }
+
+                // Push Notification to user
+                await addNotificationJob(
+                    user._id.toString(),
+                    'system',
+                    'Your pharmacy registration request was rejected. You can now re-submit your documents.',
+                    { priority: 'high' }
+                );
 
                 // Reset user to pending status and remove pharmacy link
                 user.pharmacy = undefined;
@@ -73,6 +81,18 @@ exports.reviewUser = async (req, res) => {
                     pharmacy.status = status;
                     pharmacy.verified = true;
                     await pharmacy.save();
+
+                    // Push Notification to user
+                    await addNotificationJob(
+                        user._id.toString(),
+                        'system',
+                        'Congratulations! Your pharmacy has been approved.',
+                        { 
+                            priority: 'high',
+                            relatedEntity: pharmacy._id,
+                            relatedEntityType: 'Pharmacy'
+                        }
+                    );
                 }
             }
         }

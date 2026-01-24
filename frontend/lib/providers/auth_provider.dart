@@ -14,6 +14,7 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _token != null;
   String? get token => _token; // Public getter
   Map<String, dynamic>? get currentUser => _currentUser;
+  String? get userId => _currentUser?['_id'];
   String? get errorMessage => _errorMessage;
   String? get userRole => _currentUser?['role'];
   String? get userStatus => _currentUser?['status'];
