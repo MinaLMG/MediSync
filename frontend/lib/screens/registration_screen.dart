@@ -104,7 +104,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.phone,
-                  validator: (v) => v!.length < 5 ? 'Invalid phone' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Required';
+                    if (!RegExp(r'^01\d{9}$').hasMatch(v)) {
+                      return 'Invalid phone number (11 digits starting with 01)';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -137,23 +143,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       : const Text('Sign Up'),
                 ),
                 const SizedBox(height: 16),
-                const Center(
-                  child: Text('OR', style: TextStyle(color: Colors.grey)),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // Placeholder for Gmail login
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Gmail Signup Coming Soon')),
-                    );
-                  },
-                  icon: const Icon(Icons.login, color: Colors.blue),
-                  label: const Text('Sign up with Gmail'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
               ],
             ),
           ),

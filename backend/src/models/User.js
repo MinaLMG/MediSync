@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        trim: true
+        trim: true,
+        match: [/^01\d{9}$/, 'Please provide a valid Egyptian phone number (11 digits starting with 01)']
     },
     email: {
         type: String,

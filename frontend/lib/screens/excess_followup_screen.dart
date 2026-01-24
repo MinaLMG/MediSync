@@ -73,9 +73,12 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                 expiryDate.difference(DateTime.now()).inDays <
                 180; // < 6 months
             final isNewPrice = item['isNewPrice'] == true;
+            final isShortageFulfillment = item['shortage_fulfillment'] == true;
 
             Color cardColor = Colors.white;
-            if (isNewPrice) cardColor = Colors.blue[50]!; // New Price Highlight
+            if (isNewPrice) cardColor = Colors.blue[50]!;
+            if (isShortageFulfillment)
+              cardColor = Colors.purple[50]!; // Shortage Fulfillment Highlight
 
             return Card(
               color: cardColor,
@@ -95,21 +98,47 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                     Text('${item['pharmacy']['name']}'),
                     const SizedBox(height: 8),
 
-                    if (isNewPrice)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'New Price',
-                          style: TextStyle(color: Colors.white, fontSize: 10),
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        if (isNewPrice)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'New Price',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        if (isShortageFulfillment)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Shortage Fulfillment',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
 
                     // Always show percentage if available
                     if (item['salePercentage'] != null)

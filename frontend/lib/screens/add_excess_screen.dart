@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
+import '../providers/settings_provider.dart';
 
 class AddExcessScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -25,7 +26,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   DateTime? _expiryDate;
   final TextEditingController _quantityController = TextEditingController();
 
-  String _saleType = 'percentage'; // or 'price'
+  bool _shortageFulfillment = false;
   final TextEditingController _saleValueController = TextEditingController();
 
   bool get isEditMode => widget.initialData != null;
@@ -39,6 +40,13 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         listen: false,
       ).fetchProducts();
 
+      if (mounted) {
+        await Provider.of<SettingsProvider>(
+          context,
+          listen: false,
+        ).fetchSettings();
+      }
+
       if (isEditMode) {
         final data = widget.initialData!;
         setState(() {
@@ -46,15 +54,15 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           _selectedVolumeId = data['volume']['_id'];
           _expiryDate = DateTime.parse(data['expiryDate']);
           _quantityController.text = data['originalQuantity'].toString();
+          _shortageFulfillment = data['shortage_fulfillment'] ?? true;
 
           // Price logic
           final price = data['selectedPrice'].toDouble();
           _selectedPrice =
               price; // We'll check if it exists in list during build
 
-          if (data['saleType'] != null) {
-            _saleType = data['saleType'];
-            _saleValueController.text = data['saleValue'].toString();
+          if (data['salePercentage'] != null) {
+            _saleValueController.text = data['salePercentage'].toString();
           }
         });
       }
@@ -89,56 +97,32 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         return;
       }
 
-      // Validation: Discount cannot be higher than 30%
-      final saleValText = _saleValueController.text;
       double? saleVal;
 
-      if (saleValText.isNotEmpty) {
-        saleVal = double.tryParse(saleValText);
-        if (saleVal == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter a valid sale value')),
-          );
-          return;
-        }
-
-        if (_saleType == 'percentage') {
-          if (saleVal > 30) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Sale cannot exceed 30%')),
-            );
-            return;
-          }
-        } else {
-          // 'flat' means discount amount.
-          // Max discount is 30% of price.
-          // e.g. Price 100, max discount 30. Entered 35 -> Error.
-
-          final maxDiscount = price * 0.3;
-
-          if (saleVal > maxDiscount) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Discount too high. Max 30% discount is ${maxDiscount.toStringAsFixed(2)} EGP',
-                ),
-              ),
-            );
-            return;
-          }
-
-          // Also check if saleVal >= price (cannot give away for free or pay user)
-          if (saleVal >= price) {
+      if (!_shortageFulfillment) {
+        final saleValText = _saleValueController.text;
+        if (saleValText.isNotEmpty) {
+          saleVal = double.tryParse(saleValText);
+          if (saleVal == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text(
-                  'Discount cannot be equal or greater than the price',
-                ),
+                content: Text('Please enter a valid sale percentage'),
+              ),
+            );
+            return;
+          }
+
+          if (saleVal < 0 || saleVal > 100) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sale value must be between 0% and 100%'),
               ),
             );
             return;
           }
         }
+      } else {
+        saleVal = 0;
       }
 
       final excessData = {
@@ -147,8 +131,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         'quantity': int.parse(_quantityController.text),
         'expiryDate': _expiryDate!.toIso8601String(),
         'selectedPrice': price,
-        'saleType': saleVal != null ? _saleType : null,
-        'saleValue': saleVal,
+        'salePercentage': saleVal,
+        'shortage_fulfillment': _shortageFulfillment,
       };
 
       final success = isEditMode
@@ -403,62 +387,81 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     const Divider(),
                     const SizedBox(height: 16),
 
-                    // Sale Info
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Sale Offer',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('Percentage Off'),
-                                  value: 'percentage',
-                                  groupValue: _saleType,
-                                  onChanged: (v) =>
-                                      setState(() => _saleType = v!),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('Flat Discount'),
-                                  value: 'flat',
-                                  groupValue: _saleType,
-                                  onChanged: (v) =>
-                                      setState(() => _saleType = v!),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextFormField(
-                            controller: _saleValueController,
-                            decoration: InputDecoration(
-                              labelText: _saleType == 'percentage'
-                                  ? 'Percentage Value (%)'
-                                  : 'Discount Amount (EGP)',
-                              border: const OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => null, // Optional
-                          ),
-                        ],
+                    // Type Selection (Fulfillment vs Real Excess)
+                    const Text(
+                      'Request Type',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<bool>(
+                      value: _shortageFulfillment,
+                      items: const [
+                        DropdownMenuItem(
+                          value: true,
+                          child: Text('Shortage Fulfillment'),
+                        ),
+                        DropdownMenuItem(
+                          value: false,
+                          child: Text('Real Excess'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _shortageFulfillment = val!;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Sale Info (Only for Real Excess)
+                    if (!_shortageFulfillment)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.blue[200]!),
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.blue[50],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Sale Offer',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'The current system sale is ${context.read<SettingsProvider>().minCommission}% if you would like to provide a higher sale enter its value. Higher sales have higher opportunities to be matched faster.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue[800],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _saleValueController,
+                              decoration: const InputDecoration(
+                                labelText: 'Percentage Value (%)',
+                                border: OutlineInputBorder(),
+                                suffixText: '%',
+                                fillColor: Colors.white,
+                                filled: true,
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (v) => null, // Optional
+                            ),
+                          ],
+                        ),
+                      ),
 
                     const SizedBox(height: 32),
                     SizedBox(

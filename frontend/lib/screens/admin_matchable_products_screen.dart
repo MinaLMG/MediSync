@@ -47,24 +47,50 @@ class _AdminMatchableProductsScreenState
               itemBuilder: (context, index) {
                 final item = transactionProvider.matchableProducts[index];
                 final product = item['product'];
+                final hasFulfillment = item['hasShortageFulfillment'] == true;
 
                 return Card(
+                  color: hasFulfillment ? Colors.purple[50] : Colors.white,
                   margin: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
                   ),
                   child: ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.medication,
-                      color: Colors.blue,
+                      color: hasFulfillment ? Colors.purple : Colors.blue,
                       size: 40,
                     ),
-                    title: Text(
-                      product['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        if (hasFulfillment)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Shortage Fulfillment',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     subtitle: Text(
                       'Matching available in ${item['volumes'].length} volumes',

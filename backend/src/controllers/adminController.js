@@ -1,4 +1,5 @@
 const { User, Pharmacy } = require('../models');
+const { deleteFiles } = require('../utils/fileHelper');
 
 // @desc    Get users waiting for approval
 // @route   GET /api/admin/waiting-users
@@ -39,12 +40,40 @@ exports.reviewUser = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        user.status = status;
-        if (user.pharmacy) {
-            const pharmacy = await Pharmacy.findById(user.pharmacy);
-            if (pharmacy) {
-                pharmacy.status = status;
-                await pharmacy.save();
+        if (status === 'rejected') {
+            if (user.pharmacy) {
+                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                if (pharmacy) {
+                    // Collect all possible file paths to delete
+                    const filesToDelete = [
+                        pharmacy.pharmacistCard,
+                        pharmacy.commercialRegistry,
+                        pharmacy.taxCard,
+                        pharmacy.pharmacyLicense,
+                        pharmacy.signImage
+                    ].filter(Boolean);
+
+                    // Delete physical files
+                    deleteFiles(filesToDelete);
+
+                    // Remove pharmacy record from DB
+                    await pharmacy.deleteOne();
+                }
+
+                // Reset user to pending status and remove pharmacy link
+                user.pharmacy = undefined;
+                user.status = 'pending';
+            }
+        } else {
+            // Approving logic (status === 'active')
+            user.status = status;
+            if (user.pharmacy) {
+                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                if (pharmacy) {
+                    pharmacy.status = status;
+                    pharmacy.verified = true;
+                    await pharmacy.save();
+                }
             }
         }
 

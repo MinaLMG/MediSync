@@ -1,4 +1,4 @@
-const { StockExcess, HasVolume, StockShortage } = require('../models');
+const { StockExcess, HasVolume, StockShortage, Settings } = require('../models');
 
 // Create new excess
 exports.createExcess = async (req, res) => {
@@ -9,9 +9,22 @@ exports.createExcess = async (req, res) => {
             quantity, 
             expiryDate, 
             selectedPrice, 
-            saleType, 
-            saleValue 
+            salePercentage, // Using direct salePercentage from request
+            shortage_fulfillment // New field
         } = req.body;
+
+        const settings = await Settings.getSettings();
+        const minComm = settings.minimumCommission;
+
+        // Validation for real excess
+        if (shortage_fulfillment === false) {
+            if (salePercentage !== undefined && (salePercentage < 0 || salePercentage > 100)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Sale percentage must be between 0% and 100%` 
+                });
+            }
+        }
 
         // Check if a Shortage exists for this product (Constraint)
         const existingShortage = await StockShortage.findOne({
@@ -31,22 +44,20 @@ exports.createExcess = async (req, res) => {
         let finalSalePercentage = undefined;
         let finalSaleAmount = undefined;
 
-        if (saleType && saleValue) {
-            if (saleType === 'percentage') {
-                finalSalePercentage = saleValue;
-                finalSaleAmount = (selectedPrice * saleValue) / 100;
-            } else if (saleType === 'flat') {
-                finalSaleAmount = saleValue;
-                finalSalePercentage = (saleValue / selectedPrice) * 100;
-            }
+        if (shortage_fulfillment === false) {
+            finalSalePercentage = salePercentage;
+            finalSaleAmount = (selectedPrice * salePercentage) / 100;
+        } else {
+            // Shortage fulfillment usually means no discount from seller, 
+            // or we use system default. Per request: "give him the full balance".
+            finalSalePercentage = 0;
+            finalSaleAmount = 0;
         }
 
         // 2. Check if Selected Price is New
-        // Fetch HasVolume to see strict prices list
         const hasVolume = await HasVolume.findOne({ product, volume });
         let isNewPrice = false;
         if (hasVolume) {
-            // Check if selectedPrice exists in the prices array
             if (!hasVolume.prices.includes(selectedPrice)) {
                 isNewPrice = true;
             }
@@ -62,7 +73,8 @@ exports.createExcess = async (req, res) => {
             selectedPrice,
             salePercentage: finalSalePercentage,
             saleAmount: finalSaleAmount,
-            isNewPrice, // Save trigger
+            shortage_fulfillment: shortage_fulfillment !== false, // default true
+            isNewPrice,
             status: 'pending'
         });
 
@@ -136,7 +148,7 @@ exports.approveExcess = async (req, res) => {
 // Update excess (Manager/Owner)
 exports.updateExcess = async (req, res) => {
     try {
-        const { quantity, selectedPrice, saleType, saleValue } = req.body;
+        const { quantity, selectedPrice, salePercentage, shortage_fulfillment } = req.body;
         
         // Find existing excess
         const excess = await StockExcess.findById(req.params.id);
@@ -155,26 +167,37 @@ exports.updateExcess = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot update excess that is not pending or available' });
         }
 
+        const settings = await Settings.getSettings();
+        const minComm = settings.minimumCommission;
+
         // Recalculate Sale Info
         let finalSalePercentage = excess.salePercentage;
         let finalSaleAmount = excess.saleAmount;
+        let finalShortageFulfillment = shortage_fulfillment !== undefined ? shortage_fulfillment : excess.shortage_fulfillment;
 
-        if (saleType && saleValue) {
-            if (saleType === 'percentage') {
-                finalSalePercentage = saleValue;
-                finalSaleAmount = (selectedPrice * saleValue) / 100;
-            } else if (saleType === 'flat') {
-                finalSaleAmount = saleValue;
-                finalSalePercentage = (saleValue / selectedPrice) * 100;
-            }
+        if (finalShortageFulfillment === false) {
+             if (salePercentage !== undefined) {
+                if (salePercentage < minComm || salePercentage > 100) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `For real excess, sale percentage must be between ${minComm}% and 100%` 
+                    });
+                }
+                finalSalePercentage = salePercentage;
+                finalSaleAmount = ((selectedPrice || excess.selectedPrice) * salePercentage) / 100;
+             }
+        } else {
+            finalSalePercentage = 0;
+            finalSaleAmount = 0;
         }
 
         // Update fields
         excess.originalQuantity = quantity || excess.originalQuantity;
-        excess.remainingQuantity = quantity || excess.remainingQuantity; // Reset remaining if qty changes? Simplify to sync
+        excess.remainingQuantity = quantity || excess.remainingQuantity; 
         excess.selectedPrice = selectedPrice || excess.selectedPrice;
         excess.salePercentage = finalSalePercentage;
         excess.saleAmount = finalSaleAmount;
+        excess.shortage_fulfillment = finalShortageFulfillment;
 
         await excess.save();
 

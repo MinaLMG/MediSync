@@ -6,7 +6,8 @@ const {
     getActiveShortages, 
     getMyShortages,
     updateShortage,
-    deleteShortage 
+    deleteShortage,
+    getGlobalActiveShortages
 } = require('../controllers/shortageController');
 
 // All routes are protected
@@ -19,6 +20,7 @@ router.get('/my', authorize('pharmacy_owner', 'manager'), getMyShortages);
 
 // Admin Routes
 router.get('/active', authorize('admin'), getActiveShortages);
+router.get('/global-active', getGlobalActiveShortages);
 router.delete('/:id', authorize('admin', 'pharmacy_owner'), deleteShortage);
 
 module.exports = router;

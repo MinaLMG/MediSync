@@ -40,12 +40,16 @@ const stockExcessSchema = new mongoose.Schema({
         type: Number,
         required: false,
         min: 0,
-        max: 30
+        max: 100 // Updated max to 100 as per request
     },
     saleAmount: {
         type: Number,
         required: false,
         min: 0
+    },
+    shortage_fulfillment: {
+        type: Boolean,
+        default: false
     },
     // To track if this price was manually entered and not in origin list
     isNewPrice: {

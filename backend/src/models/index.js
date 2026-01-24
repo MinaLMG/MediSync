@@ -12,5 +12,6 @@ module.exports = {
     Transaction: require('./Transaction'),
     Notification: require('./Notification'),
     Review: require('./Review'),
-    AuditLog: require('./AuditLog')
+    AuditLog: require('./AuditLog'),
+    Settings: require('./Settings')
 };

@@ -1,4 +1,4 @@
-const { Transaction, StockShortage, StockExcess, Pharmacy } = require('../models');
+const { Transaction, StockShortage, StockExcess, Pharmacy, Settings } = require('../models');
 const mongoose = require('mongoose');
 
 // @desc    Get products that have both active shortages and available excesses
@@ -15,7 +15,11 @@ exports.getMatchableProducts = async (req, res) => {
         // Find products with available excesses
         const excesses = await StockExcess.aggregate([
             { $match: { status: 'available', remainingQuantity: { $gt: 0 } } },
-            { $group: { _id: "$product", volumes: { $addToSet: "$volume" } } }
+            { $group: { 
+                _id: "$product", 
+                volumes: { $addToSet: "$volume" },
+                hasShortageFulfillment: { $max: "$shortage_fulfillment" }
+            } }
         ]);
 
         // Filter products that appear in both lists with matching volumes
@@ -34,7 +38,8 @@ exports.getMatchableProducts = async (req, res) => {
                     if (product) {
                         matchable.push({
                             product,
-                            volumes: commonVolumes
+                            volumes: commonVolumes,
+                            hasShortageFulfillment: e.hasShortageFulfillment || false
                         });
                     }
                 }
@@ -138,6 +143,7 @@ exports.createTransaction = async (req, res) => {
         await shortage.save({ session });
 
         // 4. Create transaction
+        const settings = await Settings.getSettings();
         const transaction = new Transaction({
             stockShortage: {
                 shortage: shortageId,
@@ -146,7 +152,9 @@ exports.createTransaction = async (req, res) => {
             stockExcessSources: refinedSources,
             totalQuantity,
             totalAmount,
-            status: 'pending'
+            status: 'pending',
+            shortage_fulfillment: req.body.shortage_fulfillment !== undefined ? req.body.shortage_fulfillment : true,
+            commissionRatio: settings.minimumCommission / 100 // Snapshot
         });
 
         await transaction.save({ session });
@@ -210,26 +218,38 @@ exports.updateTransactionStatus = async (req, res) => {
             }
         } else if (status === 'completed') {
             // Financial logic: Balance Transfer
-            // 1% Commission margin
-            const commissionRatio = 0.01;
-            transaction.commissionRatio = commissionRatio;
+            const settings = await Settings.getSettings();
+            const minCommRatio = settings.minimumCommission / 100;
+            const shortageCommRatio = settings.shortageCommission / 100;
+            
+            transaction.commissionRatio = minCommRatio; // Update snapshot to actual at completion if needed, or keep original
 
-            // Buyer: Deduct 101%
+            // Buyer: Deduct (100 + shortageCommission)%
             const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
             if (buyerPh) {
-                // current balance - (100+margin)/100 * transaction
-                buyerPh.balance -= (1 + commissionRatio) * transaction.totalAmount;
+                // current balance - (100+shortage_commision)/100 * transaction
+                buyerPh.balance -= (1 + shortageCommRatio) * transaction.totalAmount;
                 await buyerPh.save({ session });
             }
 
-            // Sellers: Add 99%
+            // Sellers: Add full balance if shortage_fulfillment, else (100 - minComm)%
             for (const source of transaction.stockExcessSources) {
                 const excess = await StockExcess.findById(source.stockExcess).session(session);
                 const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
                 if (sellerPh) {
-                    // current balance + (100-margin)/100 * source_amount
-                    sellerPh.balance += (1 - commissionRatio) * source.totalAmount;
+                    if (transaction.shortage_fulfillment) {
+                        // Full balance
+                        sellerPh.balance += source.totalAmount;
+                    } else {
+                        // Use excess-specific sale percentage if it exists, otherwise use system minimum
+                        const excessComm = excess.salePercentage;
+                        const finalCommRatio = (excessComm !== undefined && excessComm !== null) 
+                            ? (excessComm / 100) 
+                            : minCommRatio;
+                        
+                        sellerPh.balance += (1 - finalCommRatio) * source.totalAmount;
+                    }
                     await sellerPh.save({ session });
                 }
             }

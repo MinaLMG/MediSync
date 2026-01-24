@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Pharmacy } = require('../models');
+const { deleteFiles } = require('../utils/fileHelper');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -122,6 +123,7 @@ const getProfile = async (req, res) => {
 // @access  Private (Pending/Waiting)
 const linkPharmacy = async (req, res) => {
     try {
+        console.log("recived")
         const { 
             name, ownerName, nationalId, phone, email,
             location 
@@ -137,17 +139,28 @@ const linkPharmacy = async (req, res) => {
             try { parsedLocation = JSON.parse(parsedLocation); } catch (e) {}
         }
 
+        // Helper to cleanup files if any error occurs
+        const cleanup = () => {
+            if (req.files) {
+                const files = Object.values(req.files).flat().map(f => f.path);
+                if (files.length > 0) deleteFiles(files);
+            }
+        };
+
         const user = await User.findById(req.user._id);
 
         if (!user) {
+            cleanup();
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
         if (nationalId && !/^\d{14}$/.test(nationalId)) {
+            cleanup();
             return res.status(400).json({ success: false, message: 'National ID must be exactly 14 digits' });
         }
 
         if (user.status === 'active') {
+            cleanup();
             return res.status(400).json({ success: false, message: 'Account already active' });
         }
 
@@ -158,6 +171,7 @@ const linkPharmacy = async (req, res) => {
         const pharmacyLicense = req.files['pharmacyLicense'] ? req.files['pharmacyLicense'][0].path : null;
 
         if (!pharmacistCard || !commercialRegistry || !taxCard || !pharmacyLicense) {
+            cleanup();
             return res.status(400).json({ success: false, message: 'All 4 documents are required' });
         }
 
@@ -188,6 +202,10 @@ const linkPharmacy = async (req, res) => {
             data: { user, pharmacy }
         });
     } catch (error) {
+        console.log(error);
+        // Cleanup if error occurs during DB operations
+        const files = req.files ? Object.values(req.files).flat().map(f => f.path) : [];
+        if (files.length > 0) deleteFiles(files);
         res.status(500).json({ success: false, message: error.message });
     }
 };

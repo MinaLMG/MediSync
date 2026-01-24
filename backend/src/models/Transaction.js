@@ -53,8 +53,11 @@ const transactionSchema = new mongoose.Schema({
         default: 'pending'
     },
     commissionRatio: {
-        type: Number,
-        default: 0.01
+        type: Number
+    },
+    shortage_fulfillment: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true

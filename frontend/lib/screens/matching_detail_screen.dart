@@ -90,6 +90,14 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
       }
     });
 
+    final Map<String, dynamic> firstSelectedExcess =
+        (Provider.of<TransactionProvider>(
+                  context,
+                  listen: false,
+                ).currentMatches['excesses']
+                as List)
+            .firstWhere((e) => selectedExcesses.containsKey(e['_id']));
+
     final success =
         await Provider.of<TransactionProvider>(
           context,
@@ -98,6 +106,8 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           'shortageId': selectedShortage!['_id'],
           'quantityTaken': totalAllocated,
           'excessSources': sources,
+          'shortage_fulfillment':
+              firstSelectedExcess['shortage_fulfillment'] ?? true,
         });
 
     if (mounted) {
@@ -327,13 +337,31 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
       child: Card(
         color: isSelected
             ? (isExcess ? Colors.green[200] : Colors.red[200])
-            : Colors.white,
+            : (isExcess && item['shortage_fulfillment'] == true
+                  ? Colors.purple[50]
+                  : Colors.white),
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isExcess && item['shortage_fulfillment'] == true)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.purple,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Shortage Fulfillment',
+                    style: TextStyle(color: Colors.white, fontSize: 8),
+                  ),
+                ),
               Text(
                 item['pharmacy']['name'],
                 style: const TextStyle(

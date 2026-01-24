@@ -1,19 +1,67 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/shortage_provider.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import 'orders_history_screen.dart';
 import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
   @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  final PageController _pageController = PageController();
+  Timer? _timer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      Provider.of<ShortageProvider>(
+        context,
+        listen: false,
+      ).fetchGlobalActiveShortages();
+    });
+    _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
+      if (!mounted) return;
+      final provider = Provider.of<ShortageProvider>(context, listen: false);
+      if (provider.globalShortages.isNotEmpty) {
+        if (_currentPage < provider.globalShortages.length - 1) {
+          _currentPage++;
+        } else {
+          _currentPage = 0;
+        }
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _currentPage,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isAdmin =
-        Provider.of<AuthProvider>(context, listen: false).userRole == 'admin';
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAdmin = authProvider.userRole == 'admin';
+    final shortages = Provider.of<ShortageProvider>(context).globalShortages;
 
     final List<Map<String, dynamic>> menuItems = [
       {'title': 'Orders History', 'icon': Icons.history, 'color': Colors.blue},
@@ -55,6 +103,58 @@ class HomeTab extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         children: [
+          // News Line (Shortages Marquee)
+          Container(
+            height: 40,
+            width: double.infinity,
+            color: Colors.red[800],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  color: Colors.black,
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'URGENT SHORTAGES',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: shortages.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No current shortages reported',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        )
+                      : PageView.builder(
+                          controller: _pageController,
+                          itemCount: shortages.length,
+                          itemBuilder: (context, index) {
+                            return Center(
+                              child: Text(
+                                shortages[index],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+
           // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -75,9 +175,9 @@ class HomeTab extends StatelessWidget {
             ),
           ),
 
-          // Advertisement Placeholder
+          // Advertisement space (Reduced height)
           Container(
-            height: 150,
+            height: 120,
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -102,7 +202,7 @@ class HomeTab extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -121,7 +221,7 @@ class HomeTab extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 1.0, // Reduced from 1.2 to give more height
+                childAspectRatio: 1.0,
               ),
               itemCount: menuItems.length,
               itemBuilder: (context, index) {
@@ -159,7 +259,9 @@ class HomeTab extends StatelessWidget {
           } else if (title == 'Add Shortage') {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => AddShortageScreen()),
+              MaterialPageRoute(
+                builder: (context) => const AddShortageScreen(),
+              ),
             );
           } else if (title == 'Orders History') {
             Navigator.push(

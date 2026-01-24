@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/settings_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/excess_provider.dart';
 import 'providers/shortage_provider.dart';
@@ -13,6 +14,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ExcessProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ShortageProvider>(

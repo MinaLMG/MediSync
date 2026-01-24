@@ -76,7 +76,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
           : await Provider.of<ShortageProvider>(
               context,
               listen: false,
-            ).addShortage(shortageData);
+            ).createShortage(shortageData);
 
       if (mounted) {
         if (success) {

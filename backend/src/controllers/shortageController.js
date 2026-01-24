@@ -6,7 +6,6 @@ exports.createShortage = async (req, res) => {
         const { product, volume, quantity, maxSurplus, notes } = req.body;
 
         // Check if an Excess exists for this product (Constraint)
-        // Check for 'pending' or 'available' statuses
         const existingExcess = await StockExcess.findOne({
             pharmacy: req.user.pharmacy,
             product,
@@ -21,7 +20,7 @@ exports.createShortage = async (req, res) => {
         }
 
         const shortage = await StockShortage.create({
-            pharmacy: req.user.pharmacy, // From authMiddleware
+            pharmacy: req.user.pharmacy,
             product,
             volume,
             quantity,
@@ -119,3 +118,24 @@ exports.deleteShortage = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Get all unique product names with active shortages system-wide (For News Marquee)
+// @route   GET /api/shortage/global-active
+// @access  Private (Managers/Admin)
+exports.getGlobalActiveShortages = async (req, res) => {
+    try {
+        const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } })
+            .select('product')
+            .populate('product', 'name');
+
+        // Extract unique names
+        const productNames = [...new Set(shortages.map(s => s.product?.name).filter(Boolean))];
+
+        res.status(200).json({ success: true, count: productNames.length, data: productNames });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+// End of file
