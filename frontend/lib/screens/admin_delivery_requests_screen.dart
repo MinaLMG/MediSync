@@ -201,8 +201,13 @@ class _AdminDeliveryRequestsScreenState
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
-                              onPressed: () =>
-                                  _reviewRequest(request['_id'], 'rejected'),
+                              onPressed: () => _confirmAction(
+                                title: 'Reject Request',
+                                message:
+                                    'Are you sure you want to reject this delivery request?',
+                                onConfirm: () =>
+                                    _reviewRequest(request['_id'], 'rejected'),
+                              ),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
@@ -210,8 +215,13 @@ class _AdminDeliveryRequestsScreenState
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
-                              onPressed: () =>
-                                  _reviewRequest(request['_id'], 'approved'),
+                              onPressed: () => _confirmAction(
+                                title: 'Approve Request',
+                                message:
+                                    'Are you sure you want to approve this delivery request?',
+                                onConfirm: () =>
+                                    _reviewRequest(request['_id'], 'approved'),
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
@@ -228,6 +238,36 @@ class _AdminDeliveryRequestsScreenState
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _confirmAction({
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text(
+              'Confirm',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

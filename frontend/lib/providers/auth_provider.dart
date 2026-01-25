@@ -208,6 +208,80 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> requestProfileUpdate(Map<String, dynamic> updateData) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/auth/profile-update-request'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode(updateData),
+      );
+
+      final data = json.decode(response.body);
+      _isLoading = false;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = data['data'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to send update request';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword(String oldPassword, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      final data = json.decode(response.body);
+      _isLoading = false;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to change password';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   void updateBalance(double newBalance) {
     if (_currentUser != null && _currentUser!['pharmacy'] != null) {
       _currentUser!['pharmacy']['balance'] = newBalance;

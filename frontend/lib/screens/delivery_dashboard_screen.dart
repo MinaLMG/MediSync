@@ -7,6 +7,7 @@ import 'login_screen.dart';
 
 import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
+import 'profile_screen.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -299,11 +300,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.person),
             onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
           ),

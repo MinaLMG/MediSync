@@ -4,7 +4,7 @@ const { StockExcess, HasVolume, StockShortage, Settings, Product } = require('..
 exports.createExcess = async (req, res) => {
     try {
         const { 
-            product: productId, 
+            product, 
             volume, 
             quantity, 
             expiryDate, 
@@ -14,7 +14,7 @@ exports.createExcess = async (req, res) => {
         } = req.body;
 
         // Check product status
-        const productObj = await Product.findById(productId);
+        const productObj = await Product.findById(product);
         if (!productObj || productObj.status !== 'active') {
             return res.status(400).json({
                 success: false,

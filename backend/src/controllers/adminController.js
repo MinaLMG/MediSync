@@ -89,7 +89,6 @@ const reviewUser = async (req, res) => {
                 }
             }
         }
-
         await user.save();
         res.status(200).json({ success: true, data: user });
     } catch (error) {
@@ -129,6 +128,7 @@ const getPendingCounts = async (req, res) => {
         const pendingSuggestions = await ProductSuggestion.countDocuments({ status: 'pending' });
         const appSuggestions = await AppSuggestion.countDocuments({ seen: false });
         const deliveryRequests = await DeliveryRequest.countDocuments({ status: 'pending' });
+        const pendingAccountUpdates = await User.countDocuments({ pendingUpdate: { $ne: null } });
 
         res.status(200).json({
             success: true,
@@ -137,9 +137,113 @@ const getPendingCounts = async (req, res) => {
                 pendingExcesses,
                 pendingSuggestions,
                 appSuggestions,
-                deliveryRequests
+                deliveryRequests,
+                pendingAccountUpdates
             }
         });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Suspend or Reactivate a user
+// @route   PUT /api/admin/suspend-user/:id
+// @access  Admin
+const suspendUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        // Toggle between active and suspended
+        user.status = user.status === 'suspended' ? 'active' : 'suspended';
+        await user.save();
+        res.status(200).json({ success: true, data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Reset a user's password to "00000000"
+// @route   PUT /api/admin/reset-password/:id
+// @access  Admin
+const resetUserPassword = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.hashedPassword = '00000000';
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password reset to 00000000 successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get users with pending updates
+// @route   GET /api/admin/pending-updates
+// @access  Admin
+const getUsersWithPendingUpdates = async (req, res) => {
+    try {
+        const users = await User.find({ pendingUpdate: { $ne: null } }).populate('pharmacy');
+        res.status(200).json({ success: true, count: users.length, data: users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Review (Approve/Reject) account update
+// @route   PUT /api/admin/review-update/:id
+// @access  Admin
+const reviewUpdateData = async (req, res) => {
+    try {
+        const { action } = req.body; // 'approve' or 'reject'
+        const user = await User.findById(req.params.id).populate('pharmacy');
+
+        if (!user || !user.pendingUpdate) {
+            return res.status(404).json({ success: false, message: 'Pending update not found' });
+        }
+
+        if (action === 'approve') {
+            const updates = user.pendingUpdate;
+            
+            // Apply updates to user
+            if (updates.name) user.name = updates.name;
+            if (updates.email) user.email = updates.email.toLowerCase();
+            if (updates.phone) user.phone = updates.phone;
+
+            // Apply updates to pharmacy if applicable
+            if (updates.pharmacy && user.pharmacy) {
+                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                if (pharmacy) {
+                    if (updates.pharmacy.name) pharmacy.name = updates.pharmacy.name;
+                    if (updates.pharmacy.phone) pharmacy.phone = updates.pharmacy.phone;
+                    if (updates.pharmacy.address) pharmacy.address = updates.pharmacy.address;
+                    await pharmacy.save();
+                }
+            }
+            
+            await addNotificationJob(
+                user._id.toString(),
+                'system',
+                'Your profile update request has been approved and applied.'
+            );
+        } else {
+            await addNotificationJob(
+                user._id.toString(),
+                'system',
+                'Your profile update request was rejected.'
+            );
+        }
+
+        // Always clear the pendingUpdate
+        user.pendingUpdate = null;
+        await user.save();
+
+        res.status(200).json({ success: true, data: user });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -169,7 +273,7 @@ const createDeliveryUser = async (req, res) => {
             phone,
             hashedPassword: password,
             role: 'delivery',
-            status: 'waiting'
+            status: 'active' // Manual admin creation defaults to active
         });
 
         res.status(201).json({ success: true, data: user });
@@ -184,5 +288,9 @@ module.exports = {
     reviewUser,
     getAllPharmacies,
     getPendingCounts,
-    createDeliveryUser
+    createDeliveryUser,
+    suspendUser,
+    resetUserPassword,
+    getUsersWithPendingUpdates,
+    reviewUpdateData
 };

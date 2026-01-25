@@ -50,6 +50,10 @@ const userSchema = new mongoose.Schema({
     },
     passwordResetExpires: {
         type: Date
+    },
+    pendingUpdate: {
+        type: Object,
+        default: null
     }
 }, {
     timestamps: true

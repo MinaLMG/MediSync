@@ -6,7 +6,11 @@ const {
     reviewUser, 
     getAllPharmacies,
     getPendingCounts,
-    createDeliveryUser
+    createDeliveryUser,
+    suspendUser,
+    resetUserPassword,
+    getUsersWithPendingUpdates,
+    reviewUpdateData
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -19,5 +23,9 @@ router.put('/review-user/:id', reviewUser);
 router.get('/pharmacies', getAllPharmacies);
 router.get('/pending-counts', getPendingCounts);
 router.post('/create-delivery', createDeliveryUser);
+router.put('/suspend-user/:id', suspendUser);
+router.put('/reset-password/:id', resetUserPassword);
+router.get('/pending-updates', getUsersWithPendingUpdates);
+router.put('/review-update/:id', reviewUpdateData);
 
 module.exports = router;

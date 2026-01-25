@@ -196,7 +196,7 @@ exports.createTransaction = async (req, res) => {
                         await addNotificationJob(
                             seller._id.toString(),
                             'transaction',
-                            `New transaction request for "${product?.name || 'unknown medicine'}" from ${buyerPharmacy?.name || 'a pharmacy'}.`,
+                            `New transaction request for "${product?.name || 'unknown medicine'}" from a pharmacy.`,
                             {
                                 relatedEntity: transaction._id,
                                 relatedEntityType: 'Transaction'

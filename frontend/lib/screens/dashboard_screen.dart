@@ -8,6 +8,7 @@ import '../providers/notification_provider.dart';
 import 'package:intl/intl.dart';
 
 import 'orders_history_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userType;
@@ -38,7 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const HomeTab(),
     const OrdersHistoryScreen(), // Replaced placeholder
     const Center(child: Text('Pending Cart (Coming Soon)')),
-    const Center(child: Text('Account (Coming Soon)')),
+    const ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -127,22 +128,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                 ],
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            onPressed: () {
-              // TODO: Open cart
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Logout logic
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
               );
             },
           ),

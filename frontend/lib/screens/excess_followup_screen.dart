@@ -203,7 +203,28 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () {
-                            provider.approveExcess(item['_id']);
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Approval'),
+                                content: const Text(
+                                  'Are you sure you want to approve this excess and make it available for matches?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      provider.approveExcess(item['_id']);
+                                    },
+                                    child: const Text('Approve'),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,

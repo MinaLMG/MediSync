@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import 'login_screen.dart';
 import 'excess_followup_screen.dart';
 import 'shortage_followup_screen.dart';
 import 'admin_matchable_products_screen.dart';
@@ -15,6 +13,8 @@ import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
 import 'admin_view_suggestions_screen.dart';
 import 'admin_delivery_requests_screen.dart';
+import 'admin_account_updates_screen.dart';
+import 'profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -95,11 +95,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.person),
             onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
           ),
@@ -162,6 +162,11 @@ class AdminHomeTab extends StatelessWidget {
         'icon': Icons.feedback,
         'color': Colors.indigo,
       },
+      {
+        'title': 'Account Updates',
+        'icon': Icons.manage_accounts,
+        'color': Colors.brown,
+      },
     ];
 
     return Padding(
@@ -189,6 +194,8 @@ class AdminHomeTab extends StatelessWidget {
                 badgeCount = suggestionProvider.appSuggestionsCount;
               } else if (item['title'] == 'Delivery Requests') {
                 badgeCount = suggestionProvider.deliveryRequestsCount;
+              } else if (item['title'] == 'Account Updates') {
+                badgeCount = suggestionProvider.pendingAccountUpdatesCount;
               }
 
               return _buildMenuCard(
@@ -285,6 +292,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminDeliveryRequestsScreen(),
+              ),
+            );
+          } else if (title == 'Account Updates') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminAccountUpdatesScreen(),
               ),
             );
           }

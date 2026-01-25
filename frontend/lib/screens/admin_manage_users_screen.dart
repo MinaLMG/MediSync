@@ -202,7 +202,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () => _reviewUser(user['_id'], 'rejected'),
+                      onPressed: () => _confirmAction(
+                        title: 'Reject Request',
+                        message:
+                            'Are you sure you want to reject this user registration?',
+                        onConfirm: () => _reviewUser(user['_id'], 'rejected'),
+                      ),
                       child: const Text('Reject'),
                     ),
                   ),
@@ -213,8 +218,68 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () => _reviewUser(user['_id'], 'active'),
+                      onPressed: () => _confirmAction(
+                        title: 'Approve User',
+                        message:
+                            'Are you sure you want to approve this user and activate their account?',
+                        onConfirm: () => _reviewUser(user['_id'], 'active'),
+                      ),
                       child: const Text('Approve'),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 12),
+              const Text(
+                'Management Actions',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: Icon(
+                        user['status'] == 'suspended'
+                            ? Icons.play_arrow
+                            : Icons.block,
+                      ),
+                      label: Text(
+                        user['status'] == 'suspended' ? 'Activate' : 'Suspend',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: user['status'] == 'suspended'
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                      onPressed: () => _confirmAction(
+                        title: user['status'] == 'suspended'
+                            ? 'Activate User'
+                            : 'Suspend User',
+                        message:
+                            'Are you sure you want to ${user['status'] == 'suspended' ? 'activate' : 'suspend'} this account?',
+                        onConfirm: () => _adminAction(user['_id'], 'suspend'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.password),
+                      label: const Text('Reset Pass'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      onPressed: () => _confirmAction(
+                        title: 'Reset Password',
+                        message:
+                            'Are you sure you want to reset this user\'s password to "123456"?',
+                        onConfirm: () =>
+                            _adminAction(user['_id'], 'reset-password'),
+                      ),
                     ),
                   ),
                 ],
@@ -224,6 +289,62 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         ),
       ),
     );
+  }
+
+  void _confirmAction({
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text(
+              'Confirm',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _adminAction(String userId, String action) async {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    final url = action == 'suspend'
+        ? '${Constants.baseUrl}/admin/suspend-user/$userId'
+        : '${Constants.baseUrl}/admin/reset-password/$userId';
+
+    try {
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = json.decode(response.body);
+      if (data['success']) {
+        Navigator.pop(context);
+        _fetchUsers();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'Action successful')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   void _showCreateDeliveryDialog() {

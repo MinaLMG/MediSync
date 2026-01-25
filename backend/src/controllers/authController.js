@@ -71,7 +71,7 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         // Check for user email
-        const user = await User.findOne({ email }).populate('pharmacy', 'name status');
+        const user = await User.findOne({ email }).populate('pharmacy');
 
         if (user && (await user.comparePassword(password))) {
             // Update last login
@@ -244,10 +244,84 @@ const socialLogin = async (req, res) => {
     }
 };
 
+// @desc    Request a profile update (Name or Pharmacy Data)
+// @route   PUT /api/auth/profile-update-request
+// @access  Private
+const requestProfileUpdate = async (req, res) => {
+    try {
+        const { name, email, phone, pharmacy } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Check if requested email is already taken by ANOTHER user
+        if (email && email.toLowerCase() !== user.email) {
+            const emailExists = await User.findOne({ email: email.toLowerCase() });
+            if (emailExists) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'The requested email is already in use by another account.' 
+                });
+            }
+        }
+
+        // Save requested changes to pendingUpdate
+        user.pendingUpdate = {
+            name,
+            email,
+            phone,
+            pharmacy // Should contain updated pharmacy fields if provided
+        };
+
+        await user.save();
+        await user.populate('pharmacy');
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'Update request sent to admin for approval.',
+            data: user 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Change user password
+// @route   PUT /api/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Verify old password
+        const isMatch = await user.comparePassword(oldPassword);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: 'Incorrect old password' });
+        }
+
+        // Set new password
+        user.hashedPassword = newPassword;
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password changed successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     register,
     login,
     getProfile,
     linkPharmacy,
-    socialLogin
+    socialLogin,
+    requestProfileUpdate,
+    changePassword
 };

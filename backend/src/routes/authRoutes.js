@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, socialLogin, linkPharmacy } = require('../controllers/authController');
+const { 
+    register, login, getProfile, socialLogin, linkPharmacy, 
+    requestProfileUpdate, changePassword 
+} = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 const upload = require('../config/uploadConfig');
 
@@ -8,6 +11,8 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/social-login', socialLogin);
 router.get('/profile', protect, getProfile);
+router.put('/profile-update-request', protect, requestProfileUpdate);
+router.put('/change-password', protect, changePassword);
 router.post('/link-pharmacy', protect, upload.fields([
     { name: 'pharmacistCard', maxCount: 1 },
     { name: 'commercialRegistry', maxCount: 1 },
