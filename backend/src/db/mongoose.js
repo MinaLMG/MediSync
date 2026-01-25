@@ -7,8 +7,11 @@ const connectDB = async () => {
             useUnifiedTopology: true,
         });
 
-        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-        console.log(`📊 Database: ${conn.connection.name}`);
+        const host = conn.connection?.host || 'Unknown Host';
+        const name = conn.connection?.name || 'Unknown DB';
+
+        console.log(`✅ MongoDB Connected: ${host}`);
+        console.log(`📊 Database: ${name}`);
 
         // Handle connection events
         mongoose.connection.on('error', (err) => {

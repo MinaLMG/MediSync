@@ -2,10 +2,24 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const os = require('os');
+
+// Determine upload directory
+// Vercel/Serverless: Use /tmp (Note: Files are ephemeral!)
+// Local: Use 'uploads/pharmacy_docs'
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
+const uploadDir = isProduction 
+    ? path.join(os.tmpdir(), 'pharmacy_docs') 
+    : 'uploads/pharmacy_docs';
+
 // Ensure directory exists
-const uploadDir = 'uploads/pharmacy_docs';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+try {
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+} catch (error) {
+    console.error('Error creating upload directory:', error);
+    // Fallback if permission denied (though tmpdir should work)
 }
 
 const storage = multer.diskStorage({
