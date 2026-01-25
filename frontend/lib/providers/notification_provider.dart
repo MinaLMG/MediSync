@@ -3,7 +3,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../utils/constants.dart';
+import '../utils/config.dart';
 import 'auth_provider.dart';
 
 class NotificationProvider with ChangeNotifier {

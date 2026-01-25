@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../utils/constants.dart';
+import '../utils/config.dart';
 import 'auth_provider.dart';
 
 class OrderProvider with ChangeNotifier {

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../utils/constants.dart';
+import '../utils/config.dart';
 import 'auth_provider.dart';
 
 class ShortageProvider with ChangeNotifier {

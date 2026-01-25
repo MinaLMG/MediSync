@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/app_suggestion_provider.dart';
-import '../utils/constants.dart';
+import '../utils/config.dart';
 
 class AdminAccountUpdatesScreen extends StatefulWidget {
   const AdminAccountUpdatesScreen({super.key});

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../providers/auth_provider.dart';
-import '../utils/constants.dart';
+import '../utils/config.dart';
 import '../utils/search_utils.dart';
 
 class AdminPharmaciesScreen extends StatefulWidget {

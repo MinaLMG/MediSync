@@ -126,7 +126,7 @@ const linkPharmacy = async (req, res) => {
         console.log("recived")
         const { 
             name, ownerName, nationalId, phone, email,
-            location 
+            address, location 
         } = req.body;
 
         // Parse location if it is a string
