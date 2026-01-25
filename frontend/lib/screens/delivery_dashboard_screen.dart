@@ -254,6 +254,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchInitialData,
+            tooltip: 'Reload',
+          ),
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, _) {
               return Stack(

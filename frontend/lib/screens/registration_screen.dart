@@ -121,7 +121,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     border: OutlineInputBorder(),
                   ),
                   obscureText: true,
-                  validator: (v) => v!.length < 6 ? 'Too short' : null,
+                  validator: (v) =>
+                      v!.length < 8 ? 'Too short (min 8 chars)' : null,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(

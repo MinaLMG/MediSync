@@ -27,7 +27,18 @@ class _AdminViewSuggestionsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback & Complaints')),
+      appBar: AppBar(
+        title: const Text('Feedback & Complaints'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<AppSuggestionProvider>(
+              context,
+              listen: false,
+            ).fetchAllSuggestions(),
+          ),
+        ],
+      ),
       body: Consumer<AppSuggestionProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.suggestions.isEmpty) {

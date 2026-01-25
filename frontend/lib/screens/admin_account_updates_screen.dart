@@ -89,6 +89,12 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
         title: const Text('Account Update Requests'),
         backgroundColor: Colors.brown[700],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchPendingUpdates,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

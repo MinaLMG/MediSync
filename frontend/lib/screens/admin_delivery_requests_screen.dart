@@ -84,6 +84,13 @@ class _AdminDeliveryRequestsScreenState
         title: const Text('Delivery Requests'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<DeliveryRequestProvider>(
+              context,
+              listen: false,
+            ).fetchPendingRequests(),
+          ),
+          IconButton(
             icon: const Icon(Icons.cleaning_services),
             tooltip: 'Cleanup old requests',
             onPressed: () {

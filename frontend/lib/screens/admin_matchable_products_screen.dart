@@ -64,85 +64,108 @@ class _AdminMatchableProductsScreenState
           Expanded(
             child: transactionProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : filteredProducts.isEmpty
-                ? Center(
-                    child: Text(
-                      _searchQuery.isEmpty
-                          ? 'No matchable items found.'
-                          : 'No matches found.',
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final item = filteredProducts[index];
-                      final product = item['product'];
-                      final hasFulfillment =
-                          item['hasShortageFulfillment'] == true;
-
-                      return Card(
-                        color: hasFulfillment
-                            ? Colors.purple[50]
-                            : Colors.white,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.medication,
-                            color: hasFulfillment ? Colors.purple : Colors.blue,
-                            size: 40,
-                          ),
-                          title: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      await transactionProvider.fetchMatchableProducts();
+                    },
+                    child: filteredProducts.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              if (hasFulfillment)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.7,
+                                child: Center(
+                                  child: Text(
+                                    _searchQuery.isEmpty
+                                        ? 'No matchable items found.'
+                                        : 'No matches found.',
                                   ),
-                                  margin: const EdgeInsets.only(bottom: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Shortage Fulfillment',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                product['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
                                 ),
                               ),
                             ],
-                          ),
-                          subtitle: Text(
-                            'Matching available in ${item['volumes'].length} volumes',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MatchingDetailScreen(
-                                  productId: product['_id'],
-                                  productName: product['name'],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final item = filteredProducts[index];
+                              final product = item['product'];
+                              final hasFulfillment =
+                                  item['hasShortageFulfillment'] == true;
+
+                              return Card(
+                                color: hasFulfillment
+                                    ? Colors.purple[50]
+                                    : Colors.white,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.medication,
+                                    color: hasFulfillment
+                                        ? Colors.purple
+                                        : Colors.blue,
+                                    size: 40,
+                                  ),
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (hasFulfillment)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            bottom: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Shortage Fulfillment',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ),
+                                      Text(
+                                        product['name'],
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    'Matching available in ${item['volumes'].length} volumes',
+                                  ),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            MatchingDetailScreen(
+                                              productId: product['_id'],
+                                              productName: product['name'],
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                   ),
           ),
         ],

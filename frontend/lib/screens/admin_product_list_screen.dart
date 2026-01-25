@@ -158,7 +158,18 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Products')),
+      appBar: AppBar(
+        title: const Text('Manage Products'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<ProductProvider>(
+              context,
+              listen: false,
+            ).fetchProducts(),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

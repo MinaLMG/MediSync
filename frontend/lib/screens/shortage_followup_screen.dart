@@ -24,7 +24,18 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Follow-up Shortages')),
+      appBar: AppBar(
+        title: const Text('Follow-up Shortages'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<ShortageProvider>(
+              context,
+              listen: false,
+            ).fetchActiveShortages(),
+          ),
+        ],
+      ),
       body: Consumer<ShortageProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.activeShortages.isEmpty) {

@@ -13,6 +13,13 @@ class NotificationsScreen extends StatelessWidget {
         title: const Text('Notifications'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<NotificationProvider>(
+              context,
+              listen: false,
+            ).fetchNotifications(),
+          ),
+          IconButton(
             icon: const Icon(Icons.done_all),
             onPressed: () {
               // Mark all as seen placeholder (backend has the endpoint)

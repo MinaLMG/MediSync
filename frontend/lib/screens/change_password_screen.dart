@@ -72,7 +72,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Ensure your new password is at least 6 characters long.',
+                'Ensure your new password is at least 8 characters long.',
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
@@ -96,7 +96,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 obscureText: true,
                 validator: (v) =>
-                    v == null || v.length < 6 ? 'Min 6 characters' : null,
+                    v == null || v.length < 8 ? 'Min 8 characters' : null,
               ),
               const SizedBox(height: 20),
               TextFormField(

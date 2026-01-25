@@ -62,6 +62,9 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Users'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchUsers),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

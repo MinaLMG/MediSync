@@ -12,7 +12,7 @@ router.post('/login', login);
 router.post('/social-login', socialLogin);
 router.get('/profile', protect, getProfile);
 router.put('/profile-update-request', protect, requestProfileUpdate);
-router.put('/change-password', protect, changePassword);
+router.put('/change-password', protect,  changePassword);
 router.post('/link-pharmacy', protect, upload.fields([
     { name: 'pharmacistCard', maxCount: 1 },
     { name: 'commercialRegistry', maxCount: 1 },

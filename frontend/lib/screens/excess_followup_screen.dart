@@ -37,6 +37,19 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Follow-up Excesses'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              final provider = Provider.of<ExcessProvider>(
+                context,
+                listen: false,
+              );
+              provider.fetchPendingExcesses();
+              provider.fetchAvailableExcesses();
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

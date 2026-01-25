@@ -803,6 +803,11 @@ exports.updateReversalTicket = async (req, res) => {
         if (description) ticket.description = description;
         await ticket.save({ session });
 
+        await ticket.populate([
+            { path: 'punishments.user', select: 'name' },
+            { path: 'punishments.pharmacy', select: 'name' }
+        ]);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: ticket });
     } catch (error) {
@@ -812,3 +817,4 @@ exports.updateReversalTicket = async (req, res) => {
         session.endSession();
     }
 };
+

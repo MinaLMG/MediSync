@@ -3,8 +3,10 @@ const router = express.Router();
 const suggestionController = require('../controllers/suggestionController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
-router.post('/', protect, suggestionController.createSuggestion);
-router.put('/:id/seen', protect, admin, suggestionController.markAsSeen);
-router.get('/', protect, admin, suggestionController.getAllSuggestions);
+const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+
+router.post('/', protect, strictLimiter, suggestionController.createSuggestion);
+router.put('/:id/seen', protect, admin, strictLimiter, suggestionController.markAsSeen);
+router.get('/', protect, admin, getLimiter, suggestionController.getAllSuggestions);
 
 module.exports = router;

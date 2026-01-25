@@ -52,21 +52,51 @@ class _FollowUpTransactionsScreenState
     final tp = Provider.of<TransactionProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Follow-up Transactions')),
+      appBar: AppBar(
+        title: const Text('Follow-up Transactions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              Provider.of<TransactionProvider>(
+                context,
+                listen: false,
+              ).fetchTransactions(status: selectedStatus);
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           _buildFilterBar(),
           Expanded(
             child: tp.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : tp.transactions.isEmpty
-                ? const Center(child: Text('No transactions found.'))
-                : ListView.builder(
-                    itemCount: tp.transactions.length,
-                    itemBuilder: (context, index) {
-                      final tx = tp.transactions[index];
-                      return _buildTransactionCard(tx);
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      await tp.fetchTransactions(status: selectedStatus);
                     },
+                    child: tp.transactions.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.7,
+                                child: const Center(
+                                  child: Text('No transactions found.'),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: tp.transactions.length,
+                            itemBuilder: (context, index) {
+                              final tx = tp.transactions[index];
+                              return _buildTransactionCard(tx);
+                            },
+                          ),
                   ),
           ),
         ],

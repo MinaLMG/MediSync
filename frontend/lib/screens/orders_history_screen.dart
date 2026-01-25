@@ -49,7 +49,18 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders History')),
+      appBar: AppBar(
+        title: const Text('Orders History'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<OrderProvider>(
+              context,
+              listen: false,
+            ).fetchMyOrders(),
+          ),
+        ],
+      ),
       body: Consumer<OrderProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.orders.isEmpty) {

@@ -3,15 +3,17 @@ const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { protect } = require('../middlewares/authMiddleware');
 
+const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+
 router.use(protect);
 
-router.get('/', notificationController.getMyNotifications);
-router.put('/mark-all-seen', notificationController.markAllAsSeen);
-router.put('/:id/seen', notificationController.markAsSeen);
+router.get('/', getLimiter, notificationController.getMyNotifications);
+router.put('/mark-all-seen', strictLimiter, notificationController.markAllAsSeen);
+router.put('/:id/seen', strictLimiter, notificationController.markAsSeen);
 
 // Test endpoint
 const { addNotificationJob } = require('../utils/queueManager');
-router.post('/test', async (req, res) => {
+router.post('/test', strictLimiter, async (req, res) => {
     await addNotificationJob(req.user._id.toString(), 'system', 'Test notification received! 🚀', { priority: 'high' });
     res.json({ success: true, message: 'Test notification queued' });
 });

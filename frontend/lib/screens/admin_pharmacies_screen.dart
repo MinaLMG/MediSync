@@ -51,7 +51,15 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('All Pharmacies')),
+      appBar: AppBar(
+        title: const Text('All Pharmacies'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchPharmacies,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

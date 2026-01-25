@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/shortage_provider.dart';
+import '../providers/product_provider.dart';
+import '../providers/app_suggestion_provider.dart';
+import '../providers/order_provider.dart';
 import 'login_screen.dart';
 import 'home_tab.dart';
 import 'notifications_screen.dart';
@@ -86,6 +90,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             : null,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              if (_selectedIndex == 0) {
+                Provider.of<ShortageProvider>(
+                  context,
+                  listen: false,
+                ).fetchGlobalActiveShortages();
+                Provider.of<ProductProvider>(
+                  context,
+                  listen: false,
+                ).fetchProducts();
+                Provider.of<AppSuggestionProvider>(
+                  context,
+                  listen: false,
+                ).fetchPendingCounts();
+              } else if (_selectedIndex == 1) {
+                Provider.of<OrderProvider>(
+                  context,
+                  listen: false,
+                ).fetchMyOrders();
+              } else if (_selectedIndex == 3) {
+                Provider.of<AuthProvider>(
+                  context,
+                  listen: false,
+                ).refreshProfile();
+              }
+            },
+            tooltip: 'Reload Current Tab',
+          ),
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, _) {
               return Stack(

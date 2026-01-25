@@ -3,24 +3,26 @@ const router = express.Router();
 const productController = require('../controllers/productController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
+const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+
 router.use(protect);
 
 // Basic product listing
-router.get('/', productController.getAllProducts);
+router.get('/', getLimiter, productController.getAllProducts);
 
 // Suggestions
-router.post('/suggest', authorize('pharmacy_owner', 'pharmacy_staff'), productController.suggestProduct);
-router.get('/suggestions', productController.getSuggestions);
-router.put('/suggestions/:id', authorize('admin'), productController.updateSuggestionStatus);
+router.post('/suggest', authorize('pharmacy_owner', 'pharmacy_staff'), strictLimiter, productController.suggestProduct);
+router.get('/suggestions', getLimiter, productController.getSuggestions);
+router.put('/suggestions/:id', authorize('admin'), strictLimiter, productController.updateSuggestionStatus);
 
 // Admin Direct CRUD
-router.post('/', authorize('admin'), productController.createProduct);
-router.put('/:id', authorize('admin'), productController.updateProduct);
+router.post('/', authorize('admin'), strictLimiter, productController.createProduct);
+router.put('/:id', authorize('admin'), strictLimiter, productController.updateProduct);
 
 // Price Management
-router.post('/volume/:hasVolumeId/price', authorize('admin'), productController.addPriceToVolume);
-router.delete('/volume/:hasVolumeId/price', authorize('admin'), productController.removePriceFromVolume);
+router.post('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.addPriceToVolume);
+router.delete('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.removePriceFromVolume);
 
-router.patch('/:id/toggle-status', protect, authorize('admin'), productController.toggleProductStatus);
+router.patch('/:id/toggle-status', protect, authorize('admin'), strictLimiter, productController.toggleProductStatus);
 
 module.exports = router;
