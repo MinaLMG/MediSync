@@ -94,23 +94,16 @@ class _AdminMatchableProductsScreenState
                             color: hasFulfillment ? Colors.purple : Colors.blue,
                             size: 40,
                           ),
-                          title: Row(
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  product['name'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
                               if (hasFulfillment)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
                                     vertical: 2,
                                   ),
+                                  margin: const EdgeInsets.only(bottom: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.purple,
                                     borderRadius: BorderRadius.circular(4),
@@ -123,6 +116,13 @@ class _AdminMatchableProductsScreenState
                                     ),
                                   ),
                                 ),
+                              Text(
+                                product['name'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
                             ],
                           ),
                           subtitle: Text(

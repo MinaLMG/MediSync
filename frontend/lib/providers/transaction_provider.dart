@@ -255,4 +255,80 @@ class TransactionProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Revert a completed transaction
+  Future<bool> revertTransaction(
+    String id,
+    Map<String, dynamic> reversalTicket,
+  ) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${Constants.baseUrl}/transaction/$id/revert'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+            body: json.encode(reversalTicket),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to revert transaction';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update an existing reversal ticket
+  Future<bool> updateReversalTicket(
+    String ticketId,
+    Map<String, dynamic> ticketData,
+  ) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse('${Constants.baseUrl}/transaction/reversal/$ticketId'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+            body: json.encode(ticketData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update ticket';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 }

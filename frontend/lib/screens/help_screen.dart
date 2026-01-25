@@ -50,7 +50,7 @@ class HelpScreen extends StatelessWidget {
           _buildCategoryHeader('⚙️ Account Management'),
           _buildFAQItem(
             'How do I edit my pharmacy data?',
-            'Go to "Account" -> "My Account" and click the "Edit" button. Update your info and submit. An Admin will review and approve the changes shortly.',
+            'Go to "Account" -> "My Account" and click the "Edit" button. Update your info and submit. Your request will be processed shortly.',
           ),
           _buildFAQItem(
             'Can I change my password?',

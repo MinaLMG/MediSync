@@ -308,7 +308,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Awaiting Admin approval for your previous update request. New edits will replace the pending one.',
+              'Awaiting approval for your previous update request. New edits will replace the pending one.',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),

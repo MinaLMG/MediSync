@@ -41,7 +41,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
             TextField(
               controller: notesController,
               decoration: const InputDecoration(
-                labelText: 'Admin Notes (Optional)',
+                labelText: 'Reviewer Notes (Optional)',
               ),
             ),
           ],
@@ -142,7 +142,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                               if (s['adminNotes'] != null) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Admin Notes: ${s['adminNotes']}',
+                                  'Reviewer Notes: ${s['adminNotes']}',
                                   style: const TextStyle(
                                     fontStyle: FontStyle.italic,
                                     color: Colors.grey,

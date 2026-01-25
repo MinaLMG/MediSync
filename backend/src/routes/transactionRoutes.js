@@ -7,7 +7,9 @@ const {
     updateTransactionStatus,
     getTransactions,
     assignTransaction,
-    unassignTransaction
+    unassignTransaction,
+    revertTransaction,
+    updateReversalTicket
 } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
@@ -19,6 +21,8 @@ router.get('/matches/:productId', authorize('admin'), getMatchesForProduct);
 router.get('/', authorize('admin', 'delivery'), getTransactions);
 router.post('/', authorize('admin'), createTransaction);
 router.put('/:id/status', authorize('admin'), updateTransactionStatus);
+router.post('/:id/revert', authorize('admin'), revertTransaction);
+router.put('/reversal/:ticketId', authorize('admin'), updateReversalTicket);
 router.put('/:id/assign', authorize('delivery'), assignTransaction);
 router.put('/:id/unassign', authorize('admin'), unassignTransaction);
 

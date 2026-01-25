@@ -150,9 +150,39 @@ exports.createTransaction = async (req, res) => {
         shortage.status = shortage.remainingQuantity === 0 ? 'fulfilled' : 'partially_fulfilled';
         await shortage.save({ session });
 
-        // 4. Create transaction
+        // 4. Generate Serial
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const datePrefix = `${yyyy}${mm}${dd}`;
+
+        // Find latest transaction with this date prefix
+        // We need to query OUTSIDE the session if we haven't locked the collection, 
+        // to avoid phantom reads if strict isolation level. 
+        // But for simplicity and since we are in a transaction, let's use the session.
+        // If high concurrency is expected, a separate counter collection is better.
+        // For now, sorting by serial desc is sufficient.
+        const lastTx = await Transaction.findOne({ serial: { $regex: `^${datePrefix}-` } })
+            .sort({ serial: -1 })
+            .session(session);
+
+        let sequence = 101; // Start at 0101
+        if (lastTx && lastTx.serial) {
+            const parts = lastTx.serial.split('-');
+            if (parts.length === 2) {
+                const lastSeq = parseInt(parts[1], 10);
+                if (!isNaN(lastSeq)) {
+                    sequence = lastSeq + 1;
+                }
+            }
+        }
+        const serial = `${datePrefix}-${String(sequence).padStart(4, '0')}`;
+
+        // 5. Create transaction
         const settings = await Settings.getSettings();
         const transaction = new Transaction({
+            serial, // Add serial
             stockShortage: {
                 shortage: shortageId,
                 quantityTaken
@@ -179,7 +209,7 @@ exports.createTransaction = async (req, res) => {
                 await addNotificationJob(
                     buyer._id.toString(),
                     'transaction',
-                    `A new transaction has been created for your shortage of "${product?.name || 'unknown medicine'}".`,
+                    `Transaction #${serial}: New transaction created for "${product?.name || 'unknown medicine'}".`,
                     {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction'
@@ -196,7 +226,7 @@ exports.createTransaction = async (req, res) => {
                         await addNotificationJob(
                             seller._id.toString(),
                             'transaction',
-                            `New transaction request for "${product?.name || 'unknown medicine'}" from a pharmacy.`,
+                            `Transaction #${serial}: New request for "${product?.name}"`,
                             {
                                 relatedEntity: transaction._id,
                                 relatedEntityType: 'Transaction'
@@ -277,8 +307,9 @@ exports.updateTransactionStatus = async (req, res) => {
             const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
             if (buyerPh) {
-                // current balance - (100+shortage_commision)/100 * transaction
-                buyerPh.balance -= (1 + shortageCommRatio) * transaction.totalAmount;
+                const buyerEffect = -(1 + shortageCommRatio) * transaction.totalAmount;
+                buyerPh.balance += buyerEffect; // += because buyerEffect is negative
+                transaction.stockShortage.balanceEffect = buyerEffect;
                 await buyerPh.save({ session });
 
                 // Emit balance update to buyer's users
@@ -296,23 +327,25 @@ exports.updateTransactionStatus = async (req, res) => {
             }
 
             // Sellers: Add full balance if shortage_fulfillment, else (100 - minComm)%
-            for (const source of transaction.stockExcessSources) {
+            for (let i = 0; i < transaction.stockExcessSources.length; i++) {
+                const source = transaction.stockExcessSources[i];
                 const excess = await StockExcess.findById(source.stockExcess).session(session);
                 const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
                 if (sellerPh) {
+                    let sellerEffect = 0;
                     if (transaction.shortage_fulfillment) {
-                        // Full balance
-                        sellerPh.balance += source.totalAmount;
-                  
+                        sellerEffect = source.totalAmount;
                     } else {
-                        // Use excess-specific sale percentage if it exists, otherwise use system minimum
                         const excessComm = excess.salePercentage;
                         const finalCommRatio = (excessComm !== undefined && excessComm !== null) 
                             ? (excessComm / 100) 
                             : minCommRatio;
                         
-                        sellerPh.balance += (1 - finalCommRatio) * source.totalAmount;
-                     }
+                        sellerEffect = (1 - finalCommRatio) * source.totalAmount;
+                    }
+                    
+                    sellerPh.balance += sellerEffect;
+                    transaction.stockExcessSources[i].balanceEffect = sellerEffect;
                     
                     await sellerPh.save({ session });
 
@@ -507,6 +540,13 @@ exports.getTransactions = async (req, res) => {
                 ]
             })
             .populate('delivery', 'name phone')
+            .populate({
+                path: 'reversalTicket',
+                populate: [
+                    { path: 'punishments.user', select: 'name' },
+                    { path: 'punishments.pharmacy', select: 'name' }
+                ]
+            })
             .sort({ createdAt: -1 });
 
         // Post-fetch filtering for pharmacy owners
@@ -528,5 +568,247 @@ exports.getTransactions = async (req, res) => {
         res.status(200).json({ success: true, count: transactions.length, data: transactions });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Revert a completed transaction (restores stock, automatic balance reversal + punishments)
+// @route   POST /api/transaction/:id/revert
+// @access  Admin
+exports.revertTransaction = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { id } = req.params;
+        const { punishments, description } = req.body; // Array of { userId, amount }
+
+        const { Transaction, StockShortage, StockExcess, Pharmacy, User, ReversalTicket } = require('../models');
+
+        const transaction = await Transaction.findById(id).populate({
+            path: 'stockShortage.shortage',
+            populate: { path: 'pharmacy' }
+        }).populate({
+            path: 'stockExcessSources.stockExcess',
+            populate: { path: 'pharmacy' }
+        }).session(session);
+
+        if (!transaction) throw new Error('Transaction not found');
+        if (transaction.status !== 'completed') throw new Error('Only completed transactions can be reverted');
+        if (transaction.reversalTicket) throw new Error('Transaction already reverted');
+
+        // Validate punishments
+        if (punishments && punishments.length > 0) {
+            for (const p of punishments) {
+                if (p.amount < 0) {
+                    throw new Error('Punishment amount cannot be negative');
+                }
+            }
+        }
+
+        // 1. Restore Stock Quantities
+        for (const source of transaction.stockExcessSources) {
+            const excess = await StockExcess.findById(source.stockExcess._id).session(session);
+            if (excess) {
+                excess.remainingQuantity += source.quantity;
+                if (excess.status === 'sold') excess.status = 'available';
+                await excess.save({ session });
+            }
+        }
+
+        const shortage = await StockShortage.findById(transaction.stockShortage.shortage._id).session(session);
+        if (shortage) {
+            shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
+            shortage.status = shortage.remainingQuantity >= shortage.quantity ? 'active' : 'partially_fulfilled';
+            await shortage.save({ session });
+        }
+
+        // 2. Financial Reversal (Automatic)
+        const { sendToUser } = require('../utils/socketManager');
+
+        // Revert Buyer
+        const buyerPh = await Pharmacy.findById(transaction.stockShortage.shortage.pharmacy._id).session(session);
+        if (buyerPh && transaction.stockShortage.balanceEffect) {
+            buyerPh.balance -= transaction.stockShortage.balanceEffect; // Subtract the effect (which was negative)
+            await buyerPh.save({ session });
+            
+            // Notify buyer users
+            const users = await User.find({ pharmacy: buyerPh._id });
+            for (const user of users) {
+                sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
+            }
+        }
+
+        // Revert Sellers
+        for (const source of transaction.stockExcessSources) {
+            const sellerPh = await Pharmacy.findById(source.stockExcess.pharmacy._id).session(session);
+            if (sellerPh && source.balanceEffect) {
+                sellerPh.balance -= source.balanceEffect; // Subtract the profit given
+                await sellerPh.save({ session });
+
+                // Notify seller users
+                const users = await User.find({ pharmacy: sellerPh._id });
+                for (const user of users) {
+                    sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
+                }
+            }
+        }
+
+        // 3. Apply Punishments
+        if (punishments && punishments.length > 0) {
+            for (const p of punishments) {
+                let pharmacy = null;
+                let targetUser = null;
+
+                // Try to find as User first
+                const user = await User.findById(p.userId).populate('pharmacy').session(session);
+                if (user && user.pharmacy) {
+                    pharmacy = await Pharmacy.findById(user.pharmacy._id).session(session);
+                    targetUser = user._id;
+                } else {
+                    // Try to find as Pharmacy if not a User
+                    const pharm = await Pharmacy.findById(p.userId).session(session);
+                    if (pharm) {
+                        pharmacy = pharm;
+                        // For the ticket, we might still want a user reference. 
+                        // If we only have pharmacy, we can try to find an admin user.
+                        const adminUser = await User.findOne({ pharmacy: pharm._id, role: 'admin' }).session(session);
+                        if (adminUser) targetUser = adminUser._id;
+                    }
+                }
+
+                if (pharmacy) {
+                    pharmacy.balance -= p.amount; // Punishment is deducted
+                    await pharmacy.save({ session });
+                    
+                    // Notify any users of this pharmacy
+                    const pharmUsers = await User.find({ pharmacy: pharmacy._id });
+                    for (const u of pharmUsers) {
+                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                    }
+
+                    // Store resolved references for the ticket
+                    p.resolvedUserId = targetUser;
+                    p.resolvedPharmacyId = pharmacy._id;
+                }
+            }
+        }
+
+        // 4. Create Reversal Ticket
+        const ticket = new ReversalTicket({
+            transaction: transaction._id,
+            punishments: punishments ? punishments
+                .filter(p => p.resolvedPharmacyId) // Ensure we have at least a pharmacy to record
+                .map(p => ({
+                    user: p.resolvedUserId, // May be null if only pharmacy was resolved
+                    pharmacy: p.resolvedPharmacyId,
+                    amount: p.amount
+                })) : [],
+            description: description || 'Automatic reversal of original transaction'
+                
+        });
+        await ticket.save({ session });
+
+        // 5. Update Transaction
+        transaction.reversalTicket = ticket._id;
+        transaction.status = 'cancelled';
+        await transaction.save({ session });
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, data: transaction });
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+};
+
+// @desc    Update a reversal ticket (adjusts punishments and balances)
+// @route   PUT /api/transaction/reversal/:ticketId
+// @access  Admin
+exports.updateReversalTicket = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { ticketId } = req.params;
+        const { punishments, description } = req.body; // New punishment list
+
+        if (punishments && punishments.some(p => p.amount < 0)) {
+            throw new Error('Punishment amount cannot be negative');
+        }
+
+        const { ReversalTicket, Pharmacy, User } = require('../models');
+        const { sendToUser } = require('../utils/socketManager');
+
+        const ticket = await ReversalTicket.findById(ticketId).session(session);
+        if (!ticket) throw new Error('Reversal ticket not found');
+
+        // 1. Revert Old Punishments (Refund the amounts taken)
+        for (const oldP of ticket.punishments) {
+            if (oldP.pharmacy) {
+                const pharmacy = await Pharmacy.findById(oldP.pharmacy).session(session);
+                if (pharmacy) {
+                    pharmacy.balance += oldP.amount; // Add back the deducted amount
+                    await pharmacy.save({ session });
+                    
+                    // Notify users
+                    const users = await User.find({ pharmacy: pharmacy._id });
+                    for (const u of users) {
+                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                    }
+                }
+            }
+        }
+
+        // 2. Apply New Punishments
+        const resolvedPunishments = [];
+        if (punishments && punishments.length > 0) {
+            for (const p of punishments) {
+                let pharmacy = null;
+                let targetUser = null;
+
+                // Resolve User/Pharmacy (same logic as create)
+                const user = await User.findById(p.userId).populate('pharmacy').session(session);
+                if (user && user.pharmacy) {
+                    pharmacy = await Pharmacy.findById(user.pharmacy._id).session(session);
+                    targetUser = user._id;
+                } else {
+                    const pharm = await Pharmacy.findById(p.userId).session(session);
+                    if (pharm) {
+                        pharmacy = pharm;
+                        const adminUser = await User.findOne({ pharmacy: pharm._id, role: 'admin' }).session(session);
+                        if (adminUser) targetUser = adminUser._id;
+                    }
+                }
+
+                if (pharmacy) {
+                    pharmacy.balance -= p.amount; // Deduct new amount
+                    await pharmacy.save({ session });
+
+                    const users = await User.find({ pharmacy: pharmacy._id });
+                    for (const u of users) {
+                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                    }
+
+                    resolvedPunishments.push({
+                        user: targetUser,
+                        pharmacy: pharmacy._id,
+                        amount: p.amount
+                    });
+                }
+            }
+        }
+
+        // 3. Update Ticket
+        ticket.punishments = resolvedPunishments;
+        if (description) ticket.description = description;
+        await ticket.save({ session });
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, data: ticket });
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };

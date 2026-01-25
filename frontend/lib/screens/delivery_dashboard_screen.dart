@@ -429,7 +429,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Transaction #${tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
+                        'Transaction #${tx['serial'] ?? tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       _buildStatusBadge(status),

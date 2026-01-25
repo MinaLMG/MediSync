@@ -13,5 +13,6 @@ module.exports = {
     Settings: require('./Settings'),
     ProductSuggestion: require('./ProductSuggestion'),
     AppSuggestion: require('./AppSuggestion'),
-    DeliveryRequest: require('./DeliveryRequest')
+    DeliveryRequest: require('./DeliveryRequest'),
+    ReversalTicket: require('./ReversalTicket')
 };

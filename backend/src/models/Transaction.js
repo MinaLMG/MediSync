@@ -11,6 +11,9 @@ const transactionSchema = new mongoose.Schema({
             type: Number,
             required: true,
             min: 1
+        },
+        balanceEffect: {
+            type: Number // Positive or negative effect on buyer's balance
         }
     },
     stockExcessSources: [
@@ -34,6 +37,9 @@ const transactionSchema = new mongoose.Schema({
                 type: Number,
                 required: true,
                 min: 0
+            },
+            balanceEffect: {
+                type: Number // Effect on seller's balance
             }
         }
     ],
@@ -52,6 +58,10 @@ const transactionSchema = new mongoose.Schema({
         enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'],
         default: 'pending'
     },
+    serial: {
+        type: String,
+        unique: true
+    },
     commissionRatio: {
         type: Number
     },
@@ -62,6 +72,10 @@ const transactionSchema = new mongoose.Schema({
     delivery: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    reversalTicket: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ReversalTicket'
     }
 }, {
     timestamps: true
