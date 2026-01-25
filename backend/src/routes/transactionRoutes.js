@@ -5,7 +5,9 @@ const {
     getMatchesForProduct,
     createTransaction,
     updateTransactionStatus,
-    getTransactions
+    getTransactions,
+    assignTransaction,
+    unassignTransaction
 } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
@@ -17,5 +19,7 @@ router.get('/matches/:productId', authorize('admin'), getMatchesForProduct);
 router.get('/', authorize('admin', 'delivery'), getTransactions);
 router.post('/', authorize('admin'), createTransaction);
 router.put('/:id/status', authorize('admin'), updateTransactionStatus);
+router.put('/:id/assign', authorize('delivery'), assignTransaction);
+router.put('/:id/unassign', authorize('admin'), unassignTransaction);
 
 module.exports = router;

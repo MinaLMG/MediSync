@@ -123,13 +123,15 @@ class TransactionProvider with ChangeNotifier {
       String url = '${Constants.baseUrl}/transaction';
       if (status != null) url += '?status=$status';
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-      );
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       final data = json.decode(response.body);
 
@@ -153,22 +155,96 @@ class TransactionProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final response = await http
+          .put(
+            Uri.parse('${Constants.baseUrl}/transaction/$id/status'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+            body: json.encode({'status': status}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update status';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Assign Delivery User to Transaction
+  Future<bool> assignTransaction(String id) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse('${Constants.baseUrl}/transaction/$id/assign'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        final updatedTx = data['data'];
+        // Update local list for instant UI response
+        final index = transactions.indexWhere((t) => t['_id'] == id);
+        if (index != -1) {
+          transactions[index] = updatedTx;
+          notifyListeners();
+        }
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to assign transaction';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Unassign Delivery User from Transaction
+  Future<bool> unassignTransaction(String id) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
       final response = await http.put(
-        Uri.parse('${Constants.baseUrl}/transaction/$id/status'),
+        Uri.parse('${Constants.baseUrl}/transaction/$id/unassign'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',
         },
-        body: json.encode({'status': status}),
       );
 
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        fetchTransactions(); // Refresh
         return true;
       } else {
-        errorMessage = data['message'] ?? 'Failed to update status';
+        errorMessage = data['message'] ?? 'Failed to unassign transaction';
         return false;
       }
     } catch (e) {

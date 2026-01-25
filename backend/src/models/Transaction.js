@@ -58,6 +58,10 @@ const transactionSchema = new mongoose.Schema({
     shortage_fulfillment: {
         type: Boolean,
         default: true
+    },
+    delivery: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: true

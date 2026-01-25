@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/auth_provider.dart';
 
 class FollowUpTransactionsScreen extends StatefulWidget {
   final String? initialStatus;
@@ -38,6 +39,11 @@ class _FollowUpTransactionsScreenState
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Status updated to $newStatus')));
+      // Refresh with current filter
+      Provider.of<TransactionProvider>(
+        context,
+        listen: false,
+      ).fetchTransactions(status: selectedStatus);
     }
   }
 
@@ -132,6 +138,27 @@ class _FollowUpTransactionsScreenState
             Text('Buyer: $buyer', style: const TextStyle(color: Colors.blue)),
             Text('Total Qty: ${tx['totalQuantity']}'),
             Text('Total Value: ${tx['totalAmount']} EGP'),
+            if (tx['delivery'] != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.delivery_dining,
+                    size: 14,
+                    color: Colors.teal,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Delivery: ${tx['delivery']['name']}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const Divider(),
             const Text(
               'Sellers:',
@@ -145,96 +172,167 @@ class _FollowUpTransactionsScreenState
             ),
             const SizedBox(height: 12),
             if (tx['status'] != 'completed' && tx['status'] != 'cancelled')
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Column(
                 children: [
-                  if (tx['status'] == 'pending')
-                    TextButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Confirm Accept'),
-                            content: const Text(
-                              'Are you sure you want to accept this transaction?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('No'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (tx['status'] == 'pending')
+                        TextButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Accept'),
+                                content: const Text(
+                                  'Are you sure you want to accept this transaction?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('No'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _updateStatus(tx['_id'], 'accepted');
+                                    },
+                                    child: const Text('Yes, Accept'),
+                                  ),
+                                ],
                               ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _updateStatus(tx['_id'], 'accepted');
-                                },
-                                child: const Text('Yes, Accept'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      child: const Text('Accept'),
-                    ),
-                  if (tx['status'] == 'accepted')
-                    TextButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Confirm Complete'),
-                            content: const Text(
-                              'Are you sure you want to mark this transaction as completed?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('No'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _updateStatus(tx['_id'], 'completed');
-                                },
-                                child: const Text('Yes, Complete'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      child: const Text('Complete'),
-                    ),
-                  TextButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Confirm Cancel'),
-                          content: const Text(
-                            'Are you sure you want to cancel this transaction? All quantities will be returned to their respective pharmacies.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('No'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                _updateStatus(tx['_id'], 'cancelled');
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                              child: const Text('Yes, Cancel'),
-                            ),
-                          ],
+                            );
+                          },
+                          child: const Text('Accept'),
                         ),
-                      );
-                    },
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('Cancel'),
+                      if (tx['status'] == 'accepted')
+                        TextButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Complete'),
+                                content: const Text(
+                                  'Are you sure you want to mark this transaction as completed?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('No'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _updateStatus(tx['_id'], 'completed');
+                                    },
+                                    child: const Text('Yes, Complete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: const Text('Complete'),
+                        ),
+                      TextButton(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Confirm Cancel'),
+                              content: const Text(
+                                'Are you sure you want to cancel this transaction? All quantities will be returned to their respective pharmacies.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('No'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    _updateStatus(tx['_id'], 'cancelled');
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Yes, Cancel'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
                   ),
+                  if (Provider.of<AuthProvider>(
+                            context,
+                            listen: false,
+                          ).userRole ==
+                          'admin' &&
+                      tx['delivery'] != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Detach Delivery'),
+                              content: const Text(
+                                'This will remove the assigned delivery person. The transaction will become available for assignment again.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Close'),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final success =
+                                        await Provider.of<TransactionProvider>(
+                                          context,
+                                          listen: false,
+                                        ).unassignTransaction(tx['_id']);
+                                    if (mounted && success) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Delivery person detached',
+                                          ),
+                                        ),
+                                      );
+                                      // Refresh with current filter
+                                      Provider.of<TransactionProvider>(
+                                        context,
+                                        listen: false,
+                                      ).fetchTransactions(
+                                        status: selectedStatus,
+                                      );
+                                    }
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.orange,
+                                  ),
+                                  child: const Text('Detach'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.person_remove, size: 16),
+                        label: const Text('Detach Delivery'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             Text(

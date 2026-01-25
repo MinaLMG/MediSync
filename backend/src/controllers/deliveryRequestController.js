@@ -17,6 +17,11 @@ exports.createRequest = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Transaction not found' });
         }
 
+        // Check for assignment - if already assigned to someone else
+        if (transaction.delivery && transaction.delivery.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'This transaction is assigned to another delivery user' });
+        }
+
         // Check for existing pending request for this delivery user and transaction
         const existingRequest = await DeliveryRequest.findOne({
             delivery: req.user._id,
@@ -79,8 +84,9 @@ exports.reviewRequest = async (req, res) => {
         request.status = status;
         await request.save();
 
+        const transaction = await Transaction.findById(request.transaction);
+
         if (status === 'approved') {
-            const transaction = await Transaction.findById(request.transaction);
             if (transaction) {
                 if (request.requestType === 'accept') {
                     transaction.status = 'accepted';
@@ -95,6 +101,39 @@ exports.reviewRequest = async (req, res) => {
                     _id: { $ne: request._id }
                 });
             }
+        }
+
+        // Notify Delivery User of the review outcome
+        try {
+            const { addNotificationJob } = require('../utils/queueManager');
+            const outcome = status === 'approved' ? 'approved' : 'rejected';
+            const action = request.requestType === 'accept' ? 'Acceptance' : 'Completion';
+            const txIdMsg = transaction ? ` for Transaction #${transaction._id.toString().slice(-6)}` : '';
+            
+            await addNotificationJob(
+                request.delivery.toString(),
+                'transaction',
+                `Your request for ${action}${txIdMsg} has been ${outcome}.`,
+                {
+                    relatedEntity: request.transaction,
+                    relatedEntityType: 'Transaction'
+                }
+            );
+
+            // If approved, notify about the specific new status too
+            if (status === 'approved' && transaction) {
+                await addNotificationJob(
+                    request.delivery.toString(),
+                    'transaction',
+                    `Transaction #${transaction._id.toString().slice(-6)} is now ${transaction.status}.`,
+                    {
+                        relatedEntity: transaction._id,
+                        relatedEntityType: 'Transaction'
+                    }
+                );
+            }
+        } catch (notifErr) {
+            console.error('Notification error in reviewRequest:', notifErr);
         }
 
         res.status(200).json({ success: true, data: request });

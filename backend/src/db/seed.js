@@ -84,12 +84,7 @@ const seedData = async () => {
                 commercialRegistry: `5678${i}`,
                 taxCard: `9101${i}`,
                 pharmacyLicense: `1122${i}`,
-                address: {
-                    street: `Street ${i}`,
-                    city: 'Maadi',
-                    governorate: random(governorates),
-                    postalCode: '11431'
-                },
+                address: `Maadi - Street ${i}`,
                 location: {
                     type: 'Point',
                     coordinates: [31.2357 + (Math.random() * 0.1), 30.0444 + (Math.random() * 0.1)]
