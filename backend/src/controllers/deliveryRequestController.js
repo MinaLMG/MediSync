@@ -80,7 +80,6 @@ exports.reviewRequest = async (req, res) => {
         if (!request) {
             return res.status(404).json({ success: false, message: 'Request not found' });
         }
-
         request.status = status;
         await request.save();
 

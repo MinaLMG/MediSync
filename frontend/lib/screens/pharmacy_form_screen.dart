@@ -75,10 +75,28 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
                 "Owner's Name (اسم صاحب الصيدلية كما مدون في الرخصه)",
                 Icons.person_outline,
               ),
-              _buildTextField(
-                _nationalIdController,
-                'National ID (بطاقة رقم قومي)',
-                Icons.badge_outlined,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: TextFormField(
+                  controller: _nationalIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'National ID (بطاقة رقم قومي)',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                    border: OutlineInputBorder(),
+                    helperText: 'Must be exactly 14 digits',
+                  ),
+                  keyboardType: TextInputType.number,
+                  maxLength: 14,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'National ID is required';
+                    }
+                    if (!RegExp(r'^\d{14}$').hasMatch(value)) {
+                      return 'National ID must be exactly 14 digits';
+                    }
+                    return null;
+                  },
+                ),
               ),
 
               const SizedBox(height: 16),
