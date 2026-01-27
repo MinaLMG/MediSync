@@ -5,11 +5,15 @@ require('dotenv').config({ path: '.env' });
 const {
     Pharmacy,
     User,
-    Category,
-    Manufacturer,
     Product,
     Volume,
-    HasVolume
+    HasVolume,
+    StockShortage,
+    StockExcess,
+    Transaction,
+    BalanceHistory,
+    AppSuggestion,
+    Notification,
 } = require('../models');
 
 const connectDB = require('./mongoose');
@@ -23,11 +27,15 @@ const seedData = async () => {
         await Promise.all([
             Pharmacy.deleteMany({}),
             User.deleteMany({}),
-            Category.deleteMany({}),
-            Manufacturer.deleteMany({}),
             Product.deleteMany({}),
             Volume.deleteMany({}),
-            HasVolume.deleteMany({})
+            HasVolume.deleteMany({}),
+            StockShortage.deleteMany({}),
+            StockExcess.deleteMany({}),
+            Transaction.deleteMany({}),
+            BalanceHistory.deleteMany({}),
+            AppSuggestion.deleteMany({}),
+            Notification.deleteMany({})
         ]);
         console.log('🧹 Cleared existing data');
 
@@ -77,7 +85,7 @@ const seedData = async () => {
             const pharmacy = await Pharmacy.create({
                 name: `Pharmacy ${i}`,
                 phone: `010000000${i < 10 ? '0' + i : i}`,
-                email: `pharmacy${i}@medisync.com`,
+                email: `pharmacy${i}@medisync.cmom`,
                 ownerName: `Owner ${i}`,
                 nationalId: `290010112345${i < 10 ? '0' + i : i}`,
                 pharmacistCard: `1234${i}`,
@@ -102,7 +110,7 @@ const seedData = async () => {
         await User.create({
             name: 'Super Admin',
             phone: '01000000000',
-            email: 'admin@medisync.com',
+            email: 'a',
             hashedPassword: 'password123', // Will be hashed by pre-save hook
             role: 'admin',
             status: 'active'
@@ -113,7 +121,7 @@ const seedData = async () => {
             await User.create({
                 name: `Manager ${i + 1}`,
                 phone: pharmacies[i].phone, // Using pharmacy phone for simplicity
-                email: `manager${i + 1}@medisync.com`,
+                email: `m${i + 1}`,
                 hashedPassword: 'password123',
                 role: 'pharmacy_owner', 
                 pharmacy: pharmacies[i]._id,
