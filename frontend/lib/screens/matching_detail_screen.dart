@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/settings_provider.dart';
 
 class MatchingDetailScreen extends StatefulWidget {
   final String productId;
@@ -23,11 +24,39 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
   String excessSort = 'Time';
   bool excessDescending = true;
 
+  final TextEditingController _commissionController = TextEditingController();
+  final TextEditingController _buyerCommController = TextEditingController();
+  final TextEditingController _sellerRewardController = TextEditingController();
+
+  bool _isInit = true;
+
   Map<String, dynamic>? selectedShortage;
   int shortageQuantityToFulfill = 0;
 
   // Map of excessId -> chosenQuantity
   Map<String, int> selectedExcesses = {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInit) {
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      if (settings.minimumCommission != 0) {
+        _commissionController.text = settings.minimumCommission.toString();
+        _buyerCommController.text = settings.shortageCommission.toString();
+        _sellerRewardController.text = settings.shortageSellerReward.toString();
+        _isInit = false;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _commissionController.dispose();
+    _buyerCommController.dispose();
+    _sellerRewardController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -62,6 +91,10 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
             a['quantity'] - a['fulfilledQuantity'],
           );
         }
+      } else if (criteria == 'Balance') {
+        final balA = (a['pharmacy']?['balance'] ?? 0) as num;
+        final balB = (b['pharmacy']?['balance'] ?? 0) as num;
+        comparison = balB.compareTo(balA);
       } else {
         comparison = 0;
       }
@@ -84,13 +117,22 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
       }
     });
 
-    final Map<String, dynamic> firstSelectedExcess =
-        (Provider.of<TransactionProvider>(
-                  context,
-                  listen: false,
-                ).currentMatches['excesses']
-                as List)
-            .firstWhere((e) => selectedExcesses.containsKey(e['_id']));
+    // Check if any selected excess is NOT shortage fulfillment
+    final excesses =
+        Provider.of<TransactionProvider>(
+              context,
+              listen: false,
+            ).currentMatches['excesses']
+            as List;
+    final selectedExcessData = excesses
+        .where((e) => selectedExcesses.containsKey(e['_id']))
+        .toList();
+
+    // The transaction-level shortage_fulfillment flag can be true if any of them are SF
+    // But the backend will now prioritize the excess-level flag for logic.
+    final bool isAnySF = selectedExcessData.any(
+      (e) => e['shortage_fulfillment'] == true,
+    );
 
     final success =
         await Provider.of<TransactionProvider>(
@@ -100,8 +142,11 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           'shortageId': selectedShortage!['_id'],
           'quantityTaken': totalAllocated,
           'excessSources': sources,
-          'shortage_fulfillment':
-              firstSelectedExcess['shortage_fulfillment'] ?? true,
+          'shortage_fulfillment': isAnySF,
+          // Ratios (Note: commissionRatio for RE is now handled by backend default if not sent,
+          // but we can still send the current value if desired. Here we follow user request to focus on the other two.)
+          'buyerCommissionRatio': double.tryParse(_buyerCommController.text),
+          'sellerBonusRatio': double.tryParse(_sellerRewardController.text),
         });
 
     if (mounted) {
@@ -178,7 +223,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                     ],
                   ),
                 ),
-                if (selectedShortage != null) _buildSummaryBar(),
+                if (selectedShortage != null) _buildSummaryBar(tp),
               ],
             ),
     );
@@ -217,7 +262,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       child: DropdownButton<String>(
                         value: currentSort,
                         isDense: true,
-                        items: ['Time', 'Quantity']
+                        items: ['Time', 'Quantity', 'Balance']
                             .map(
                               (e) => DropdownMenuItem(
                                 value: e,
@@ -356,12 +401,37 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                     style: TextStyle(color: Colors.white, fontSize: 8),
                   ),
                 ),
-              Text(
-                item['pharmacy']['name'],
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item['pharmacy']['name'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.yellow,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${(item['pharmacy']['balance'] ?? 0).toStringAsFixed(0)} EGP',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               Text(
                 'Vol: ${item['volume']['name']}',
@@ -431,10 +501,18 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
     );
   }
 
-  Widget _buildSummaryBar() {
+  Widget _buildSummaryBar(TransactionProvider tp) {
     final totalAllocated = selectedExcesses.values.fold(0, (sum, q) => sum + q);
     final isReady =
         totalAllocated > 0 && totalAllocated == shortageQuantityToFulfill;
+
+    final excesses = tp.currentMatches['excesses'] as List? ?? [];
+    final selectedExcessData = excesses
+        .where((e) => selectedExcesses.containsKey(e['_id']))
+        .toList();
+    final bool hasSF = selectedExcessData.any(
+      (e) => e['shortage_fulfillment'] == true,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -464,7 +542,35 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          if (hasSF) ...[
+            const SizedBox(height: 12),
+            const Divider(),
+            const Text(
+              'Admin Overrides (Optional)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _ratioField(
+                    controller: _buyerCommController,
+                    label: 'Buyer Comm %',
+                    hint: 'Sh. Fulfill',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ratioField(
+                    controller: _sellerRewardController,
+                    label: 'Seller Rew %',
+                    hint: 'Sh. Fulfill',
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: isReady ? _submitTransaction : null,
             style: ElevatedButton.styleFrom(
@@ -476,6 +582,38 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _ratioField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(fontSize: 12),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            hintStyle: const TextStyle(fontSize: 9),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 8,
+            ),
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      ],
     );
   }
 }

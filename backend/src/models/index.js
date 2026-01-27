@@ -14,5 +14,6 @@ module.exports = {
     ProductSuggestion: require('./ProductSuggestion'),
     AppSuggestion: require('./AppSuggestion'),
     DeliveryRequest: require('./DeliveryRequest'),
-    ReversalTicket: require('./ReversalTicket')
+    ReversalTicket: require('./ReversalTicket'),
+    BalanceHistory: require('./BalanceHistory')
 };

@@ -1,5 +1,16 @@
-const mongoose = require('mongoose');
-
+/**
+ * STOCK EXCESS STATUS MEANING TABLE
+ * ---------------------------------
+ * pending: Awaiting admin approval. Full Edit allowed.
+ * available: Approved/Active. No stock taken or reserved. Edit Sale & Quantity (Decrease only) allowed.
+ * partially_fulfilled: Some stock taken or reserved, but remainingQuantity > 0. Edit Sale & Quantity (Decrease only) allowed.
+ * reserved: All stock reserved (remainingQuantity == 0), but some transactions are still pending/accepted. Edit Sale ONLY.
+ * fulfilled: All stock matched and transitions finished. Bridge status or terminal. Edit Sale ONLY.
+ * sold: Terminal state. All transactions completed. LOCKED.
+ * rejected: Denied by admin. LOCKED.
+ * expired: Expired by date. LOCKED.
+ */
+const mongoose= require('mongoose')
 const stockExcessSchema = new mongoose.Schema({
     pharmacy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -27,8 +38,12 @@ const stockExcessSchema = new mongoose.Schema({
         min: 0
     },
     expiryDate: {
-        type: Date,
+        type: String, // Stored as "MM/YY"
         required: true
+    },
+    rejectionReason: {
+        type: String,
+        required: false
     },
     // The specific price selected by the pharmacist or manually entered
     selectedPrice: {
@@ -58,7 +73,7 @@ const stockExcessSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'available', 'reserved', 'sold', 'expired', 'rejected'],
+        enum: ['pending', 'available', 'reserved', 'sold', 'expired', 'rejected', 'fulfilled', 'partially_fulfilled'],
         default: 'pending'
     }
 }, {

@@ -9,7 +9,12 @@ const settingsSchema = new mongoose.Schema({
     },
     shortageCommission: {
         type: Number,
-        default: 2,
+        default: 5, // Default buyer commission for shortage fulfillment
+        min: 0
+    },
+    shortageSellerReward: {
+        type: Number,
+        default: 2.5, // Default seller reward for shortage fulfillment
         min: 0
     }
 }, {

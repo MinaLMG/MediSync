@@ -15,6 +15,7 @@ import 'suggestions_complaints_screen.dart';
 import 'admin_view_suggestions_screen.dart';
 import 'admin_manage_users_screen.dart';
 import '../providers/app_suggestion_provider.dart';
+import 'balance_history_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -113,6 +114,11 @@ class _HomeTabState extends State<HomeTab> {
         'icon': Icons.lightbulb_outline,
         'color': Colors.teal,
       },
+      {
+        'title': 'Balance History',
+        'icon': Icons.account_balance_wallet,
+        'color': Colors.amber[800]!,
+      },
       if (isAdmin)
         {
           'title': 'Manage Users',
@@ -135,7 +141,7 @@ class _HomeTabState extends State<HomeTab> {
           Container(
             height: 40,
             width: double.infinity,
-            color: Colors.red[800],
+            color: Colors.red[800] ?? Colors.red,
             child: Row(
               children: [
                 Container(
@@ -196,67 +202,6 @@ class _HomeTabState extends State<HomeTab> {
                           },
                         ),
                 ),
-              ],
-            ),
-          ),
-
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: const InputDecoration(
-                      icon: Icon(Icons.search),
-                      border: InputBorder.none,
-                      hintText: 'Search for product (* for wildcard)',
-                      suffixIcon: Icon(Icons.qr_code_scanner),
-                    ),
-                  ),
-                ),
-                if (_searchQuery.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 200),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: filteredProducts.isEmpty
-                        ? const ListTile(title: Text('No matches found'))
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: filteredProducts.length,
-                            itemBuilder: (context, index) {
-                              final p = filteredProducts[index];
-                              return ListTile(
-                                leading: const Icon(Icons.medication),
-                                title: Text(p['name']),
-                                subtitle: const Text('Tap to view details'),
-                                onTap: () {
-                                  // Clear search or navigate
-                                  setState(() => _searchQuery = '');
-                                  FocusScope.of(context).unfocus();
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -327,9 +272,9 @@ class _HomeTabState extends State<HomeTab> {
 
                   return _buildMenuCard(
                     context,
-                    item['title'],
-                    item['icon'],
-                    item['color'],
+                    item['title'] ?? 'Menu Item',
+                    item['icon'] ?? Icons.help,
+                    item['color'] ?? Colors.blue,
                     badgeCount: badgeCount,
                   );
                 },
@@ -346,11 +291,13 @@ class _HomeTabState extends State<HomeTab> {
     BuildContext context,
     String title,
     IconData icon,
-    Color color, {
+    Color? color, {
     int badgeCount = 0,
   }) {
     final isAdmin =
         Provider.of<AuthProvider>(context, listen: false).userRole == 'admin';
+
+    final effectiveColor = color ?? Colors.blue;
 
     return Card(
       elevation: 4,
@@ -413,6 +360,13 @@ class _HomeTabState extends State<HomeTab> {
                 builder: (context) => const AdminManageUsersScreen(),
               ),
             );
+          } else if (title == 'Balance History') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BalanceHistoryScreen(),
+              ),
+            );
           } else {
             ScaffoldMessenger.of(
               context,
@@ -426,13 +380,13 @@ class _HomeTabState extends State<HomeTab> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: effectiveColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(icon, size: 32, color: color),
+                  Icon(icon, size: 32, color: effectiveColor),
                   if (badgeCount > 0)
                     Positioned(
                       right: -5,

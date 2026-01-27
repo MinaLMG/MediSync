@@ -227,7 +227,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
+    Color color = Colors.orange;
     switch (status) {
       case 'approved':
         color = Colors.green;
@@ -235,8 +235,9 @@ class _StatusBadge extends StatelessWidget {
       case 'rejected':
         color = Colors.red;
         break;
-      default:
+      case 'pending':
         color = Colors.orange;
+        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -15,8 +15,11 @@ class SettingsProvider with ChangeNotifier {
 
   double get minCommission =>
       (_settings?['minimumCommission'] ?? 10.0).toDouble();
+  double get minimumCommission => minCommission;
   double get shortageCommission =>
-      (_settings?['shortageCommission'] ?? 2.0).toDouble();
+      (_settings?['shortageCommission'] ?? 5.0).toDouble();
+  double get shortageSellerReward =>
+      (_settings?['shortageSellerReward'] ?? 2.5).toDouble();
 
   Future<void> fetchSettings() async {
     _isLoading = true;

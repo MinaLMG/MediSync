@@ -18,7 +18,7 @@ exports.createShortage = async (req, res) => {
         const existingExcess = await StockExcess.findOne({
             pharmacy: req.user.pharmacy,
             product: productId,
-            status: { $in: ['pending', 'available'] }
+            status: { $in: ['pending', 'available', 'partially_fulfilled'] }
         });
 
         if (existingExcess) {
@@ -88,15 +88,42 @@ exports.updateShortage = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to update this shortage' });
         }
 
-        if (shortage.status !== 'active') {
+        if (shortage.status !== 'active' && shortage.status !== 'partially_fulfilled') {
              return res.status(400).json({ success: false, message: 'Cannot update non-active shortage' });
         }
 
-        const qtyDiff = (quantity || shortage.quantity) - shortage.quantity;
-        shortage.quantity = quantity || shortage.quantity;
-        shortage.remainingQuantity += qtyDiff;
+        // Immutability Check
+        const { product, volume } = req.body;
+        if (product && product !== shortage.product.toString()) {
+            return res.status(400).json({ success: false, message: 'Product cannot be modified' });
+        }
+        if (volume && volume !== shortage.volume.toString()) {
+            return res.status(400).json({ success: false, message: 'Volume cannot be modified' });
+        }
+
+        const fulfilled = shortage.quantity - shortage.remainingQuantity;
+
+        if (quantity !== undefined) {
+            // Rule: Quantity can only be DECREASED
+            if (quantity > shortage.quantity) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Quantity can only be decreased to prevent exploitation.' 
+                });
+            }
+            if (quantity < fulfilled) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `New quantity (${quantity}) cannot be less than already fulfilled quantity (${fulfilled}).` 
+                });
+            }
+            shortage.quantity = quantity;
+            shortage.remainingQuantity = quantity - fulfilled;
+        }
+
         shortage.notes = notes || shortage.notes;
 
+        await exports.syncShortageStatus(shortage);
         await shortage.save();
 
         res.status(200).json({ success: true, data: shortage });
@@ -116,6 +143,22 @@ exports.deleteShortage = async (req, res) => {
 
         if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
              return res.status(403).json({ success: false, message: 'Not authorized to delete this shortage' });
+        }
+
+        // Deletion constraint: Only active shortages with zero fulfillment can be deleted
+        const fulfilled = shortage.quantity - shortage.remainingQuantity;
+        if (fulfilled > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Cannot delete shortage that has already been matched/fulfilled.' 
+            });
+        }
+
+        if (shortage.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete shortage in ${shortage.status} state.`
+            });
         }
 
         await shortage.deleteOne();
@@ -144,5 +187,19 @@ exports.getGlobalActiveShortages = async (req, res) => {
     }
 };
 
+
+// Helper to sync shortage status based on consistency
+exports.syncShortageStatus = async (shortage) => {
+    if (shortage.remainingQuantity === 0) {
+        shortage.status = 'fulfilled';
+    } else if (shortage.remainingQuantity < shortage.quantity) {
+        shortage.status = 'partially_fulfilled';
+    } else {
+        // Only move to active if it's not already cancelled
+        if (shortage.status !== 'cancelled') {
+            shortage.status = 'active';
+        }
+    }
+};
 
 // End of file

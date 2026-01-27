@@ -76,6 +76,19 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
                         children: [
                           TextButton(
                             onPressed: () {
+                              final int total = item['quantity'] ?? 0;
+                              final int remaining =
+                                  item['remainingQuantity'] ?? 0;
+                              if (total - remaining > 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cannot delete shortage that has already been partially fulfilled.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(

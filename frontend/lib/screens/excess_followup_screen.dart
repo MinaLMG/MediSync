@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../providers/excess_provider.dart';
+import 'add_excess_screen.dart';
 
 class ExcessFollowUpScreen extends StatefulWidget {
   const ExcessFollowUpScreen({super.key});
@@ -81,17 +81,19 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
           itemBuilder: (context, index) {
             final item = provider.pendingExcesses[index];
             // Highlighting Logic
-            final expiryDate = DateTime.parse(item['expiryDate']);
-            final isNearExpiry =
-                expiryDate.difference(DateTime.now()).inDays <
-                180; // < 6 months
+            final expiryStr = item['expiryDate'];
             final isNewPrice = item['isNewPrice'] == true;
             final isShortageFulfillment = item['shortage_fulfillment'] == true;
+            final isRejected = item['status'] == 'rejected';
 
             Color cardColor = Colors.white;
-            if (isNewPrice) cardColor = Colors.blue[50]!;
-            if (isShortageFulfillment)
-              cardColor = Colors.purple[50]!; // Shortage Fulfillment Highlight
+            if (isRejected) {
+              cardColor = Colors.red[50]!;
+            } else if (isNewPrice) {
+              cardColor = Colors.blue[50]!;
+            } else if (isShortageFulfillment) {
+              cardColor = Colors.purple[50]!;
+            }
 
             return Card(
               color: cardColor,
@@ -167,14 +169,28 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                     Text('Quantity: ${item['originalQuantity']}'),
 
                     Text(
-                      'Expiry: ${DateFormat('yyyy-MM-dd').format(expiryDate)}',
-                      style: TextStyle(
-                        color: isNearExpiry ? Colors.red : Colors.black,
-                        fontWeight: isNearExpiry
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+                      'Expiry: $expiryStr',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
+
+                    if (isRejected && item['rejectionReason'] != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Rejection Reason: ${item['rejectionReason']}',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const Divider(),
                     Row(
@@ -182,6 +198,19 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                       children: [
                         TextButton(
                           onPressed: () {
+                            final int total = item['originalQuantity'] ?? 0;
+                            final int remaining =
+                                item['remainingQuantity'] ?? 0;
+                            if (total - remaining > 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Cannot delete excess where stock has already been taken.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
                             showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
@@ -212,6 +241,71 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             foregroundColor: Colors.red,
                           ),
                           child: const Text('Delete'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AddExcessScreen(initialData: item),
+                              ),
+                            ).then((_) {
+                              if (mounted) {
+                                provider.fetchPendingExcesses();
+                                provider.fetchAvailableExcesses();
+                              }
+                            });
+                          },
+                          child: const Text('Edit'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final reasonController = TextEditingController();
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Reject Excess Offer'),
+                                content: TextField(
+                                  controller: reasonController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Rejection Reason',
+                                    hintText:
+                                        'e.g., Price too high, Expiry too near',
+                                  ),
+                                  maxLines: 2,
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      if (reasonController.text.trim().isEmpty)
+                                        return;
+                                      Navigator.pop(ctx);
+                                      provider.rejectExcess(
+                                        item['_id'],
+                                        reasonController.text.trim(),
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Reject'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Reject'),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -272,36 +366,163 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
           itemCount: provider.availableExcesses.length,
           itemBuilder: (context, index) {
             final item = provider.availableExcesses[index];
+            // Highlighting Logic
+            final expiryStr = item['expiryDate'];
+            final isShortageFulfillment = item['shortage_fulfillment'] == true;
+
             return Card(
               margin: const EdgeInsets.all(8.0),
-              child: ListTile(
-                title: Text(item['product']['name'] ?? 'Unknown'),
-                subtitle: Column(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Pharmacy: ${item['pharmacy']['name']}'),
-                    Text('Price: ${item['selectedPrice']} EGP'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item['product']['name'] ?? 'Unknown Product',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            item['status'] == 'partially_fulfilled'
+                                ? 'Partially Taken'
+                                : 'Available',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          backgroundColor:
+                              item['status'] == 'partially_fulfilled'
+                              ? Colors.orange[100]
+                              : Colors.green[100],
+                          padding: EdgeInsets.zero,
+                          avatar: Icon(
+                            item['status'] == 'partially_fulfilled'
+                                ? Icons.pending_actions
+                                : Icons.check_circle,
+                            color: item['status'] == 'partially_fulfilled'
+                                ? Colors.orange
+                                : Colors.green,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text('${item['pharmacy']['name']}'),
+                    const SizedBox(height: 8),
+
+                    if (isShortageFulfillment)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.purple,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Shortage Fulfillment',
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+
+                    // Always show percentage if available
                     if (item['salePercentage'] != null)
                       Text(
-                        'Discount: ${item['salePercentage'].toStringAsFixed(1)}%',
+                        '${item['salePercentage'].toStringAsFixed(1)}% Off',
                         style: const TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+
+                    Text('Price: ${item['selectedPrice']} EGP'),
                     Text(
                       'Remaining: ${item['remainingQuantity']}/${item['originalQuantity']}',
                     ),
+
+                    Text(
+                      'Expiry: $expiryStr',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            final int total = item['originalQuantity'] ?? 0;
+                            final int remaining =
+                                item['remainingQuantity'] ?? 0;
+                            if (total - remaining > 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Cannot delete available excess where stock has already been taken.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirm Delete'),
+                                content: const Text(
+                                  'Are you sure you want to delete this available excess?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      provider.deleteExcess(item['_id']);
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AddExcessScreen(initialData: item),
+                              ),
+                            ).then((_) {
+                              if (mounted) {
+                                provider.fetchPendingExcesses();
+                                provider.fetchAvailableExcesses();
+                              }
+                            });
+                          },
+                          child: const Text('Edit'),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
-                trailing: Chip(
-                  label: const Text('Available'),
-                  backgroundColor: Colors.green[100],
-                  avatar: const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 18,
-                  ),
                 ),
               ),
             );

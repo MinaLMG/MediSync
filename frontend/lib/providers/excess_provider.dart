@@ -142,6 +142,39 @@ class ExcessProvider with ChangeNotifier {
     return await _performAction('/excess/$id/approve', 'PUT');
   }
 
+  // Reject Excess
+  Future<bool> rejectExcess(String id, String reason) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(Constants.tokenKey);
+
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/excess/$id/reject'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'rejectionReason': reason}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        fetchPendingExcesses();
+        fetchAvailableExcesses();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Rejection failed';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Delete Excess
   Future<bool> deleteExcess(String id) async {
     return await _performAction('/excess/$id', 'DELETE');

@@ -65,6 +65,12 @@ const transactionSchema = new mongoose.Schema({
     commissionRatio: {
         type: Number
     },
+    buyerCommissionRatio: {
+        type: Number
+    },
+    sellerBonusRatio: {
+        type: Number
+    },
     shortage_fulfillment: {
         type: Boolean,
         default: true

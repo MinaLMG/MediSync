@@ -6,6 +6,7 @@ import 'add_shortage_screen.dart';
 import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/order_provider.dart';
+import '../providers/auth_provider.dart';
 
 class OrdersHistoryScreen extends StatefulWidget {
   const OrdersHistoryScreen({super.key});
@@ -220,12 +221,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
               ),
               if (isExcess) ...[
                 _detailRow('Price', '${item['selectedPrice']} EGP'),
-                _detailRow(
-                  'Expiry Date',
-                  DateFormat(
-                    'yyyy-MM-dd',
-                  ).format(DateTime.parse(item['expiryDate'])),
-                ),
+                _detailRow('Expiry Date', item['expiryDate'] ?? 'N/A'),
                 if (item['salePercentage'] != null) ...[
                   const Divider(),
                   const Text(
@@ -250,6 +246,37 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                 color: _getStatusColor(item['displayStatus']),
                 isBold: true,
               ),
+
+              if (item['displayStatus'] == 'rejected' &&
+                  item['rejectionReason'] != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    border: Border.all(color: Colors.red[200]!),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'REJECTION REASON:',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item['rejectionReason'],
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               if (item['notes'] != null &&
                   item['notes'].toString().isNotEmpty) ...[
@@ -276,30 +303,50 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
           ),
           if (item['displayStatus'] == 'pending' ||
               item['displayStatus'] == 'active' ||
-              item['displayStatus'] == 'available') ...[
+              item['displayStatus'] == 'available' ||
+              item['displayStatus'] == 'rejected') ...[
+            if (item['displayStatus'] != 'rejected' ||
+                Provider.of<AuthProvider>(context, listen: false).userRole ==
+                    'admin')
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => isExcess
+                          ? AddExcessScreen(initialData: item)
+                          : AddShortageScreen(initialData: item),
+                    ),
+                  ).then((_) {
+                    if (context.mounted) {
+                      Provider.of<OrderProvider>(
+                        context,
+                        listen: false,
+                      ).fetchMyOrders();
+                    }
+                  });
+                },
+                child: const Text('Edit'),
+              ),
             TextButton(
               onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => isExcess
-                        ? AddExcessScreen(initialData: item)
-                        : AddShortageScreen(initialData: item),
-                  ),
-                ).then((_) {
-                  if (context.mounted) {
-                    Provider.of<OrderProvider>(
-                      context,
-                      listen: false,
-                    ).fetchMyOrders();
-                  }
-                });
+                final int total = isExcess
+                    ? (item['originalQuantity'] ?? 0)
+                    : (item['quantity'] ?? 0);
+                final int remaining = item['remainingQuantity'] ?? 0;
+                if (total - remaining > 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Cannot delete ${isExcess ? 'excess' : 'shortage'} that has already been ${isExcess ? 'taken' : 'fulfilled'}.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                _confirmDelete(context, item);
               },
-              child: const Text('Edit'),
-            ),
-            TextButton(
-              onPressed: () => _confirmDelete(context, item),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Delete'),
             ),

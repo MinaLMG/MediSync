@@ -322,6 +322,21 @@ class _FollowUpTransactionsScreenState
                         ),
                         child: const Text('Cancel'),
                       ),
+                      if (Provider.of<AuthProvider>(
+                                context,
+                                listen: false,
+                              ).userRole ==
+                              'admin' &&
+                          tx['status'] != 'completed' &&
+                          tx['status'] != 'cancelled')
+                        TextButton.icon(
+                          onPressed: () => _showEditRatiosDialog(tx),
+                          icon: const Icon(Icons.percent, size: 16),
+                          label: const Text(
+                            'Edit Ratios',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
                     ],
                   ),
                   if (Provider.of<AuthProvider>(
@@ -442,16 +457,9 @@ class _FollowUpTransactionsScreenState
   }
 
   void _showEditTicketDialog(dynamic tx) {
-    // We assume tx has the reversalTicket object populated or we might need to fetch it.
-    // If population is not deep enough, we might only have ID.
-    // For now, let's assume if it's not null, it's populated.
-    // If it's just ID, we would need to fetch it, but let's try to use what we have.
     final ticket = tx['reversalTicket'];
 
-    // Check if ticket is just an ID string
     if (ticket is String) {
-      // We can't edit it easily without fetching. show error or simple dialog.
-      // Ideally backend population handles this.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -464,31 +472,23 @@ class _FollowUpTransactionsScreenState
 
     showDialog(
       context: context,
-      builder: (ctx) => _ReversalPunishmentDialog(
+      builder: (ctx) => _ReversalExpensesDialog(
         tx: tx,
-        initialPunishments:
-            (ticket['punishments'] as List?)
+        initialExpenses:
+            (ticket['expenses'] as List?)
                 ?.map(
                   (p) => {
-                    'userId':
-                        p['user']?['_id'] ??
-                        p['pharmacy']?['_id'], // Prefer User ID, fallback to Pharmacy ID for matching
-                    // We need a display name. If user is populated, use name. If pharmacy, use pharmacy name.
-                    // This might be tricky if population is partial.
-                    'pharmacyName':
-                        'Existing Punishment', // Placeholder, hard to reconstruct name without deep population
+                    'userId': p['user']?['_id'] ?? p['pharmacy']?['_id'],
+                    'pharmacyName': 'Existing Expense',
                     'amount': (p['amount'] as num).toDouble(),
                   },
                 )
                 .toList() ??
             [],
         initialDescription: ticket['description'],
-        isEditing: true, // New flag to handle update mode
-        onConfirm: (punishments, description) async {
-          final updateData = {
-            'punishments': punishments,
-            'description': description,
-          };
+        isEditing: true,
+        onConfirm: (expenses, description) async {
+          final updateData = {'expenses': expenses, 'description': description};
 
           final success = await Provider.of<TransactionProvider>(
             context,
@@ -523,13 +523,10 @@ class _FollowUpTransactionsScreenState
   void _showRevertDialog(dynamic tx) {
     showDialog(
       context: context,
-      builder: (ctx) => _ReversalPunishmentDialog(
+      builder: (ctx) => _ReversalExpensesDialog(
         tx: tx,
-        onConfirm: (punishments, description) async {
-          final ticket = {
-            'punishments': punishments,
-            'description': description,
-          };
+        onConfirm: (expenses, description) async {
+          final ticket = {'expenses': expenses, 'description': description};
 
           final success = await Provider.of<TransactionProvider>(
             context,
@@ -599,37 +596,108 @@ class _FollowUpTransactionsScreenState
       ),
     );
   }
+
+  void _showEditRatiosDialog(dynamic tx) {
+    // commissionRatio is 0-1 range in backend, so multiply by 100 for percentage
+    final double buyerComm = (tx['buyerCommissionRatio'] ?? 0.0) * 100;
+    final double sellerRew = (tx['sellerBonusRatio'] ?? 0.0) * 100;
+
+    final buyerCommController = TextEditingController(
+      text: buyerComm.toStringAsFixed(1),
+    );
+    final sellerRewController = TextEditingController(
+      text: sellerRew.toStringAsFixed(1),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Transaction Ratios'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: buyerCommController,
+              decoration: const InputDecoration(
+                labelText: 'Buyer Commission % (Sh. Fulfill)',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: sellerRewController,
+              decoration: const InputDecoration(
+                labelText: 'Seller Reward % (Sh. Fulfill)',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final data = {
+                'commissionRatio': null,
+                'buyerCommissionRatio': double.tryParse(
+                  buyerCommController.text,
+                ),
+                'sellerBonusRatio': double.tryParse(sellerRewController.text),
+              };
+              Navigator.pop(ctx);
+              final success = await Provider.of<TransactionProvider>(
+                context,
+                listen: false,
+              ).updateTransactionRatios(tx['_id'], data);
+              if (mounted && success) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Ratios updated')));
+                Provider.of<TransactionProvider>(
+                  context,
+                  listen: false,
+                ).fetchTransactions(status: selectedStatus);
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _ReversalPunishmentDialog extends StatefulWidget {
+class _ReversalExpensesDialog extends StatefulWidget {
   final dynamic tx;
   final Function(List<Map<String, dynamic>>, String) onConfirm;
-  final List<Map<String, dynamic>>? initialPunishments;
+  final List<Map<String, dynamic>>? initialExpenses;
   final String? initialDescription;
   final bool isEditing;
 
-  const _ReversalPunishmentDialog({
+  const _ReversalExpensesDialog({
     required this.tx,
     required this.onConfirm,
-    this.initialPunishments,
+    this.initialExpenses,
     this.initialDescription,
     this.isEditing = false,
   });
 
   @override
-  State<_ReversalPunishmentDialog> createState() =>
-      _ReversalPunishmentDialogState();
+  State<_ReversalExpensesDialog> createState() =>
+      _ReversalExpensesDialogState();
 }
 
-class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
-  final List<Map<String, dynamic>> _punishments = [];
+class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
+  final List<Map<String, dynamic>> _expenses = [];
   final _descriptionController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialPunishments != null) {
-      _punishments.addAll(widget.initialPunishments!);
+    if (widget.initialExpenses != null) {
+      _expenses.addAll(widget.initialExpenses!);
     }
     if (widget.initialDescription != null) {
       _descriptionController.text = widget.initialDescription!;
@@ -646,7 +714,7 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
       title: Text(
         widget.isEditing
             ? 'Edit Reversal Ticket'
-            : 'Revert Transaction & Punishment',
+            : 'Revert Transaction & Expenses',
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -672,7 +740,7 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
               const Divider(),
             ],
             const Text(
-              'INVOLVED PARTIES (Select to Punish):',
+              'INVOLVED PARTIES (Select to Add Expense):',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
@@ -707,7 +775,7 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
         ),
         ElevatedButton(
           onPressed: () =>
-              widget.onConfirm(_punishments, _descriptionController.text),
+              widget.onConfirm(_expenses, _descriptionController.text),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isEditing ? Colors.blue : Colors.red,
             foregroundColor: Colors.white,
@@ -719,10 +787,10 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
   }
 
   Widget _buildPartyItem(dynamic pharmacy, String role, String pharmacyId) {
-    final existingIndex = _punishments.indexWhere(
+    final existingIndex = _expenses.indexWhere(
       (p) => p['userId'] == pharmacyId,
     );
-    final isPunished = existingIndex != -1;
+    final isExpenseAdded = existingIndex != -1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -730,7 +798,7 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(8),
-        color: isPunished ? Colors.red[50] : Colors.white,
+        color: isExpenseAdded ? Colors.red[50] : Colors.white,
       ),
       child: Column(
         children: [
@@ -754,20 +822,24 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
                   ],
                 ),
               ),
-              if (!isPunished)
+              if (!isExpenseAdded)
                 TextButton.icon(
                   onPressed: () {
                     setState(() {
-                      _punishments.add({
+                      _expenses.add({
                         'pharmacyName': pharmacy['name'],
                         'userId': pharmacyId,
                         'amount': 0.0,
                       });
                     });
                   },
-                  icon: const Icon(Icons.gavel, size: 16, color: Colors.red),
+                  icon: const Icon(
+                    Icons.money_off,
+                    size: 16,
+                    color: Colors.red,
+                  ),
                   label: const Text(
-                    'Punish',
+                    'Add Expense',
                     style: TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 )
@@ -776,13 +848,13 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
                   icon: const Icon(Icons.close, color: Colors.grey, size: 20),
                   onPressed: () {
                     setState(() {
-                      _punishments.removeAt(existingIndex);
+                      _expenses.removeAt(existingIndex);
                     });
                   },
                 ),
             ],
           ),
-          if (isPunished)
+          if (isExpenseAdded)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Row(
@@ -797,12 +869,12 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
                     child: TextField(
                       controller:
                           TextEditingController(
-                              text: _punishments[existingIndex]['amount']
+                              text: _expenses[existingIndex]['amount']
                                   .toString(),
                             )
                             ..selection = TextSelection.fromPosition(
                               TextPosition(
-                                offset: _punishments[existingIndex]['amount']
+                                offset: _expenses[existingIndex]['amount']
                                     .toString()
                                     .length,
                               ),
@@ -818,7 +890,7 @@ class _ReversalPunishmentDialogState extends State<_ReversalPunishmentDialog> {
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (val) {
-                        _punishments[existingIndex]['amount'] =
+                        _expenses[existingIndex]['amount'] =
                             double.tryParse(val) ?? 0.0;
                       },
                     ),

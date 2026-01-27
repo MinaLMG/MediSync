@@ -17,7 +17,7 @@ exports.getSettings = async (req, res) => {
 // @access  Admin
 exports.updateSettings = async (req, res) => {
     try {
-        const { minimumCommission, shortageCommission } = req.body;
+        const { minimumCommission, shortageCommission, shortageSellerReward } = req.body;
         
         const settings = await Settings.getSettings();
 
@@ -39,6 +39,16 @@ exports.updateSettings = async (req, res) => {
                 });
             }
             settings.shortageCommission = shortageCommission;
+        }
+
+        if (shortageSellerReward !== undefined) {
+            if (shortageSellerReward < 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Shortage Seller Reward cannot be negative' 
+                });
+            }
+            settings.shortageSellerReward = shortageSellerReward;
         }
 
         await settings.save();

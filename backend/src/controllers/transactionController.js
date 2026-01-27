@@ -1,6 +1,8 @@
 const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User } = require('../models');
 const mongoose = require('mongoose');
 const { addNotificationJob } = require('../utils/queueManager');
+const { syncExcessStatus } = require('./excessController');
+const { syncShortageStatus } = require('./shortageController');
 
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
@@ -15,7 +17,7 @@ exports.getMatchableProducts = async (req, res) => {
 
         // Find products with available excesses
         const excesses = await StockExcess.aggregate([
-            { $match: { status: 'available', remainingQuantity: { $gt: 0 } } },
+            { $match: { status: { $in: ['available', 'partially_fulfilled'] }, remainingQuantity: { $gt: 0 } } },
             { $group: { 
                 _id: "$product", 
                 volumes: { $addToSet: "$volume" },
@@ -64,13 +66,13 @@ exports.getMatchesForProduct = async (req, res) => {
         const shortages = await StockShortage.find({
             product: productId,
             remainingQuantity: { $gt: 0 }
-        }).populate('pharmacy', 'name').populate('volume', 'name');
+        }).populate('pharmacy', 'name balance').populate('volume', 'name');
 
         const excesses = await StockExcess.find({
             product: productId,
-            status: 'available',
+            status: { $in: ['available', 'partially_fulfilled'] },
             remainingQuantity: { $gt: 0 }
-        }).populate('pharmacy', 'name').populate('volume', 'name');
+        }).populate('pharmacy', 'name balance').populate('volume', 'name');
 
         res.status(200).json({
             success: true,
@@ -92,7 +94,7 @@ exports.createTransaction = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { shortageId, quantityTaken, excessSources } = req.body;
+        const { shortageId, quantityTaken, excessSources, buyerCommissionRatio, sellerBonusRatio, commissionRatio } = req.body;
 
         // 1. Check shortage
         const shortage = await StockShortage.findById(shortageId).session(session);
@@ -118,15 +120,13 @@ exports.createTransaction = async (req, res) => {
         // 2. Check and update excesses
         for (const source of excessSources) {
             const excess = await StockExcess.findById(source.stockExcessId).session(session);
-            if (!excess || excess.status !== 'available' || excess.remainingQuantity < source.quantity) {
+            if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
                 throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
             }
 
             // Deduct from excess
             excess.remainingQuantity -= source.quantity;
-            if (excess.remainingQuantity === 0) {
-                excess.status = 'sold';
-            }
+            await syncExcessStatus(excess, session);
             await excess.save({ session });
 
             const amount = source.quantity * excess.selectedPrice;
@@ -147,7 +147,7 @@ exports.createTransaction = async (req, res) => {
 
         // 3. Update shortage
         shortage.remainingQuantity -= quantityTaken;
-        shortage.status = shortage.remainingQuantity === 0 ? 'fulfilled' : 'partially_fulfilled';
+        await syncShortageStatus(shortage);
         await shortage.save({ session });
 
         // 4. Generate Serial
@@ -192,7 +192,9 @@ exports.createTransaction = async (req, res) => {
             totalAmount,
             status: 'pending',
             shortage_fulfillment: req.body.shortage_fulfillment !== undefined ? req.body.shortage_fulfillment : true,
-            commissionRatio: settings.minimumCommission / 100 // Snapshot
+            commissionRatio: commissionRatio !== undefined ? commissionRatio / 100 : settings.minimumCommission / 100, // Default snapshot for real excess
+            buyerCommissionRatio: buyerCommissionRatio !== undefined ? buyerCommissionRatio / 100 : settings.shortageCommission / 100,
+            sellerBonusRatio: sellerBonusRatio !== undefined ? sellerBonusRatio / 100 : settings.shortageSellerReward / 100
         });
 
         await transaction.save({ session });
@@ -276,9 +278,7 @@ exports.updateTransactionStatus = async (req, res) => {
                 const excess = await StockExcess.findById(source.stockExcess).session(session);
                 if (excess) {
                     excess.remainingQuantity += source.quantity;
-                    if (excess.status === 'sold' || excess.status === 'reserved') {
-                        excess.status = 'available';
-                    }
+                    await syncExcessStatus(excess, session);
                     await excess.save({ session });
                 }
             }
@@ -287,87 +287,158 @@ exports.updateTransactionStatus = async (req, res) => {
             const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             if (shortage) {
                 shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-                
-                if (shortage.remainingQuantity >= shortage.quantity) {
-                    shortage.status = 'active';
-                } else {
-                    shortage.status = 'partially_fulfilled';
-                }
+                await syncShortageStatus(shortage);
                 await shortage.save({ session });
             }
         } else if (status === 'completed') {
-            // Financial logic: Balance Transfer
+            const Settings = require('../models/Settings');
+            const BalanceHistory = require('../models/BalanceHistory');
             const settings = await Settings.getSettings();
-            const minCommRatio = settings.minimumCommission / 100;
-            const shortageCommRatio = settings.shortageCommission / 100;
-            
-            transaction.commissionRatio = minCommRatio; // Update snapshot to actual at completion if needed, or keep original
+            const systemMinCommRatio = settings.minimumCommission / 100;
 
-            // Buyer: Deduct (100 + shortageCommission)%
             const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
-            if (buyerPh) {
-                const buyerEffect = -(1 + shortageCommRatio) * transaction.totalAmount;
-                buyerPh.balance += buyerEffect; // += because buyerEffect is negative
-                transaction.stockShortage.balanceEffect = buyerEffect;
-                await buyerPh.save({ session });
 
-                // Emit balance update to buyer's users
-                try {
-                    const { sendToUser } = require('../utils/socketManager');
-                    const buyerUsers = await mongoose.model('User').find({ pharmacy: buyerPh._id });
-                    for (const user of buyerUsers) {
-                        sendToUser(user._id.toString(), 'balanceUpdate', {
-                            balance: buyerPh.balance
-                        });
-                    }
-                } catch (err) {
-                    console.error('Error emitting balance update to buyer:', err);
-                }
-            }
+            let totalBuyerEffect = 0;
+            let buyerDetailsList = [];
 
-            // Sellers: Add full balance if shortage_fulfillment, else (100 - minComm)%
+            // Iterate through sources to calculate both buyer and seller effects
             for (let i = 0; i < transaction.stockExcessSources.length; i++) {
                 const source = transaction.stockExcessSources[i];
                 const excess = await StockExcess.findById(source.stockExcess).session(session);
                 const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
+
                 if (sellerPh) {
                     let sellerEffect = 0;
-                    if (transaction.shortage_fulfillment) {
-                        sellerEffect = source.totalAmount;
-                    } else {
-                        const excessComm = excess.salePercentage;
-                        const finalCommRatio = (excessComm !== undefined && excessComm !== null) 
-                            ? (excessComm / 100) 
-                            : minCommRatio;
+                    let sellerDetails = {};
+                    let sourceBuyerEffect = 0;
+                    let sourceBuyerDetails = {};
+
+                    // Use the excess's own shortage_fulfillment status for per-source logic
+                    if (excess.shortage_fulfillment) {
+                        const bonusRatio = transaction.sellerBonusRatio !== undefined
+                            ? transaction.sellerBonusRatio
+                            : (settings.shortageSellerReward / 100);
                         
+                        const commRatio = transaction.buyerCommissionRatio !== undefined
+                            ? transaction.buyerCommissionRatio
+                            : (settings.shortageCommission / 100);
+
+                        sellerEffect = (1 + bonusRatio) * source.totalAmount;
+                        sellerDetails = {
+                            type: 'shortage_fulfillment',
+                            baseAmount: source.totalAmount,
+                            bonusRatio: bonusRatio
+                        };
+
+                        sourceBuyerEffect = -(1 + commRatio) * source.totalAmount;
+                        sourceBuyerDetails = {
+                            type: 'shortage_fulfillment',
+                            baseAmount: source.totalAmount,
+                            commissionRatio: commRatio,
+                            excessId: excess._id
+                        };
+                    } else {
+                        // Real Excess logic
+                        const excessComm = (excess.salePercentage !== undefined && excess.salePercentage !== null)
+                            ? (excess.salePercentage / 100)
+                            : systemMinCommRatio;
+
+                        const finalCommRatio = Math.max(systemMinCommRatio, excessComm);
                         sellerEffect = (1 - finalCommRatio) * source.totalAmount;
+                        sellerDetails = {
+                            type: 'excess_rebalance',
+                            baseAmount: source.totalAmount,
+                            commissionRatio: finalCommRatio,
+                            systemMinRatio: systemMinCommRatio,
+                            offeredRatio: excessComm
+                        };
+
+                        sourceBuyerEffect = -source.totalAmount;
+                        sourceBuyerDetails = {
+                            type: 'excess_rebalance',
+                            baseAmount: source.totalAmount,
+                            commissionRatio: 0,
+                            excessId: excess._id
+                        };
                     }
-                    
+
+                    // Update Seller Balance
+                    const sellerPrevBalance = sellerPh.balance;
                     sellerPh.balance += sellerEffect;
+                    const sellerNewBalance = sellerPh.balance;
+
                     transaction.stockExcessSources[i].balanceEffect = sellerEffect;
-                    
                     await sellerPh.save({ session });
 
-                    // Emit balance update to seller's users
+                    await BalanceHistory.create([{
+                        pharmacy: sellerPh._id,
+                        type: 'transaction_revenue',
+                        amount: sellerEffect,
+                        previousBalance: sellerPrevBalance,
+                        newBalance: sellerNewBalance,
+                        relatedEntity: transaction._id,
+                        relatedEntityType: 'Transaction',
+                        description: `Revenue for transaction #${transaction.serial}`,
+                        details: sellerDetails
+                    }], { session });
+
                     try {
                         const { sendToUser } = require('../utils/socketManager');
                         const sellerUsers = await mongoose.model('User').find({ pharmacy: sellerPh._id });
                         for (const user of sellerUsers) {
-                            sendToUser(user._id.toString(), 'balanceUpdate', {
-                                balance: sellerPh.balance
-                            });
+                            sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
                         }
-                    } catch (err) {
-                        console.error('Error emitting balance update to seller:', err);
-                    }
+                    } catch (err) {}
+
+                    // Accumulate Buyer Effect
+                    totalBuyerEffect += sourceBuyerEffect;
+                    buyerDetailsList.push(sourceBuyerDetails);
                 }
             }
-            // Check if shortage is fully done
-            const shortageObj = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
-            if (shortageObj) {
-                shortageObj.status = shortageObj.remainingQuantity === 0 ? 'fulfilled' : 'partially_fulfilled';
-                await shortageObj.save({ session });
+
+            // Update Buyer Balance (once after all sources processed)
+            if (buyerPh) {
+                const buyerPrevBalance = buyerPh.balance;
+                buyerPh.balance += totalBuyerEffect;
+                const buyerNewBalance = buyerPh.balance;
+
+                transaction.stockShortage.balanceEffect = totalBuyerEffect;
+                await buyerPh.save({ session });
+
+                await BalanceHistory.create([{
+                    pharmacy: buyerPh._id,
+                    type: 'transaction_payment',
+                    amount: totalBuyerEffect,
+                    previousBalance: buyerPrevBalance,
+                    newBalance: buyerNewBalance,
+                    relatedEntity: transaction._id,
+                    relatedEntityType: 'Transaction',
+                    description: `Payment for transaction #${transaction.serial}`,
+                    details: {
+                        sources: buyerDetailsList,
+                        totalBuyerEffect
+                    }
+                }], { session });
+
+                try {
+                    const { sendToUser } = require('../utils/socketManager');
+                    const buyerUsers = await mongoose.model('User').find({ pharmacy: buyerPh._id });
+                    for (const user of buyerUsers) {
+                        sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
+                    }
+                } catch (err) {}
+            }
+        }
+        
+        // Final sync for completions too (to move from partially_fulfilled to fulfilled)
+        if (status === 'completed') {
+            for (const source of transaction.stockExcessSources) {
+                const excess = await StockExcess.findById(source.stockExcess).session(session);
+                if (excess) {
+                    await syncExcessStatus(excess, session);
+                    await excess.save({ session });
+                }
             }
         }
 
@@ -431,6 +502,7 @@ exports.updateTransactionStatus = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
+        console.log('error',error)
         if (session.inTransaction()) {
             await session.abortTransaction();
         }
@@ -543,8 +615,8 @@ exports.getTransactions = async (req, res) => {
             .populate({
                 path: 'reversalTicket',
                 populate: [
-                    { path: 'punishments.user', select: 'name' },
-                    { path: 'punishments.pharmacy', select: 'name' }
+                    { path: 'expenses.user', select: 'name' },
+                    { path: 'expenses.pharmacy', select: 'name' }
                 ]
             })
             .sort({ createdAt: -1 });
@@ -571,7 +643,7 @@ exports.getTransactions = async (req, res) => {
     }
 };
 
-// @desc    Revert a completed transaction (restores stock, automatic balance reversal + punishments)
+// @desc    Revert a completed transaction (restores stock, automatic balance reversal + expenses)
 // @route   POST /api/transaction/:id/revert
 // @access  Admin
 exports.revertTransaction = async (req, res) => {
@@ -579,7 +651,7 @@ exports.revertTransaction = async (req, res) => {
     session.startTransaction();
     try {
         const { id } = req.params;
-        const { punishments, description } = req.body; // Array of { userId, amount }
+        const { expenses, description } = req.body; // Array of { userId, amount }
 
         const { Transaction, StockShortage, StockExcess, Pharmacy, User, ReversalTicket } = require('../models');
 
@@ -595,11 +667,11 @@ exports.revertTransaction = async (req, res) => {
         if (transaction.status !== 'completed') throw new Error('Only completed transactions can be reverted');
         if (transaction.reversalTicket) throw new Error('Transaction already reverted');
 
-        // Validate punishments
-        if (punishments && punishments.length > 0) {
-            for (const p of punishments) {
+        // Validate expenses
+        if (expenses && expenses.length > 0) {
+            for (const p of expenses) {
                 if (p.amount < 0) {
-                    throw new Error('Punishment amount cannot be negative');
+                    throw new Error('Expense amount cannot be negative');
                 }
             }
         }
@@ -609,7 +681,7 @@ exports.revertTransaction = async (req, res) => {
             const excess = await StockExcess.findById(source.stockExcess._id).session(session);
             if (excess) {
                 excess.remainingQuantity += source.quantity;
-                if (excess.status === 'sold') excess.status = 'available';
+                await syncExcessStatus(excess, session);
                 await excess.save({ session });
             }
         }
@@ -617,7 +689,7 @@ exports.revertTransaction = async (req, res) => {
         const shortage = await StockShortage.findById(transaction.stockShortage.shortage._id).session(session);
         if (shortage) {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-            shortage.status = shortage.remainingQuantity >= shortage.quantity ? 'active' : 'partially_fulfilled';
+            await syncShortageStatus(shortage);
             await shortage.save({ session });
         }
 
@@ -627,9 +699,25 @@ exports.revertTransaction = async (req, res) => {
         // Revert Buyer
         const buyerPh = await Pharmacy.findById(transaction.stockShortage.shortage.pharmacy._id).session(session);
         if (buyerPh && transaction.stockShortage.balanceEffect) {
+            const BalanceHistory = require('../models/BalanceHistory');
+            const prevBalance = buyerPh.balance;
             buyerPh.balance -= transaction.stockShortage.balanceEffect; // Subtract the effect (which was negative)
+            const newBalance = buyerPh.balance;
             await buyerPh.save({ session });
             
+            // Record History
+            await BalanceHistory.create([{
+                pharmacy: buyerPh._id,
+                type: 'transaction_payment',
+                amount: -transaction.stockShortage.balanceEffect,
+                previousBalance: prevBalance,
+                newBalance: newBalance,
+                relatedEntity: transaction._id,
+                relatedEntityType: 'Transaction',
+                description: `Reversal of payment for transaction #${transaction.serial}`,
+                details: { type: 'reversal' }
+            }], { session });
+
             // Notify buyer users
             const users = await User.find({ pharmacy: buyerPh._id });
             for (const user of users) {
@@ -641,8 +729,24 @@ exports.revertTransaction = async (req, res) => {
         for (const source of transaction.stockExcessSources) {
             const sellerPh = await Pharmacy.findById(source.stockExcess.pharmacy._id).session(session);
             if (sellerPh && source.balanceEffect) {
+                const BalanceHistory = require('../models/BalanceHistory');
+                const prevBalance = sellerPh.balance;
                 sellerPh.balance -= source.balanceEffect; // Subtract the profit given
+                const newBalance = sellerPh.balance;
                 await sellerPh.save({ session });
+
+                // Record History
+                await BalanceHistory.create([{
+                    pharmacy: sellerPh._id,
+                    type: 'transaction_revenue',
+                    amount: -source.balanceEffect,
+                    previousBalance: prevBalance,
+                    newBalance: newBalance,
+                    relatedEntity: transaction._id,
+                    relatedEntityType: 'Transaction',
+                    description: `Reversal of revenue for transaction #${transaction.serial}`,
+                    details: { type: 'reversal' }
+                }], { session });
 
                 // Notify seller users
                 const users = await User.find({ pharmacy: sellerPh._id });
@@ -652,42 +756,58 @@ exports.revertTransaction = async (req, res) => {
             }
         }
 
-        // 3. Apply Punishments
-        if (punishments && punishments.length > 0) {
-            for (const p of punishments) {
+        // 3. Apply Expenses
+        const resolvedExpenses = [];
+        if (expenses && expenses.length > 0) {
+            for (const p of expenses) {
                 let pharmacy = null;
                 let targetUser = null;
 
-                // Try to find as User first
+                // Resolve User/Pharmacy
                 const user = await User.findById(p.userId).populate('pharmacy').session(session);
                 if (user && user.pharmacy) {
                     pharmacy = await Pharmacy.findById(user.pharmacy._id).session(session);
                     targetUser = user._id;
                 } else {
-                    // Try to find as Pharmacy if not a User
                     const pharm = await Pharmacy.findById(p.userId).session(session);
                     if (pharm) {
                         pharmacy = pharm;
-                        // For the ticket, we might still want a user reference. 
-                        // If we only have pharmacy, we can try to find an admin user.
                         const adminUser = await User.findOne({ pharmacy: pharm._id, role: 'admin' }).session(session);
                         if (adminUser) targetUser = adminUser._id;
                     }
                 }
 
                 if (pharmacy) {
-                    pharmacy.balance -= p.amount; // Punishment is deducted
+                    const BalanceHistory = require('../models/BalanceHistory');
+                    const prevBalance = pharmacy.balance;
+                    pharmacy.balance -= p.amount; // Expense is deducted
+                    const newBalance = pharmacy.balance;
                     await pharmacy.save({ session });
                     
-                    // Notify any users of this pharmacy
+                    // Record History
+                    await BalanceHistory.create([{
+                        pharmacy: pharmacy._id,
+                        type: 'expenses',
+                        amount: -p.amount,
+                        previousBalance: prevBalance,
+                        newBalance: newBalance,
+                        relatedEntity: transaction._id,
+                        relatedEntityType: 'Transaction',
+                        description: `Expense ticket for transaction #${transaction.serial}`,
+                        details: { type: 'expenses' }
+                    }], { session });
+
+                    // Notify users
                     const pharmUsers = await User.find({ pharmacy: pharmacy._id });
                     for (const u of pharmUsers) {
                         sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
                     }
 
-                    // Store resolved references for the ticket
-                    p.resolvedUserId = targetUser;
-                    p.resolvedPharmacyId = pharmacy._id;
+                    resolvedExpenses.push({
+                        user: targetUser,
+                        pharmacy: pharmacy._id,
+                        amount: p.amount
+                    });
                 }
             }
         }
@@ -695,15 +815,8 @@ exports.revertTransaction = async (req, res) => {
         // 4. Create Reversal Ticket
         const ticket = new ReversalTicket({
             transaction: transaction._id,
-            punishments: punishments ? punishments
-                .filter(p => p.resolvedPharmacyId) // Ensure we have at least a pharmacy to record
-                .map(p => ({
-                    user: p.resolvedUserId, // May be null if only pharmacy was resolved
-                    pharmacy: p.resolvedPharmacyId,
-                    amount: p.amount
-                })) : [],
+            expenses: resolvedExpenses,
             description: description || 'Automatic reversal of original transaction'
-                
         });
         await ticket.save({ session });
 
@@ -722,7 +835,7 @@ exports.revertTransaction = async (req, res) => {
     }
 };
 
-// @desc    Update a reversal ticket (adjusts punishments and balances)
+// @desc    Update a reversal ticket (adjusts expenses and balances)
 // @route   PUT /api/transaction/reversal/:ticketId
 // @access  Admin
 exports.updateReversalTicket = async (req, res) => {
@@ -730,26 +843,35 @@ exports.updateReversalTicket = async (req, res) => {
     session.startTransaction();
     try {
         const { ticketId } = req.params;
-        const { punishments, description } = req.body; // New punishment list
-
-        if (punishments && punishments.some(p => p.amount < 0)) {
-            throw new Error('Punishment amount cannot be negative');
-        }
-
-        const { ReversalTicket, Pharmacy, User } = require('../models');
-        const { sendToUser } = require('../utils/socketManager');
+        const { expenses, description } = req.body; // New expense list
 
         const ticket = await ReversalTicket.findById(ticketId).session(session);
         if (!ticket) throw new Error('Reversal ticket not found');
 
-        // 1. Revert Old Punishments (Refund the amounts taken)
-        for (const oldP of ticket.punishments) {
-            if (oldP.pharmacy) {
-                const pharmacy = await Pharmacy.findById(oldP.pharmacy).session(session);
+        // 1. Revert Old Expenses (Refund the amounts taken)
+        for (const oldE of ticket.expenses) {
+            if (oldE.pharmacy) {
+                const pharmacy = await Pharmacy.findById(oldE.pharmacy).session(session);
                 if (pharmacy) {
-                    pharmacy.balance += oldP.amount; // Add back the deducted amount
+                    const BalanceHistory = require('../models/BalanceHistory');
+                    const prevBalance = pharmacy.balance;
+                    pharmacy.balance += oldE.amount; // Add back the deducted amount
+                    const newBalance = pharmacy.balance;
                     await pharmacy.save({ session });
                     
+                    // Record History
+                    await BalanceHistory.create([{
+                        pharmacy: pharmacy._id,
+                        type: 'expenses',
+                        amount: oldE.amount,
+                        previousBalance: prevBalance,
+                        newBalance: newBalance,
+                        relatedEntity: ticket.transaction,
+                        relatedEntityType: 'Transaction',
+                        description: `Refund for adjusted expense in transaction #${ticket.transaction.toString().slice(-6)}`,
+                        details: { type: 'expense_refund' }
+                    }], { session });
+
                     // Notify users
                     const users = await User.find({ pharmacy: pharmacy._id });
                     for (const u of users) {
@@ -759,14 +881,13 @@ exports.updateReversalTicket = async (req, res) => {
             }
         }
 
-        // 2. Apply New Punishments
-        const resolvedPunishments = [];
-        if (punishments && punishments.length > 0) {
-            for (const p of punishments) {
+        // 2. Apply New Expenses
+        const resolvedExpenses = [];
+        if (expenses && expenses.length > 0) {
+            for (const p of expenses) {
                 let pharmacy = null;
                 let targetUser = null;
 
-                // Resolve User/Pharmacy (same logic as create)
                 const user = await User.findById(p.userId).populate('pharmacy').session(session);
                 if (user && user.pharmacy) {
                     pharmacy = await Pharmacy.findById(user.pharmacy._id).session(session);
@@ -781,15 +902,31 @@ exports.updateReversalTicket = async (req, res) => {
                 }
 
                 if (pharmacy) {
+                    const BalanceHistory = require('../models/BalanceHistory');
+                    const prevBalance = pharmacy.balance;
                     pharmacy.balance -= p.amount; // Deduct new amount
+                    const newBalance = pharmacy.balance;
                     await pharmacy.save({ session });
+
+                    // Record History
+                    await BalanceHistory.create([{
+                        pharmacy: pharmacy._id,
+                        type: 'expenses',
+                        amount: -p.amount,
+                        previousBalance: prevBalance,
+                        newBalance: newBalance,
+                        relatedEntity: ticket.transaction,
+                        relatedEntityType: 'Transaction',
+                        description: `Adjusted expense for transaction #${ticket.transaction.toString().slice(-6)}`,
+                        details: { type: 'expense_adjustment' }
+                    }], { session });
 
                     const users = await User.find({ pharmacy: pharmacy._id });
                     for (const u of users) {
                         sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
                     }
 
-                    resolvedPunishments.push({
+                    resolvedExpenses.push({
                         user: targetUser,
                         pharmacy: pharmacy._id,
                         amount: p.amount
@@ -799,13 +936,13 @@ exports.updateReversalTicket = async (req, res) => {
         }
 
         // 3. Update Ticket
-        ticket.punishments = resolvedPunishments;
+        ticket.expenses = resolvedExpenses;
         if (description) ticket.description = description;
         await ticket.save({ session });
 
         await ticket.populate([
-            { path: 'punishments.user', select: 'name' },
-            { path: 'punishments.pharmacy', select: 'name' }
+            { path: 'expenses.user', select: 'name' },
+            { path: 'expenses.pharmacy', select: 'name' }
         ]);
 
         await session.commitTransaction();
@@ -818,3 +955,29 @@ exports.updateReversalTicket = async (req, res) => {
     }
 };
 
+// @desc    Update transaction ratios (Admin)
+// @route   PUT /api/transaction/:id/ratios
+// @access  Admin
+exports.updateTransactionRatios = async (req, res) => {
+    try {
+        const {  buyerCommissionRatio, sellerBonusRatio } = req.body;
+        const transaction = await Transaction.findById(req.params.id);
+
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: 'Transaction not found' });
+        }
+
+        if (['completed', 'cancelled'].includes(transaction.status)) {
+            return res.status(400).json({ success: false, message: 'Cannot update ratios of a finished transaction' });
+        }
+
+        if (buyerCommissionRatio !== undefined) transaction.buyerCommissionRatio = buyerCommissionRatio / 100;
+        if (sellerBonusRatio !== undefined) transaction.sellerBonusRatio = sellerBonusRatio / 100;
+
+        await transaction.save();
+
+        res.status(200).json({ success: true, data: transaction });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

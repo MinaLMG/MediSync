@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/searchable_dropdown.dart';
 
 class AddExcessScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -24,7 +25,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   bool _isManualPrice = false;
   final TextEditingController _manualPriceController = TextEditingController();
 
-  DateTime? _expiryDate;
+  String? _expiryDate; // Stored as "MM/YY"
+  final TextEditingController _expiryController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
 
   bool _shortageFulfillment = false;
@@ -52,15 +54,20 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         final data = widget.initialData!;
         setState(() {
           _selectedProductId = data['product']['_id'];
-          _selectedVolumeId = data['volume']['_id'];
-          _expiryDate = DateTime.parse(data['expiryDate']);
+          _expiryDate = data['expiryDate'];
+          _expiryController.text = _expiryDate ?? '';
           _quantityController.text = data['originalQuantity'].toString();
           _shortageFulfillment = data['shortage_fulfillment'] ?? true;
 
           // Price logic
           final price = data['selectedPrice'].toDouble();
-          _selectedPrice =
-              price; // We'll check if it exists in list during build
+          _selectedPrice = price;
+          _manualPriceController.text = price.toString();
+
+          // Initialize _isManualPrice if the initial price is not in the list
+          // This will be refined as soon as settings/products are fetched
+          _isManualPrice =
+              true; // Default to true if editing, will be checked against list later
 
           if (data['salePercentage'] != null) {
             _saleValueController.text = data['salePercentage'].toString();
@@ -73,13 +80,50 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   @override
   void dispose() {
     _manualPriceController.dispose();
+    _expiryController.dispose();
     _quantityController.dispose();
     _saleValueController.dispose();
     super.dispose();
   }
 
+  Future<void> _selectExpiryDate() async {
+    if (isEditMode) return; // Locked in edit mode per backend rule
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _expiryDate != null
+          ? _parseMMYY(_expiryDate!)
+          : DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+    );
+    if (picked != null) {
+      setState(() {
+        _expiryDate = DateFormat('MM/yy').format(picked);
+        _expiryController.text = _expiryDate!;
+      });
+    }
+  }
+
+  DateTime _parseMMYY(String mmyy) {
+    try {
+      final parts = mmyy.split('/');
+      final month = int.parse(parts[0]);
+      final year = 2000 + int.parse(parts[1]);
+      return DateTime(year, month);
+    } catch (e) {
+      return DateTime.now().add(const Duration(days: 30));
+    }
+  }
+
   void _submitForm() async {
-    if (_formKey.currentState!.validate() && _expiryDate != null) {
+    if (_formKey.currentState!.validate()) {
+      if (!isEditMode && _expiryDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select expiry date')),
+        );
+        return;
+      }
+
       if (_selectedProductId == null || _selectedVolumeId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select product and volume')),
@@ -87,9 +131,20 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         return;
       }
 
-      final price = _isManualPrice
+      double? price = _isManualPrice
           ? double.tryParse(_manualPriceController.text)
           : _selectedPrice;
+
+      final int originalQuantity = widget.initialData?['originalQuantity'] ?? 0;
+      final int remainingQuantity =
+          widget.initialData?['remainingQuantity'] ?? 0;
+      final int taken = isEditMode ? (originalQuantity - remainingQuantity) : 0;
+      final bool isStockTaken = taken > 0;
+
+      // If stock is taken, we must use the original price if something went wrong with current selection
+      if (isEditMode && isStockTaken) {
+        price ??= widget.initialData!['selectedPrice'].toDouble();
+      }
 
       if (price == null || price <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +154,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       }
 
       double? saleVal;
-
       if (!_shortageFulfillment) {
         final saleValText = _saleValueController.text;
         if (saleValText.isNotEmpty) {
@@ -112,7 +166,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
             );
             return;
           }
-
           if (saleVal < 0 || saleVal > 100) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -135,14 +188,18 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       }
 
       final excessData = {
-        'product': _selectedProductId,
-        'volume': _selectedVolumeId,
         'quantity': quantity,
-        'expiryDate': _expiryDate!.toIso8601String(),
         'selectedPrice': price,
         'salePercentage': saleVal,
         'shortage_fulfillment': _shortageFulfillment,
       };
+
+      // IMMUTABLE FIELDS: ONLY FOR CREATION
+      if (!isEditMode) {
+        excessData['product'] = _selectedProductId!;
+        excessData['volume'] = _selectedVolumeId!;
+        excessData['expiryDate'] = _expiryDate!;
+      }
 
       final success = isEditMode
           ? await Provider.of<ExcessProvider>(
@@ -180,10 +237,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           );
         }
       }
-    } else if (_expiryDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select expiry date')),
-      );
     }
   }
 
@@ -191,7 +244,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
 
-    // Logic to get current product and volumes
     final selectedProduct = _selectedProductId != null
         ? productProvider.products.firstWhere(
             (p) => p['_id'] == _selectedProductId,
@@ -201,19 +253,15 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
     final volumes = selectedProduct?['volumes'] as List<dynamic>? ?? [];
 
-    // Auto-select volume if only one
     if (volumes.length == 1 && _selectedVolumeId != volumes[0]['volumeId']) {
-      // Defer state update to next frame to avoid build error
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
           _selectedVolumeId = volumes[0]['volumeId'];
-          // Also reset price selection when volume changes automatically
           _selectedPrice = null;
         });
       });
     }
 
-    // Get prices for selected volume
     final currentVolume = volumes.firstWhere(
       (v) => v['volumeId'] == _selectedVolumeId,
       orElse: () => null,
@@ -224,17 +272,12 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
             .toList() ??
         [];
 
-    // Price logic for Edit Mode: If the price isn't in the list, treat as manual
-    if (isEditMode &&
-        _selectedPrice != null &&
-        !_isManualPrice &&
-        prices.isNotEmpty) {
-      if (!prices.contains(_selectedPrice.toString())) {
-        _isManualPrice = true;
-        _manualPriceController.text = _selectedPrice!.toString();
-        _selectedPrice = null;
-      }
-    }
+    // Removed auto-activation logic from build to respect user's manual toggle
+
+    final int originalQuantity = widget.initialData?['originalQuantity'] ?? 0;
+    final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
+    final int taken = isEditMode ? (originalQuantity - remainingQuantity) : 0;
+    final bool isStockTaken = taken > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -249,54 +292,124 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Dropdown
-                    DropdownButtonFormField<String>(
-                      value: _selectedProductId,
-                      decoration: const InputDecoration(labelText: 'Product'),
-                      items: productProvider.products
-                          .map<DropdownMenuItem<String>>((product) {
-                            return DropdownMenuItem(
-                              value: product['_id'],
-                              child: Text(product['name']),
-                            );
-                          })
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedProductId = value;
-                          _selectedVolumeId = null;
-                          _selectedPrice = null;
-                          _isManualPrice = false;
-                        });
-                      },
-                      validator: (v) => v == null ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
+                    if (isEditMode) ...[
+                      if (widget.initialData!['status'] == 'rejected' &&
+                          widget.initialData!['rejectionReason'] != null)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            border: Border.all(color: Colors.red[200]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'REJECTION REASON:',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.initialData!['rejectionReason'],
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Product: ${widget.initialData!['product']['name']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Volume: ${widget.initialData!['volume']['name']}',
+                            ),
+                            Text('Expiry Date: $_expiryDate'),
+                            Text(
+                              'Price: ${widget.initialData!['selectedPrice']} EGP',
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
-                    // Volume Dropdown
-                    if (volumes.isNotEmpty)
-                      DropdownButtonFormField<String>(
-                        value: _selectedVolumeId,
-                        decoration: const InputDecoration(labelText: 'Volume'),
-                        items: volumes.map<DropdownMenuItem<String>>((v) {
-                          return DropdownMenuItem(
-                            value: v['volumeId'],
-                            child: Text(v['volumeName']),
-                          );
-                        }).toList(),
+                    if (!isEditMode) ...[
+                      SearchableDropdown(
+                        value: _selectedProductId,
+                        labelText: 'Product',
+                        items: productProvider.products
+                            .map<DropdownItem>(
+                              (product) => DropdownItem(
+                                id: product['_id'],
+                                displayText: product['name'],
+                              ),
+                            )
+                            .toList(),
                         onChanged: (value) {
                           setState(() {
-                            _selectedVolumeId = value;
+                            _selectedProductId = value;
+                            _selectedVolumeId = null;
                             _selectedPrice = null;
-                            _isManualPrice = false;
+                            // _isManualPrice stays as is
                           });
                         },
-                        validator: (v) => v == null ? 'Required' : null,
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                      if (volumes.isNotEmpty) ...[
+                        DropdownButtonFormField<String>(
+                          value: _selectedVolumeId,
+                          decoration: const InputDecoration(
+                            labelText: 'Volume',
+                          ),
+                          items: volumes.map<DropdownMenuItem<String>>((v) {
+                            return DropdownMenuItem(
+                              value: v['volumeId'],
+                              child: Text(v['volumeName']),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedVolumeId = value;
+                              _selectedPrice = null;
+                              // _isManualPrice stays as is
+                            });
+                          },
+                          validator: (v) => v == null ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ],
 
-                    // Price Section
-                    if (_selectedVolumeId != null) ...[
+                    if (_selectedVolumeId != null && !isStockTaken) ...[
                       const Text(
                         'Price (EGP)',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -319,7 +432,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             });
                           },
                         ),
-
                       Row(
                         children: [
                           Checkbox(
@@ -334,7 +446,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           const Text('Enter Manual Price'),
                         ],
                       ),
-
                       if (_isManualPrice)
                         TextFormField(
                           controller: _manualPriceController,
@@ -349,139 +460,126 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           ],
                           validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
+                      const SizedBox(height: 16),
                     ],
-                    const SizedBox(height: 16),
 
-                    // Quantity
                     TextFormField(
                       controller: _quantityController,
                       decoration: const InputDecoration(labelText: 'Quantity'),
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Expiry Date
-                    ListTile(
-                      title: Text(
-                        _expiryDate == null
-                            ? 'Select Expiry Date'
-                            : 'Expiry: ${DateFormat('yyyy-MM-dd').format(_expiryDate!)}',
-                      ),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now().add(
-                            const Duration(days: 30),
-                          ),
-                          firstDate: DateTime.now(), // Block past dates
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 3650),
-                          ),
-                        );
-                        if (picked != null) {
-                          // Double check
-                          if (picked.isBefore(
-                            DateTime.now().subtract(const Duration(days: 1)),
-                          )) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Expiry date cannot be in the past',
-                                ),
-                              ),
-                            );
-                            return;
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Required';
+                        final qty = int.tryParse(v);
+                        if (qty == null || qty <= 0) return 'Invalid quantity';
+                        if (isEditMode) {
+                          if (qty > originalQuantity) {
+                            return 'Quantity can only be decreased';
                           }
-                          setState(() => _expiryDate = picked);
+                          if (qty < taken) {
+                            return 'Cannot be less than $taken (already taken)';
+                          }
                         }
+                        return null;
                       },
                     ),
-                    const Divider(),
                     const SizedBox(height: 16),
 
-                    // Type Selection (Fulfillment vs Real Excess)
-                    const Text(
-                      'Request Type',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<bool>(
-                      value: _shortageFulfillment,
-                      items: const [
-                        DropdownMenuItem(
-                          value: true,
-                          child: Text('Shortage Fulfillment'),
+                    if (!isEditMode) ...[
+                      TextFormField(
+                        controller: _expiryController,
+                        readOnly: true,
+                        onTap: _selectExpiryDate,
+                        decoration: const InputDecoration(
+                          labelText: 'Expiry Date (MM/YY)',
+                          hintText: 'Select Expiry Date',
+                          suffixIcon: Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(),
                         ),
-                        DropdownMenuItem(
-                          value: false,
-                          child: Text('Real Excess'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        setState(() {
-                          _shortageFulfillment = val!;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+                    ],
 
-                    // Sale Info (Only for Real Excess)
-                    if (!_shortageFulfillment)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.blue[200]!),
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.blue[50],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Sale Offer',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'The current system sale is ${context.read<SettingsProvider>().minCommission}% if you would like to provide a higher sale enter its value. Higher sales have higher opportunities to be matched faster.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.blue[800],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _saleValueController,
-                              decoration: const InputDecoration(
-                                labelText: 'Percentage Value (%)',
-                                border: OutlineInputBorder(),
-                                suffixText: '%',
-                                fillColor: Colors.white,
-                                filled: true,
-                              ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'^\d*\.?\d*'),
-                                ),
-                              ],
-                              validator: (v) => null, // Optional
-                            ),
-                          ],
+                    if (!isStockTaken) ...[
+                      const Text(
+                        'Request Type',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<bool>(
+                        value: _shortageFulfillment,
+                        items: const [
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text('Shortage Fulfillment'),
+                          ),
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text('Real Excess'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _shortageFulfillment = val!;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      if (!_shortageFulfillment)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.blue[200]!),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.blue[50],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Sale Offer',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'The current system sale is ${context.read<SettingsProvider>().minCommission}% if you would like to provide a higher sale enter its value.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.blue[800],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _saleValueController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Percentage Value (%)',
+                                  border: OutlineInputBorder(),
+                                  suffixText: '%',
+                                  fillColor: Colors.white,
+                                  filled: true,
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d*\.?\d*'),
+                                  ),
+                                ],
+                                validator: (v) => null,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
 
                     const SizedBox(height: 32),
                     SizedBox(

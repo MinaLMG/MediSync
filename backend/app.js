@@ -38,6 +38,7 @@ app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/suggestions', require('./src/routes/suggestionRoutes'));
 app.use('/api/delivery-requests', require('./src/routes/deliveryRequestRoutes'));
+app.use('/api/balance-history', require('./src/routes/balanceHistoryRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

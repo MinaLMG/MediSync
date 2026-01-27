@@ -14,6 +14,7 @@ import 'notifications_screen.dart';
 import 'admin_view_suggestions_screen.dart';
 import 'admin_delivery_requests_screen.dart';
 import 'admin_account_updates_screen.dart';
+import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -167,6 +168,11 @@ class AdminHomeTab extends StatelessWidget {
         'icon': Icons.manage_accounts,
         'color': Colors.brown,
       },
+      {
+        'title': 'System Settings',
+        'icon': Icons.settings,
+        'color': Colors.grey[700],
+      },
     ];
 
     return Padding(
@@ -299,6 +305,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminAccountUpdatesScreen(),
+              ),
+            );
+          } else if (title == 'System Settings') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminSettingsScreen(),
               ),
             );
           }

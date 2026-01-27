@@ -10,6 +10,7 @@ import 'providers/transaction_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/app_suggestion_provider.dart';
 import 'providers/delivery_request_provider.dart';
+import 'providers/balance_history_provider.dart';
 import 'screens/login_screen.dart';
 
 void main() {
@@ -45,6 +46,7 @@ void main() {
           ),
           update: (context, auth, previous) => previous!..update(auth),
         ),
+        ChangeNotifierProvider(create: (_) => BalanceHistoryProvider()),
       ],
       child: const MyApp(),
     ),

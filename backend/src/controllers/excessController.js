@@ -39,7 +39,7 @@ exports.createExcess = async (req, res) => {
         const existingShortage = await StockShortage.findOne({
             pharmacy: req.user.pharmacy,
             product,
-            status: 'active'
+            status: { $in: ['active', 'partially_fulfilled'] }
         });
 
         if (existingShortage) {
@@ -93,6 +93,33 @@ exports.createExcess = async (req, res) => {
     }
 };
 
+// Reject excess (Admin)
+exports.rejectExcess = async (req, res) => {
+    try {
+        const { rejectionReason } = req.body;
+        
+        if (!rejectionReason) {
+            return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+        }
+
+        const excess = await StockExcess.findByIdAndUpdate(
+            req.params.id,
+            { 
+                status: 'rejected',
+                rejectionReason
+            },
+            { new: true }
+        );
+if (!excess) {
+            return res.status(404).json({ success: false, message: 'Excess not found' });
+        }
+
+        res.status(200).json({ success: true, data: excess });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // Get pending excesses (Admin)
 exports.getPendingExcesses = async (req, res) => {
     try {
@@ -111,7 +138,9 @@ exports.getPendingExcesses = async (req, res) => {
 // Get available excesses (Admin)
 exports.getAvailableExcesses = async (req, res) => {
     try {
-        const excesses = await StockExcess.find({ status: 'available' })
+        const excesses = await StockExcess.find({ 
+            status: { $in: ['available', 'partially_fulfilled'] } 
+        })
             .populate('pharmacy', 'name')
             .populate('product', 'name')
             .populate('volume', 'name')
@@ -166,14 +195,68 @@ exports.updateExcess = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Excess not found' });
         }
 
-        // Check ownership
-        if (excess.pharmacy.toString() !== req.user.pharmacy.toString()) {
+        // Check ownership (Admins can bypass)
+        if (req.user.role !== 'admin' && excess.pharmacy.toString() !== req.user.pharmacy.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized to update this excess' });
         }
 
-        // Only allow update if pending or available
-        if (excess.status !== 'pending' && excess.status !== 'available') {
-            return res.status(400).json({ success: false, message: 'Cannot update excess that is not pending or available' });
+        const status = excess.status;
+
+        // 1. Terminal Statuses: LOCKED (No edits)
+        if (['sold', 'expired', 'rejected'].includes(status)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Cannot update excess with status ${status}. it is locked.` 
+            });
+        }
+
+        const taken = excess.originalQuantity - excess.remainingQuantity;
+
+        // 2. Immutability Check (Product, Volume, Expiry)
+        const { product, volume, expiryDate } = req.body;
+        if (product && product !== excess.product.toString()) {
+            return res.status(400).json({ success: false, message: 'Product cannot be modified after creation' });
+        }
+        if (volume && volume !== excess.volume.toString()) {
+            return res.status(400).json({ success: false, message: 'Volume cannot be modified after creation' });
+        }
+        if (expiryDate && expiryDate !== excess.expiryDate) {
+            return res.status(400).json({ success: false, message: 'Expiry date cannot be modified after creation' });
+        }
+
+        // 3. Field Locking based on Status/Consumption
+        // Categories:
+        // - Category A: Reserved, Fulfilled, Partially Fulfilled -> ONLY Sale Info (Percentage/Shortage Fulfillment)
+        // - Category B: Available -> Sale Info + Quantity (No Price change if taken > 0)
+        // - Category C: Pending -> All (Sale, Quantity, Price)
+
+        if (['reserved', 'fulfilled', 'partially_fulfilled'].includes(status)) {
+            // ONLY sale info (but NOT selectedPrice)
+            if (selectedPrice !== undefined && selectedPrice !== excess.selectedPrice) {
+                return res.status(400).json({ success: false, message: 'Price is locked for this status.' });
+            }
+            // Allow quantity decrease only
+            if (quantity !== undefined) {
+                if (quantity > excess.originalQuantity) {
+                    return res.status(400).json({ success: false, message: 'Quantity can only be decreased in this status.' });
+                }
+                if (quantity < taken) {
+                    return res.status(400).json({ success: false, message: `Quantity cannot be less than taken (${taken}).` });
+                }
+            }
+        } else if (status === 'available') {
+            // Sale Info + Quantity (Decrease only). No price change if theoretically something was taken.
+            if (taken > 0 && selectedPrice !== undefined && selectedPrice !== excess.selectedPrice) {
+                return res.status(400).json({ success: false, message: 'Price can no longer be modified.' });
+            }
+            if (quantity !== undefined) {
+                if (quantity > excess.originalQuantity) {
+                    return res.status(400).json({ success: false, message: 'Quantity can only be decreased.' });
+                }
+                if (quantity < taken) {
+                    return res.status(400).json({ success: false, message: 'Quantity cannot be less than taken.' });
+                }
+            }
         }
 
         const settings = await Settings.getSettings();
@@ -184,29 +267,54 @@ exports.updateExcess = async (req, res) => {
         let finalSaleAmount = excess.saleAmount;
         let finalShortageFulfillment = shortage_fulfillment !== undefined ? shortage_fulfillment : excess.shortage_fulfillment;
 
-        if (finalShortageFulfillment === false) {
-             if (salePercentage !== undefined) {
-                if (salePercentage < minComm || salePercentage > 100) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `For real excess, sale percentage must be between ${minComm}% and 100%` 
-                    });
-                }
-                finalSalePercentage = salePercentage;
-                finalSaleAmount = ((selectedPrice || excess.selectedPrice) * salePercentage) / 100;
-             }
-        } else {
-            finalSalePercentage = 0;
-            finalSaleAmount = 0;
+        // If price is changed by non-admin, reset to pending
+        if (selectedPrice !== undefined && selectedPrice !== excess.selectedPrice && req.user.role !== 'admin') {
+            excess.status = 'pending';
         }
 
-        // Update fields
-        excess.originalQuantity = quantity || excess.originalQuantity;
-        excess.remainingQuantity = quantity || excess.remainingQuantity; 
-        excess.selectedPrice = selectedPrice || excess.selectedPrice;
-        excess.salePercentage = finalSalePercentage;
-        excess.saleAmount = finalSaleAmount;
-        excess.shortage_fulfillment = finalShortageFulfillment;
+        if (taken === 0) {
+            if (finalShortageFulfillment === false) {
+                if (salePercentage !== undefined) {
+                   if (salePercentage < 0 || salePercentage > 100) {
+                       return res.status(400).json({ 
+                           success: false, 
+                           message: `Sale percentage must be between 0% and 100%` 
+                       });
+                   }
+                   finalSalePercentage = salePercentage;
+                   finalSaleAmount = ((selectedPrice || excess.selectedPrice) * salePercentage) / 100;
+                }
+            } else {
+                finalSalePercentage = 0;
+                finalSaleAmount = 0;
+            }
+            excess.selectedPrice = selectedPrice || excess.selectedPrice;
+            excess.salePercentage = finalSalePercentage;
+            excess.saleAmount = finalSaleAmount;
+            excess.shortage_fulfillment = finalShortageFulfillment;
+        } else {
+            // If taken > 0, we can still update sale info but not price (price locked above)
+            if (finalShortageFulfillment === false) {
+                if (salePercentage !== undefined) {
+                    finalSalePercentage = salePercentage;
+                    finalSaleAmount = (excess.selectedPrice * salePercentage) / 100;
+                }
+            } else {
+                finalSalePercentage = 0;
+                finalSaleAmount = 0;
+            }
+            excess.salePercentage = finalSalePercentage;
+            excess.saleAmount = finalSaleAmount;
+            excess.shortage_fulfillment = finalShortageFulfillment;
+        }
+
+        if (quantity !== undefined) {
+            excess.originalQuantity = quantity;
+            excess.remainingQuantity = quantity - taken;
+        }
+
+        // Sync status based on new quantities and related transactions
+        await exports.syncExcessStatus(excess);
 
         await excess.save();
 
@@ -222,13 +330,22 @@ exports.deleteExcess = async (req, res) => {
         const excess = await StockExcess.findById(req.params.id);
 
         if (!excess) {
-             return res.status(404).json({ success: false, message: 'Excess not found' });
+            return res.status(404).json({ success: false, message: 'Excess not found' });
         }
 
         // Check if user is owner/manager of this pharmacy OR admin
-        // Note: req.user.pharmacy is ID for manager/owner. Admin usually doesn't have it set or has special role.
         if (req.user.role !== 'admin' && excess.pharmacy.toString() !== req.user.pharmacy.toString()) {
              return res.status(403).json({ success: false, message: 'Not authorized to delete this excess' });
+        }
+
+        // Constraints: No deletion if taken > 0 or terminal/active statuses beyond pending/available
+        const taken = excess.originalQuantity - excess.remainingQuantity;
+        if (taken > 0) {
+            return res.status(400).json({ success: false, message: 'Cannot delete excess with taken stock.' });
+        }
+
+        if (!['pending', 'available', 'rejected'].includes(excess.status)) {
+            return res.status(400).json({ success: false, message: `Cannot delete excess in ${excess.status} state.` });
         }
 
         await excess.deleteOne();
@@ -236,5 +353,45 @@ exports.deleteExcess = async (req, res) => {
         res.status(200).json({ success: true, message: 'Excess deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Helper to sync excess status based on transactions and quantity
+exports.syncExcessStatus = async (excess, session = null) => {
+    const { Transaction } = require('../models');
+    const mongoose = require('mongoose');
+    const TransactionModel = mongoose.model('Transaction');
+    
+    // Find transactions involving this excess
+    const query = TransactionModel.find({ 'stockExcessSources.stockExcess': excess._id });
+    if (session) {
+        query.session(session);
+    }
+    const transactions = await query;
+    
+    // Status counts
+    const hasActive = transactions.some(t => ['pending', 'accepted'].includes(t.status));
+    const hasCompleted = transactions.some(t => t.status === 'completed');
+
+    // Logic based on remaining quantity
+    if (excess.remainingQuantity > 0) {
+        if (hasActive || hasCompleted) {
+            excess.status = 'partially_fulfilled';
+        } else if (excess.status !== 'pending' && excess.status !== 'rejected') {
+            excess.status = 'available';
+        }
+    } else {
+        // remainingQuantity == 0
+        if (hasActive) {
+            if (hasCompleted) {
+                excess.status = 'fulfilled'; 
+            } else {
+                excess.status = 'reserved'; 
+            }
+        } else if (hasCompleted) {
+            excess.status = 'sold';
+        } else {
+            excess.status = 'fulfilled';
+        }
     }
 };

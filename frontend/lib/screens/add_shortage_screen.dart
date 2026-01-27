@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/shortage_provider.dart';
+import '../widgets/searchable_dropdown.dart';
 
 class AddShortageScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -133,6 +134,10 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
       });
     }
 
+    final int quantity = widget.initialData?['quantity'] ?? 0;
+    final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
+    final int fulfilled = isEditMode ? (quantity - remainingQuantity) : 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditMode ? 'Edit Shortage' : 'Add Shortage'),
@@ -146,30 +151,60 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Dropdown
-                    DropdownButtonFormField<String>(
-                      value: _selectedProductId,
-                      decoration: const InputDecoration(labelText: 'Product'),
-                      items: productProvider.products
-                          .map<DropdownMenuItem<String>>((product) {
-                            return DropdownMenuItem(
-                              value: product['_id'],
-                              child: Text(product['name']),
-                            );
-                          })
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedProductId = value;
-                          _selectedVolumeId = null;
-                        });
-                      },
-                      validator: (v) => v == null ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
+                    if (isEditMode) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Product: ${widget.initialData!['product']['name']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Volume: ${widget.initialData!['volume']['name']}',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
-                    // Volume Dropdown
-                    if (volumes.isNotEmpty)
+                    // Product Searchable Dropdown (Creation only)
+                    if (!isEditMode) ...[
+                      SearchableDropdown(
+                        value: _selectedProductId,
+                        labelText: 'Product',
+                        items: productProvider.products
+                            .map<DropdownItem>(
+                              (product) => DropdownItem(
+                                id: product['_id'],
+                                displayText: product['name'],
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedProductId = value;
+                            _selectedVolumeId = null;
+                          });
+                        },
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Volume Dropdown (Creation only)
+                    if (!isEditMode && volumes.isNotEmpty) ...[
                       DropdownButtonFormField<String>(
                         value: _selectedVolumeId,
                         decoration: const InputDecoration(labelText: 'Volume'),
@@ -186,7 +221,8 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                         },
                         validator: (v) => v == null ? 'Required' : null,
                       ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Quantity
                     TextFormField(
@@ -196,7 +232,20 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                       ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Required';
+                        final qty = int.tryParse(v);
+                        if (qty == null || qty < 1) return 'Invalid quantity';
+                        if (isEditMode) {
+                          if (qty > quantity) {
+                            return 'Quantity can only be decreased';
+                          }
+                          if (qty < fulfilled) {
+                            return 'Cannot be less than $fulfilled (already fulfilled)';
+                          }
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 32),
                     SizedBox(

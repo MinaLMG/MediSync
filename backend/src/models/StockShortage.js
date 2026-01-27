@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+/**
+ * STOCK SHORTAGE STATUS MEANING TABLE
+ * -----------------------------------
+ * active: Open for matching. No stock taken or reserved. Edit Quantity (Decrease only) allowed.
+ * partially_fulfilled: Some stock matched or taken, but remainingQuantity > 0. Edit Quantity (Decrease only) allowed.
+ * fulfilled: All stock matched/taken (remainingQuantity == 0). LOCKED.
+ * cancelled: Closed by user. LOCKED.
+ */
+
 const stockShortageSchema = new mongoose.Schema({
     pharmacy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -28,7 +37,7 @@ const stockShortageSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'in_progress', 'fulfilled', 'partially_fulfilled', 'cancelled'],
+        enum: ['active', 'fulfilled', 'partially_fulfilled', 'cancelled'],
         default: 'active'
     },
     notes: {

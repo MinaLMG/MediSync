@@ -331,4 +331,40 @@ class TransactionProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Update transaction ratios
+  Future<bool> updateTransactionRatios(
+    String id,
+    Map<String, dynamic> ratioData,
+  ) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/transaction/$id/ratios'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode(ratioData),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update ratios';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 }
