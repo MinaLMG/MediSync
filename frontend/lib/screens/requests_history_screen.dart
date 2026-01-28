@@ -5,22 +5,25 @@ import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
-import '../providers/order_provider.dart';
+import '../providers/requests_history_provider.dart';
 import '../providers/auth_provider.dart';
 
-class OrdersHistoryScreen extends StatefulWidget {
-  const OrdersHistoryScreen({super.key});
+class RequestsHistoryScreen extends StatefulWidget {
+  const RequestsHistoryScreen({super.key});
 
   @override
-  State<OrdersHistoryScreen> createState() => _OrdersHistoryScreenState();
+  State<RequestsHistoryScreen> createState() => _RequestsHistoryScreenState();
 }
 
-class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
+class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
   @override
   void initState() {
     super.initState();
     Future.microtask(
-      () => Provider.of<OrderProvider>(context, listen: false).fetchMyOrders(),
+      () => Provider.of<RequestsHistoryProvider>(
+        context,
+        listen: false,
+      ).fetchRequestsHistory(),
     );
   }
 
@@ -51,31 +54,31 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Orders History'),
+        title: const Text('Requests History'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => Provider.of<OrderProvider>(
+            onPressed: () => Provider.of<RequestsHistoryProvider>(
               context,
               listen: false,
-            ).fetchMyOrders(),
+            ).fetchRequestsHistory(),
           ),
         ],
       ),
-      body: Consumer<OrderProvider>(
+      body: Consumer<RequestsHistoryProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading && provider.orders.isEmpty) {
+          if (provider.isLoading && provider.history.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.orders.isEmpty) {
+          if (provider.history.isEmpty) {
             return const Center(child: Text('No history found'));
           }
 
           return ListView.builder(
-            itemCount: provider.orders.length,
+            itemCount: provider.history.length,
             itemBuilder: (context, index) {
-              final item = provider.orders[index];
+              final item = provider.history[index];
               final isExcess = item['type'] == 'excess';
               final date = DateTime.parse(item['createdAt']);
               final status = item['displayStatus'];
@@ -87,7 +90,6 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                 ),
                 child: InkWell(
                   onTap: () {
-                    // TODO: Navigate to Details Screen
                     _showDetailsDialog(context, item);
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -125,7 +127,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                isExcess ? 'Excess' : 'Shortage',
+                                isExcess ? 'Excess Offer' : 'Shortage Request',
                                 style: TextStyle(
                                   color: isExcess
                                       ? Colors.green[700]
@@ -320,10 +322,10 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                     ),
                   ).then((_) {
                     if (context.mounted) {
-                      Provider.of<OrderProvider>(
+                      Provider.of<RequestsHistoryProvider>(
                         context,
                         listen: false,
-                      ).fetchMyOrders();
+                      ).fetchRequestsHistory();
                     }
                   });
                 },
@@ -339,7 +341,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Cannot delete ${isExcess ? 'excess' : 'shortage'} that has already been ${isExcess ? 'taken' : 'fulfilled'}.',
+                        'Cannot delete ${isExcess ? 'offer' : 'request'} that has already been ${isExcess ? 'taken' : 'fulfilled'}.',
                       ),
                     ),
                   );
@@ -386,7 +388,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this order?'),
+        content: const Text('Are you sure you want to delete this item?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -406,10 +408,10 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                     ).deleteShortage(item['_id']);
 
               if (success) {
-                Provider.of<OrderProvider>(
+                Provider.of<RequestsHistoryProvider>(
                   context,
                   listen: false,
-                ).fetchMyOrders();
+                ).fetchRequestsHistory();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Deleted successfully')),
                 );

@@ -15,6 +15,10 @@ const stockShortageSchema = new mongoose.Schema({
         ref: 'Pharmacy',
         required: true
     },
+    order: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Order'
+    },
     product: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product',
@@ -35,10 +39,19 @@ const stockShortageSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
+    targetPrice: {
+        type: Number,
+        min: 0
+    },
     status: {
         type: String,
         enum: ['active', 'fulfilled', 'partially_fulfilled', 'cancelled'],
         default: 'active'
+    },
+    type: {
+        type: String,
+        enum: ['request', 'market_order'],
+        default: 'request'
     },
     notes: {
         type: String,

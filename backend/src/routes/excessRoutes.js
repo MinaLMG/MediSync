@@ -8,6 +8,8 @@ const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
 // Routes
 router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, excessController.createExcess);
 router.put('/:id', protect, authorize('admin', 'pharmacy_owner', 'manager'), strictLimiter, excessController.updateExcess);
+router.get('/my', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMyExcesses);
+router.get('/market', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMarketExcesses);
 router.get('/pending', protect, authorize('admin'), getLimiter, excessController.getPendingExcesses);
 router.get('/available', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getAvailableExcesses);
 router.put('/:id/approve', protect, authorize('admin'), strictLimiter, excessController.approveExcess);

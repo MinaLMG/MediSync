@@ -16,6 +16,7 @@ import 'admin_delivery_requests_screen.dart';
 import 'admin_account_updates_screen.dart';
 import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
+import 'admin_order_list_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -138,6 +139,11 @@ class AdminHomeTab extends StatelessWidget {
         'color': Colors.red,
       },
       {
+        'title': 'Manage Orders',
+        'icon': Icons.assignment,
+        'color': Colors.lime,
+      },
+      {
         'title': 'Delivery Requests',
         'icon': Icons.local_shipping,
         'color': Colors.blueGrey,
@@ -202,6 +208,8 @@ class AdminHomeTab extends StatelessWidget {
                 badgeCount = suggestionProvider.deliveryRequestsCount;
               } else if (item['title'] == 'Account Updates') {
                 badgeCount = suggestionProvider.pendingAccountUpdatesCount;
+              } else if (item['title'] == 'Manage Orders') {
+                badgeCount = suggestionProvider.pendingOrdersCount;
               }
 
               return _buildMenuCard(
@@ -312,6 +320,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminSettingsScreen(),
+              ),
+            );
+          } else if (title == 'Manage Orders') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminOrderListScreen(),
               ),
             );
           }

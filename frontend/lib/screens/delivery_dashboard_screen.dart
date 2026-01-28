@@ -415,15 +415,19 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
           final status = tx['status'];
           final shortagePh =
               tx['stockShortage']?['shortage']?['pharmacy'] ?? {};
-          final excessPhs = (tx['stockExcessSources'] ?? [])
-              .map((s) => s['stockExcess']?['pharmacy'] ?? {})
-              .toList();
+          final excessSources = (tx['stockExcessSources'] ?? []).toList();
 
           final hasPendingRequest = dripProvider.myRequests.any(
             (r) => r['transaction'] == tx['_id'] && r['status'] == 'pending',
           );
 
+          final isOrder = tx['stockShortage']?['shortage']?['order'] != null;
+          final orderSerial = isOrder
+              ? tx['stockShortage']['shortage']['order']['serial']
+              : null;
+
           return Card(
+            color: isOrder ? Colors.blue[100] : null,
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
@@ -433,9 +437,37 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Transaction #${tx['serial'] ?? tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Transaction #${tx['serial'] ?? tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if (orderSerial != null)
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: Colors.blue.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                'Order #$orderSerial',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.blue[800],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       _buildStatusBadge(status),
                     ],
@@ -525,18 +557,42 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                     'Excess Pharmacy:',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
-                  ...excessPhs.map(
-                    (eph) => ListTile(
+                  ...excessSources.map((source) {
+                    final eph = source['stockExcess']?['pharmacy'] ?? {};
+                    return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(eph['name']),
+                      title: Row(
+                        children: [
+                          Expanded(child: Text(eph['name'] ?? 'Unknown')),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green),
+                            ),
+                            child: Text(
+                              '${source['quantity']} Units',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       subtitle: Text(eph['address'] ?? ''),
                       trailing: const Icon(
                         Icons.info_outline,
                         color: Colors.blue,
                       ),
                       onTap: () => _showPharmacyInfo(context, eph),
-                    ),
-                  ),
+                    );
+                  }),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,

@@ -8,6 +8,7 @@ module.exports = {
     StockShortage: require('./StockShortage'),
     StockExcess: require('./StockExcess'),
     Transaction: require('./Transaction'),
+    Order: require('./Order'),
     Notification: require('./Notification'),
     AuditLog: require('./AuditLog'),
     Settings: require('./Settings'),

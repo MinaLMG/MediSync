@@ -32,7 +32,7 @@ app.use('/api/settings', require('./src/routes/settingsRoutes'));
 app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/excess', require('./src/routes/excessRoutes'));
 app.use('/api/shortage', require('./src/routes/shortageRoutes'));
-app.use('/api/orders', require('./src/routes/orderRoutes'));
+app.use('/api/requests-history', require('./src/routes/requestsHistoryRoutes'));
 app.use('/api/transaction', require('./src/routes/transactionRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));

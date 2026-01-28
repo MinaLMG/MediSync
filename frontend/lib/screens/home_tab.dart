@@ -7,7 +7,7 @@ import '../providers/product_provider.dart';
 import '../utils/search_utils.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
-import 'orders_history_screen.dart';
+import 'requests_history_screen.dart';
 import 'admin_matchable_products_screen.dart';
 import 'follow_up_transactions_screen.dart';
 import 'suggest_product_screen.dart';
@@ -16,6 +16,7 @@ import 'admin_view_suggestions_screen.dart';
 import 'admin_manage_users_screen.dart';
 import '../providers/app_suggestion_provider.dart';
 import 'balance_history_screen.dart';
+import 'create_order_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -81,7 +82,16 @@ class _HomeTabState extends State<HomeTab> {
     final shortages = provider.globalShortages;
 
     final List<Map<String, dynamic>> menuItems = [
-      {'title': 'Orders History', 'icon': Icons.history, 'color': Colors.blue},
+      {
+        'title': 'Requests History',
+        'icon': Icons.history,
+        'color': Colors.blue,
+      },
+      {
+        'title': 'Shopping Tour',
+        'icon': Icons.shopping_cart,
+        'color': Colors.orange,
+      },
       {
         'title': 'Add Shortage',
         'icon': Icons.remove_circle_outline,
@@ -316,11 +326,18 @@ class _HomeTabState extends State<HomeTab> {
                 builder: (context) => const AddShortageScreen(),
               ),
             );
-          } else if (title == 'Orders History') {
+          } else if (title == 'Requests History') {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const OrdersHistoryScreen(),
+                builder: (context) => const RequestsHistoryScreen(),
+              ),
+            );
+          } else if (title == 'Shopping Tour') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateOrderScreen(),
               ),
             );
           } else if (title == 'Start Transactions') {

@@ -135,6 +135,90 @@ exports.getPendingExcesses = async (req, res) => {
     }
 };
 
+// Get market excesses (Public for pharmacies)
+// Get market excesses (Public for pharmacies)
+// Aggregated by Product + Volume + Price
+exports.getMarketExcesses = async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const { product, volume } = req.query;
+        
+        let matchStage = {
+            remainingQuantity: { $gt: 0 },
+            status: { $in: ['available', 'partially_fulfilled'] }
+        };
+
+        if (product) matchStage.product = new mongoose.Types.ObjectId(product);
+        if (volume) matchStage.volume = new mongoose.Types.ObjectId(volume);
+        
+        if (req.query.excludeShortageFulfillment === 'true') {
+            matchStage.shortage_fulfillment = { $ne: true };
+        }
+
+        // Exclude own excesses
+        if (req.user.pharmacy) {
+            matchStage.pharmacy = { $ne: new mongoose.Types.ObjectId(req.user.pharmacy) };
+        }
+
+        const aggregated = await StockExcess.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        product: "$product",
+                        volume: "$volume",
+                        price: "$selectedPrice"
+                    },
+                    totalQuantity: { $sum: "$remainingQuantity" },
+                    // Keep one doc details (first one) for display names if needed, 
+                    // though usually we fetch names separately or use lookups
+                    sampleExpiry: { $first: "$expiryDate" } 
+                }
+            },
+            // Lookup product details
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id.product",
+                    foreignField: "_id",
+                    as: "productDetails"
+                }
+            },
+            { $unwind: "$productDetails" },
+            // Lookup volume details
+            {
+                $lookup: {
+                    from: "volumes",
+                    localField: "_id.volume",
+                    foreignField: "_id",
+                    as: "volumeDetails"
+                }
+            },
+            { $unwind: "$volumeDetails" },
+            {
+                $project: {
+                    _id: 0,
+                    product: { 
+                        _id: "$_id.product", 
+                        name: "$productDetails.name" 
+                    },
+                    volume: { 
+                        _id: "$_id.volume", 
+                        name: "$volumeDetails.name" 
+                    },
+                    price: "$_id.price",
+                    totalQuantity: 1
+                }
+            },
+            { $sort: { "product.name": 1, price: 1 } }
+        ]);
+
+        res.status(200).json({ success: true, count: aggregated.length, data: aggregated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // Get available excesses (Admin)
 exports.getAvailableExcesses = async (req, res) => {
     try {
@@ -178,6 +262,20 @@ exports.approveExcess = async (req, res) => {
         }
 
         res.status(200).json({ success: true, data: excess });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get excesses for a specific pharmacy (Manager)
+exports.getMyExcesses = async (req, res) => {
+    try {
+        const excesses = await StockExcess.find({ pharmacy: req.user.pharmacy })
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, data: excesses });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

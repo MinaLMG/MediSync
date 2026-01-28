@@ -16,6 +16,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int _appSuggestionsCount = 0;
   int _deliveryRequestsCount = 0;
   int _pendingAccountUpdatesCount = 0;
+  int _pendingOrdersCount = 0;
 
   List<dynamic> get suggestions => _suggestions;
   bool get isLoading => _isLoading;
@@ -27,6 +28,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int get appSuggestionsCount => _appSuggestionsCount;
   int get deliveryRequestsCount => _deliveryRequestsCount;
   int get pendingAccountUpdatesCount => _pendingAccountUpdatesCount;
+  int get pendingOrdersCount => _pendingOrdersCount;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +58,7 @@ class AppSuggestionProvider with ChangeNotifier {
         _deliveryRequestsCount = data['data']['deliveryRequests'] ?? 0;
         _pendingAccountUpdatesCount =
             data['data']['pendingAccountUpdates'] ?? 0;
+        _pendingOrdersCount = data['data']['pendingOrders'] ?? 0;
         notifyListeners();
       }
     } catch (e) {

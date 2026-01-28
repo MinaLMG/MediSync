@@ -123,12 +123,14 @@ const getAllPharmacies = async (req, res) => {
 // @access  Admin
 const getPendingCounts = async (req, res) => {
     try {
+        const { Order } = require('../models');
         const waitingUsers = await User.countDocuments({ status: 'waiting' });
         const pendingExcesses = await StockExcess.countDocuments({ status: 'pending' });
         const pendingSuggestions = await ProductSuggestion.countDocuments({ status: 'pending' });
         const appSuggestions = await AppSuggestion.countDocuments({ seen: false });
         const deliveryRequests = await DeliveryRequest.countDocuments({ status: 'pending' });
         const pendingAccountUpdates = await User.countDocuments({ pendingUpdate: { $ne: null } });
+        const pendingOrders = await Order.countDocuments({ status: { $in: ['pending', 'partially_fulfilled'] } });
 
         res.status(200).json({
             success: true,
@@ -138,7 +140,8 @@ const getPendingCounts = async (req, res) => {
                 pendingSuggestions,
                 appSuggestions,
                 deliveryRequests,
-                pendingAccountUpdates
+                pendingAccountUpdates,
+                pendingOrders
             }
         });
     } catch (error) {

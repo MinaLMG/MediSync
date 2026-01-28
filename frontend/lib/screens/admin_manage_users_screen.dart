@@ -279,7 +279,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       onPressed: () => _confirmAction(
                         title: 'Reset Password',
                         message:
-                            'Are you sure you want to reset this user\'s password to "123456"?',
+                            'Are you sure you want to reset this user\'s password to "00000000"?',
                         onConfirm: () =>
                             _adminAction(user['_id'], 'reset-password'),
                       ),

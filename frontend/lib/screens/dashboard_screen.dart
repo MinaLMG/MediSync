@@ -4,14 +4,14 @@ import '../providers/auth_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/app_suggestion_provider.dart';
-import '../providers/order_provider.dart';
+import '../providers/requests_history_provider.dart';
 import 'login_screen.dart';
 import 'home_tab.dart';
 import 'notifications_screen.dart';
 import '../providers/notification_provider.dart';
 import 'package:intl/intl.dart';
 
-import 'orders_history_screen.dart';
+import 'requests_history_screen.dart';
 import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -41,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Placeholder pages for other tabs
   final List<Widget> _pages = [
     const HomeTab(),
-    const OrdersHistoryScreen(), // Replaced placeholder
+    const RequestsHistoryScreen(), // Replaced placeholder
     const Center(child: Text('Pending Cart (Coming Soon)')),
     const ProfileScreen(),
   ];
@@ -107,10 +107,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   listen: false,
                 ).fetchPendingCounts();
               } else if (_selectedIndex == 1) {
-                Provider.of<OrderProvider>(
+                Provider.of<RequestsHistoryProvider>(
                   context,
                   listen: false,
-                ).fetchMyOrders();
+                ).fetchRequestsHistory();
               } else if (_selectedIndex == 3) {
                 Provider.of<AuthProvider>(
                   context,

@@ -61,18 +61,42 @@ exports.getMatchableProducts = async (req, res) => {
 // @access  Admin
 exports.getMatchesForProduct = async (req, res) => {
     try {
+        console.log(1)
         const { productId } = req.params;
+        console.log(2)
 
         const shortages = await StockShortage.find({
             product: productId,
             remainingQuantity: { $gt: 0 }
         }).populate('pharmacy', 'name balance').populate('volume', 'name');
+        console.log(3)
 
-        const excesses = await StockExcess.find({
+
+        const excessQuery = {
             product: productId,
             status: { $in: ['available', 'partially_fulfilled'] },
             remainingQuantity: { $gt: 0 }
-        }).populate('pharmacy', 'name balance').populate('volume', 'name');
+        };
+        console.log(4)
+
+        // If explicitly requested to exclude shortage fulfillment excesses (e.g. for market orders)
+        if (req.query.excludeShortageFulfillment === 'true') {
+            console.log(5)
+            excessQuery.shortage_fulfillment = { $ne: true };
+        }
+        console.log(6)
+
+        if (req.query.price) {
+            console.log(7)
+            // Convert to number for proper comparison
+            excessQuery.selectedPrice = parseFloat(req.query.price);
+        }
+        console.log(excessQuery )
+        const excesses = await StockExcess.find(excessQuery)
+            .populate('pharmacy', 'name balance')
+            .populate('volume', 'name')
+            .populate('product', 'name');
+        console.log(8)
 
         res.status(200).json({
             success: true,
@@ -250,6 +274,151 @@ exports.createTransaction = async (req, res) => {
     }
 };
 
+// @desc    Buy directly from market (Pharmacy)
+// @route   POST /api/transaction/buy
+// @access  Pharmacy Owner / Manager
+exports.buyFromMarket = async (req, res) => {
+    console.log(1)
+    const session = await mongoose.startSession();
+    console.log(2)
+    session.startTransaction();
+    console.log(3)
+    try {
+        const { excessId, quantity } = req.body;
+        
+        if (!quantity || quantity < 1) {
+            throw new Error('Quantity must be at least 1');
+        }
+
+        const excess = await StockExcess.findById(excessId).populate('product').populate('pharmacy').session(session);
+        if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < quantity) {
+            throw new Error('This item is no longer available in the requested quantity.');
+        }
+
+        if (req.user.pharmacy && excess.pharmacy._id.toString() === req.user.pharmacy.toString()) {
+            throw new Error('You cannot buy your own excess stock.');
+        }
+
+        // 1. Create a "Market Order" Shortage
+        const shortage = new StockShortage({
+            pharmacy: req.user.pharmacy,
+            product: excess.product._id,
+            volume: excess.volume,
+            quantity: quantity,
+            remainingQuantity: quantity, // Will be reduced immediately by transaction creation logic below
+            status: 'active',
+            type: 'market_order',
+            notes: `Market purchase from ${excess.pharmacy.name}`
+        });
+        await shortage.save({ session });
+
+        // 2. Prepare Transaction Data
+        // Reuse logic from createTransaction but for single source
+        const settings = await Settings.getSettings();
+        
+        // Deduct from excess
+        excess.remainingQuantity -= quantity;
+        await syncExcessStatus(excess, session);
+        await excess.save({ session });
+
+        const amount = quantity * excess.selectedPrice;
+        
+        // Deduct from shortage immediately as it is "filled" by this order
+        shortage.remainingQuantity -= quantity;
+        await syncShortageStatus(shortage);
+        await shortage.save({ session });
+
+        // Generate Serial
+        const date = new Date();
+        const datePrefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        const lastTx = await Transaction.findOne({ serial: { $regex: `^${datePrefix}-` } }).sort({ serial: -1 }).session(session);
+        let sequence = 101;
+        if (lastTx && lastTx.serial) {
+            const parts = lastTx.serial.split('-');
+            if (parts.length === 2 && !isNaN(parseInt(parts[1]))) sequence = parseInt(parts[1]) + 1;
+        }
+        const serial = `${datePrefix}-${String(sequence).padStart(4, '0')}`;
+
+        // Create Transaction
+        const transaction = new Transaction({
+            serial,
+            stockShortage: {
+                shortage: shortage._id,
+                quantityTaken: quantity
+            },
+            stockExcessSources: [{
+                stockExcess: excess._id,
+                quantity: quantity,
+                agreedPrice: excess.selectedPrice,
+                totalAmount: amount
+            }],
+            totalQuantity: quantity,
+            totalAmount: amount,
+            status: 'pending', // Awaiting Seller/Admin confirmation?
+            shortage_fulfillment: excess.shortage_fulfillment, 
+            commissionRatio: settings.minimumCommission / 100,
+            buyerCommissionRatio: settings.shortageCommission / 100,
+            sellerBonusRatio: settings.shortageSellerReward / 100
+        });
+
+        await transaction.save({ session });
+        await session.commitTransaction();
+
+        // 3. Notifications
+        try {
+            const buyerIds = [req.user._id]; // The current user
+            // Notify Seller
+            const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
+
+            // Notify Buyer (Confirmation)
+            await addNotificationJob(
+                req.user._id.toString(),
+                'transaction',
+                `Market Order #${serial}: Purchase of ${quantity} x ${excess.product.name} initiated.`,
+                { relatedEntity: transaction._id, relatedEntityType: 'Transaction' }
+            );
+
+            // Notify Seller
+            for (const seller of sellerUsers) {
+                await addNotificationJob(
+                    seller._id.toString(),
+                    'transaction',
+                    `Market Order #${serial}: New purchase request for ${excess.product.name} from market.`,
+                    { relatedEntity: transaction._id, relatedEntityType: 'Transaction' }
+                );
+            }
+        } catch (notifErr) {
+            console.error('Notification error in buyFromMarket:', notifErr);
+        }
+
+        res.status(201).json({ success: true, data: transaction });
+
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+};
+
+// @desc    Fulfill an Order Item (Admin)
+// Wraps createTransaction but specific for Order context
+// @route   POST /api/transaction/fulfill
+// @access  Admin
+exports.fulfillOrder = async (req, res) => {
+    // This is essentially createTransaction but we might want to ensure the excess price 
+    // matches the order target price, or just allow admin override.
+    // For now, we can reuse createTransaction logic but maybe adding a check?
+    // Or just let the Admin decide. The core logic is the same: Shortage + Excess -> Transaction.
+    // The Order status update is handled by syncShortageStatus which is called inside createTransaction.
+    
+    // So we can alias it or just use createTransaction?
+    // User said: "apply this fulfillment for the order in a controller"
+    // Let's create a specific endpoint to be explicit and allow for future "Order" specific logic.
+    
+    return exports.createTransaction(req, res);
+};
+
 // @desc    Update transaction status (Accepted, Rejected, Completed, Cancelled)
 // @route   PUT /api/transaction/:id/status
 // @access  Admin
@@ -287,7 +456,7 @@ exports.updateTransactionStatus = async (req, res) => {
             const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
             if (shortage) {
                 shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-                await syncShortageStatus(shortage);
+                await syncShortageStatus(shortage, session);
                 await shortage.save({ session });
             }
         } else if (status === 'completed') {
@@ -535,7 +704,8 @@ exports.assignTransaction = async (req, res) => {
                 populate: [
                     { path: 'pharmacy', select: 'name address phone' },
                     { path: 'product', select: 'name' },
-                    { path: 'volume', select: 'name' }
+                    { path: 'volume', select: 'name' },
+                    { path: 'order', select: 'serial' }
                 ]
             })
             .populate({
@@ -602,7 +772,8 @@ exports.getTransactions = async (req, res) => {
                 populate: [
                     { path: 'pharmacy', select: 'name address phone' },
                     { path: 'product', select: 'name' },
-                    { path: 'volume', select: 'name' }
+                    { path: 'volume', select: 'name' },
+                    { path: 'order', select: 'serial' }
                 ]
             })
             .populate({
@@ -689,7 +860,7 @@ exports.revertTransaction = async (req, res) => {
         const shortage = await StockShortage.findById(transaction.stockShortage.shortage._id).session(session);
         if (shortage) {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-            await syncShortageStatus(shortage);
+            await syncShortageStatus(shortage, session);
             await shortage.save({ session });
         }
 

@@ -51,14 +51,31 @@ class TransactionProvider with ChangeNotifier {
   }
 
   // Get details for a specific product matching
-  Future<void> fetchMatchesForProduct(String productId) async {
+  Future<Map<String, dynamic>> fetchMatchesForProduct(
+    String productId, {
+    double? price,
+    bool excludeShortageFulfillment = false,
+  }) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
+      String url = '${Constants.baseUrl}/transaction/matches/$productId';
+      List<String> queryParams = [];
+      if (price != null) {
+        queryParams.add('price=$price');
+      }
+      if (excludeShortageFulfillment) {
+        queryParams.add('excludeShortageFulfillment=true');
+      }
+
+      if (queryParams.isNotEmpty) {
+        url += '?${queryParams.join('&')}';
+      }
+
       final response = await http.get(
-        Uri.parse('${Constants.baseUrl}/transaction/matches/$productId'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',
@@ -69,11 +86,14 @@ class TransactionProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         currentMatches = data['data'];
+        return data['data'];
       } else {
         errorMessage = data['message'] ?? 'Failed to fetch matches';
+        return {'shortages': [], 'excesses': []};
       }
     } catch (e) {
       errorMessage = 'Network error: $e';
+      return {'shortages': [], 'excesses': []};
     } finally {
       isLoading = false;
       notifyListeners();

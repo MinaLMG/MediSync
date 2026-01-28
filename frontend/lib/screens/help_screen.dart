@@ -38,8 +38,8 @@ class HelpScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _buildCategoryHeader('🔄 Transactions & History'),
           _buildFAQItem(
-            'Where is the orders history?',
-            'All your past transactions and current orders can be found in the "History" tab at the bottom of the dashboard.',
+            'Where is my requests history?',
+            'All your past transactions and current stock requests can be found in the "History" tab at the bottom of the dashboard.',
           ),
           _buildFAQItem(
             'How do I track a delivery?',

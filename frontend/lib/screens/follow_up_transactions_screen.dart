@@ -121,6 +121,18 @@ class _FollowUpTransactionsScreenState
     );
   }
 
+  bool _isShortageFulfillment(Map<String, dynamic> tx) {
+    if (tx['stockExcessSources'] != null && tx['stockExcessSources'] is List) {
+      for (var source in tx['stockExcessSources']) {
+        if (source['stockExcess'] != null &&
+            source['stockExcess']['shortage_fulfillment'] == true) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   Widget _filterChip(String? status, String label) {
     final isSelected = selectedStatus == status;
     return Padding(
@@ -144,7 +156,13 @@ class _FollowUpTransactionsScreenState
     final product = shortage['product']['name'];
     final buyer = shortage['pharmacy']['name'];
 
+    final isOrder = tx['stockShortage']?['shortage']?['order'] != null;
+    final orderSerial = isOrder
+        ? tx['stockShortage']['shortage']['order']['serial']
+        : null;
+
     return Card(
+      color: isOrder ? Colors.blue[100] : null,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -175,6 +193,29 @@ class _FollowUpTransactionsScreenState
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                    if (orderSerial != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'Order #$orderSerial',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
                           ),
                         ),
                       ),
@@ -328,7 +369,8 @@ class _FollowUpTransactionsScreenState
                               ).userRole ==
                               'admin' &&
                           tx['status'] != 'completed' &&
-                          tx['status'] != 'cancelled')
+                          tx['status'] != 'cancelled' &&
+                          _isShortageFulfillment(tx))
                         TextButton.icon(
                           onPressed: () => _showEditRatiosDialog(tx),
                           icon: const Icon(Icons.percent, size: 16),

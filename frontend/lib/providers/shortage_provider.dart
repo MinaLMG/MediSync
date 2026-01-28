@@ -135,6 +135,41 @@ class ShortageProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> createOrder(Map<String, dynamic> orderData) async {
+    _isLoading = true;
+    _errorMessage = null;
+    if (!_isDisposed) notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.baseUrl}/shortage/order'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_authProvider.token}',
+        },
+        body: json.encode(orderData),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201 && data['success'] == true) {
+        _isLoading = false;
+        if (!_isDisposed) notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to create order';
+        _isLoading = false;
+        if (!_isDisposed) notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      if (!_isDisposed) notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateShortage(
     String id,
     Map<String, dynamic> shortageData,

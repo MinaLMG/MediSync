@@ -1,13 +1,10 @@
 const { StockExcess, StockShortage } = require('../models');
 
-// Get combined orders history (Excess + Shortage) for the logged-in user
+// Get combined listings (Excess + Shortage) for the logged-in user
 // Sorted by most recent first
-exports.getMyOrders = async (req, res) => {
+exports.getMyListings = async (req, res) => {
     try {
-        console.log(1)
         // 1. Fetch Requesting User's Excesses
-        // We want all statuses presumably, or maybe just active ones? 
-        // User asked for "all stockexcesses and stock shortages".
         const excesses = await StockExcess.find({ pharmacy: req.user.pharmacy })
             .populate('product', 'name')
             .populate('volume', 'name')
@@ -17,7 +14,7 @@ exports.getMyOrders = async (req, res) => {
         const formattedExcesses = excesses.map(item => ({
             ...item,
             type: 'excess',
-            displayStatus: item.status // 'pending', 'available', etc.
+            displayStatus: item.status
         }));
 
         // 2. Fetch Requesting User's Shortages
@@ -29,16 +26,16 @@ exports.getMyOrders = async (req, res) => {
         const formattedShortages = shortages.map(item => ({
             ...item,
             type: 'shortage',
-            displayStatus: item.status // 'active', 'fulfilled', etc.
+            displayStatus: item.status
         }));
 
         // 3. Combine and Sort
-        const allOrders = [...formattedExcesses, ...formattedShortages];
+        const allListings = [...formattedExcesses, ...formattedShortages];
 
         // Sort by createdAt descending (most recent first)
-        allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        allListings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        res.status(200).json({ success: true, data: allOrders });
+        res.status(200).json({ success: true, data: allListings });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
