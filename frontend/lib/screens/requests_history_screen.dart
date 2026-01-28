@@ -306,6 +306,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
           if (item['displayStatus'] == 'pending' ||
               item['displayStatus'] == 'active' ||
               item['displayStatus'] == 'available' ||
+              item['displayStatus'] == 'partially_fulfilled' ||
               item['displayStatus'] == 'rejected') ...[
             if (item['displayStatus'] != 'rejected' ||
                 Provider.of<AuthProvider>(context, listen: false).userRole ==

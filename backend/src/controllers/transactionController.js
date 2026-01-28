@@ -847,6 +847,15 @@ exports.revertTransaction = async (req, res) => {
             }
         }
 
+        // Change transaction status FIRST so sync status helpers ignore this transaction
+        transaction.status = 'cancelled';
+        // Note: we don't save yet, we save at the end, but the in-memory object 
+        // will be used by some logic, and the session will handle the rest.
+        // Actually, we must save it if syncExcessStatus queries the DB.
+        // Let's check syncExcessStatus. It queries TransactionModel.find.
+        // So we MUST save it (within the session) before calling sync status.
+        await transaction.save({ session });
+
         // 1. Restore Stock Quantities
         for (const source of transaction.stockExcessSources) {
             const excess = await StockExcess.findById(source.stockExcess._id).session(session);
@@ -993,7 +1002,7 @@ exports.revertTransaction = async (req, res) => {
 
         // 5. Update Transaction
         transaction.reversalTicket = ticket._id;
-        transaction.status = 'cancelled';
+        // Status already set to cancelled at the beginning
         await transaction.save({ session });
 
         await session.commitTransaction();
@@ -1150,5 +1159,111 @@ exports.updateTransactionRatios = async (req, res) => {
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Update an existing transaction (modify quantities and resources)
+// @route   PUT /api/transaction/:id
+// @access  Admin
+exports.updateTransaction = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { id } = req.params;
+        const { quantityTaken, excessSources } = req.body;
+
+        // 1. Find transaction
+        const transaction = await Transaction.findById(id).session(session);
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+
+        if (!['pending', 'accepted'].includes(transaction.status)) {
+            throw new Error('Cannot modify a completed or cancelled transaction');
+        }
+
+        // 2. Revert old stock changes
+        // Restore shortage
+        const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
+        if (shortage) {
+            shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
+            // Note: We'll sync status after applying new changes
+        } else {
+            throw new Error('Related shortage not found');
+        }
+
+        // Restore excesses
+        for (const source of transaction.stockExcessSources) {
+            const excess = await StockExcess.findById(source.stockExcess).session(session);
+            if (excess) {
+                excess.remainingQuantity += source.quantity;
+                await syncExcessStatus(excess, session);
+                await excess.save({ session });
+            }
+        }
+
+        // 3. Apply new changes
+        if (quantityTaken > shortage.remainingQuantity) {
+             // This check is slightly different now because we restored the quantity
+             // We need to check against the actual needs. 
+             // Actually, shortage.quantity is the ORIGINAL target. 
+             // remainingQuantity (after revert) is what's left if we hadn't made THIS transaction.
+             // If they try to take more than remains, it's an error.
+             throw new Error(`Requested quantity (${quantityTaken}) exceeds remaining available needed (${shortage.remainingQuantity})`);
+        }
+
+        let newTotalAmount = 0;
+        let newTotalQuantity = 0;
+        const refinedSources = [];
+
+        for (const source of excessSources) {
+            const excess = await StockExcess.findById(source.stockExcessId).session(session);
+            if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
+                 throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
+            }
+
+            // Deduct from excess
+            excess.remainingQuantity -= source.quantity;
+            await syncExcessStatus(excess, session);
+            await excess.save({ session });
+
+            const amount = source.quantity * excess.selectedPrice;
+            newTotalAmount += amount;
+            newTotalQuantity += source.quantity;
+
+            refinedSources.push({
+                stockExcess: excess._id,
+                quantity: source.quantity,
+                agreedPrice: excess.selectedPrice,
+                totalAmount: amount
+            });
+        }
+
+        if (newTotalQuantity !== quantityTaken) {
+            throw new Error('Total quantity from sources does not match quantity taken from shortage');
+        }
+
+        // 4. Update shortage
+        shortage.remainingQuantity -= quantityTaken;
+        await syncShortageStatus(shortage, session);
+        await shortage.save({ session });
+
+        // 5. Update transaction record
+        transaction.stockShortage.quantityTaken = quantityTaken;
+        transaction.stockExcessSources = refinedSources;
+        transaction.totalQuantity = newTotalQuantity;
+        transaction.totalAmount = newTotalAmount;
+
+        await transaction.save({ session });
+
+        await session.commitTransaction();
+
+        res.status(200).json({ success: true, data: transaction });
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };

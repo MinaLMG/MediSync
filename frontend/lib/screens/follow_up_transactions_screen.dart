@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/auth_provider.dart';
+import 'admin_edit_transaction_screen.dart';
 
 class FollowUpTransactionsScreen extends StatefulWidget {
   final String? initialStatus;
@@ -271,8 +272,10 @@ class _FollowUpTransactionsScreenState
             if (tx['status'] != 'completed' && tx['status'] != 'cancelled')
               Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.end,
                     children: [
                       if (tx['status'] == 'pending')
                         TextButton(
@@ -362,6 +365,28 @@ class _FollowUpTransactionsScreenState
                           foregroundColor: Colors.red,
                         ),
                         child: const Text('Cancel'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) =>
+                                  AdminEditTransactionScreen(transaction: tx),
+                            ),
+                          );
+                          if (result == true) {
+                            Provider.of<TransactionProvider>(
+                              context,
+                              listen: false,
+                            ).fetchTransactions(status: selectedStatus);
+                          }
+                        },
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text(
+                          'Edit',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                       if (Provider.of<AuthProvider>(
                                 context,

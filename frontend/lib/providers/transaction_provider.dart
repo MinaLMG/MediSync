@@ -387,4 +387,42 @@ class TransactionProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Update an existing transaction (modify quantities and resources)
+  Future<bool> updateTransaction(
+    String id,
+    Map<String, dynamic> transactionData,
+  ) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse('${Constants.baseUrl}/transaction/$id'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+            body: json.encode(transactionData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        errorMessage = data['message'] ?? 'Failed to update transaction';
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Network error: $e';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 }

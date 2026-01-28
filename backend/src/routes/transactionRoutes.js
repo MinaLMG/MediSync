@@ -12,7 +12,8 @@ const {
     updateReversalTicket,
     updateTransactionRatios,
     buyFromMarket,
-    fulfillOrder
+    fulfillOrder,
+    updateTransaction
 } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middleware/rateLimiter');
@@ -29,6 +30,7 @@ router.post('/fulfill', authorize('admin'), strictLimiter, fulfillOrder); // Ord
 router.post('/', authorize('admin'), strictLimiter, createTransaction);
 router.put('/:id/status', authorize('admin'), strictLimiter, updateTransactionStatus);
 router.put('/:id/ratios', authorize('admin'), strictLimiter, updateTransactionRatios);
+router.put('/:id', authorize('admin'), strictLimiter, updateTransaction);
 
 // Sensitive actions (Financial Reversal)
 router.post('/:id/revert', authorize('admin'), sensitiveLimiter, revertTransaction);
