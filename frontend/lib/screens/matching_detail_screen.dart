@@ -95,6 +95,10 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         final balA = (a['pharmacy']?['balance'] ?? 0) as num;
         final balB = (b['pharmacy']?['balance'] ?? 0) as num;
         comparison = balB.compareTo(balA);
+      } else if (criteria == 'Expiry' && isExcess) {
+        final dateA = _parseExpiryDate(a['expiryDate']);
+        final dateB = _parseExpiryDate(b['expiryDate']);
+        comparison = dateA.compareTo(dateB);
       } else {
         comparison = 0;
       }
@@ -262,17 +266,20 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       child: DropdownButton<String>(
                         value: currentSort,
                         isDense: true,
-                        items: ['Time', 'Quantity', 'Balance']
-                            .map(
-                              (e) => DropdownMenuItem(
-                                value: e,
-                                child: Text(
-                                  e,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                        items:
+                            (isExcess
+                                    ? ['Time', 'Quantity', 'Balance', 'Expiry']
+                                    : ['Time', 'Quantity', 'Balance'])
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(
+                                      e,
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: onSortChanged,
                       ),
                     ),
@@ -449,6 +456,17 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                   'Price: ${item['selectedPrice']}',
                   style: const TextStyle(fontSize: 11),
                 ),
+              if (isExcess && item['expiryDate'] != null)
+                Text(
+                  'Expiry: ${item['expiryDate']}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _isNearExpiry(item['expiryDate'])
+                        ? Colors.red
+                        : Colors.grey[600],
+                  ),
+                ),
               Text(
                 DateFormat(
                   'MM-dd HH:mm',
@@ -615,5 +633,47 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         ),
       ],
     );
+  }
+
+  DateTime _parseExpiryDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return DateTime(2099, 12, 31);
+    try {
+      if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
+        return DateTime(year, month, day);
+      } else if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 2) {
+          final month = int.parse(parts[0]);
+          final yearStr = parts[1];
+          int year;
+          if (yearStr.length == 2) {
+            year = 2000 + int.parse(yearStr);
+          } else {
+            year = int.parse(yearStr);
+          }
+          return DateTime(year, month, 1);
+        } else {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing date: $dateStr');
+    }
+    return DateTime(2099, 12, 31);
+  }
+
+  bool _isNearExpiry(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return false;
+    final expiry = _parseExpiryDate(dateStr);
+    final now = DateTime.now();
+    final difference = expiry.difference(now).inDays;
+    return difference < (6 * 30);
   }
 }

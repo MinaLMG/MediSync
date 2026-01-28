@@ -32,6 +32,41 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
     super.dispose();
   }
 
+  bool _isNearExpiry(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return false;
+    try {
+      DateTime expiry;
+      if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
+        expiry = DateTime(year, month, day);
+      } else if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        // Assuming MM/YYYY or DD/MM/YYYY
+        if (parts.length == 2) {
+          final month = int.parse(parts[0]);
+          final year = int.parse(parts[1]);
+          expiry = DateTime(year, month, 1);
+        } else {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          expiry = DateTime(year, month, day);
+        }
+      } else {
+        return false;
+      }
+
+      final now = DateTime.now();
+      final difference = expiry.difference(now).inDays;
+      return difference < (6 * 30); // Approx 6 months
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,7 +205,10 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
 
                     Text(
                       'Expiry: $expiryStr',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _isNearExpiry(expiryStr) ? Colors.red : null,
+                      ),
                     ),
 
                     if (isRejected && item['rejectionReason'] != null) ...[
@@ -449,7 +487,10 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
 
                     Text(
                       'Expiry: $expiryStr',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _isNearExpiry(expiryStr) ? Colors.red : null,
+                      ),
                     ),
 
                     const Divider(),

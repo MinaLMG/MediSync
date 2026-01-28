@@ -76,6 +76,13 @@ class _AdminOrderFulfillmentScreenState
         }
       }).toList();
 
+      // Sort matches by nearest expiry
+      filteredMatches.sort((a, b) {
+        final dateA = _parseExpiryDate(a['expiryDate']);
+        final dateB = _parseExpiryDate(b['expiryDate']);
+        return dateA.compareTo(dateB);
+      });
+
       _matchCache[itemId] = filteredMatches;
     } catch (e) {
       _matchCache[itemId] = [];
@@ -247,7 +254,7 @@ class _AdminOrderFulfillmentScreenState
                 // Order Summary Header
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: Colors.blue[50],
+                  decoration: BoxDecoration(color: Colors.blue[50]),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -388,6 +395,20 @@ class _AdminOrderFulfillmentScreenState
                                                   color: Colors.grey[600],
                                                 ),
                                               ),
+                                              if (excess['expiryDate'] != null)
+                                                Text(
+                                                  'Expiry: ${excess['expiryDate']}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        _isNearExpiry(
+                                                          excess['expiryDate'],
+                                                        )
+                                                        ? Colors.red
+                                                        : Colors.grey[600],
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ),
@@ -563,5 +584,47 @@ class _AdminOrderFulfillmentScreenState
               ],
             ),
     );
+  }
+
+  DateTime _parseExpiryDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return DateTime(2099, 12, 31);
+    try {
+      if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
+        return DateTime(year, month, day);
+      } else if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 2) {
+          final month = int.parse(parts[0]);
+          final yearStr = parts[1];
+          int year;
+          if (yearStr.length == 2) {
+            year = 2000 + int.parse(yearStr);
+          } else {
+            year = int.parse(yearStr);
+          }
+          return DateTime(year, month, 1);
+        } else {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing date: $dateStr');
+    }
+    return DateTime(2099, 12, 31);
+  }
+
+  bool _isNearExpiry(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return false;
+    final expiry = _parseExpiryDate(dateStr);
+    final now = DateTime.now();
+    final difference = expiry.difference(now).inDays;
+    return difference < (6 * 30);
   }
 }
