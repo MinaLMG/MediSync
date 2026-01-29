@@ -50,6 +50,9 @@ exports.getMatchableProducts = async (req, res) => {
             }
         }
 
+        // Sort alphabetically by product name
+        matchable.sort((a, b) => a.product.name.localeCompare(b.product.name));
+
         res.status(200).json({ success: true, count: matchable.length, data: matchable });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -68,7 +71,7 @@ exports.getMatchesForProduct = async (req, res) => {
         const shortages = await StockShortage.find({
             product: productId,
             remainingQuantity: { $gt: 0 }
-        }).populate('pharmacy', 'name balance').populate('volume', 'name');
+        }).populate('pharmacy', 'name balance').populate('volume', 'name').sort({ createdAt: -1 });
         console.log(3)
 
 
@@ -95,7 +98,8 @@ exports.getMatchesForProduct = async (req, res) => {
         const excesses = await StockExcess.find(excessQuery)
             .populate('pharmacy', 'name balance')
             .populate('volume', 'name')
-            .populate('product', 'name');
+            .populate('product', 'name')
+            .sort({ createdAt: -1 });
         console.log(8)
 
         res.status(200).json({

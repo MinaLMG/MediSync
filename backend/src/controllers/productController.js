@@ -9,7 +9,7 @@ exports.getAllProducts = async (req, res) => {
         if (req.user.role !== 'admin') {
             query.status = 'active';
         }
-        const products = await Product.find(query);
+        const products = await Product.find(query).sort({ name: 1 });
 
         const productsWithVolumes = await Promise.all(products.map(async (product) => {
             const hasVolumes = await HasVolume.find({ product: product._id })

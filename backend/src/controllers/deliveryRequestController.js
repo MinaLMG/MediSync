@@ -58,7 +58,8 @@ exports.getPendingRequests = async (req, res) => {
                     { path: 'stockShortage.shortage', populate: { path: 'pharmacy', select: 'name address phone' } },
                     { path: 'stockExcessSources.stockExcess', populate: { path: 'pharmacy', select: 'name address phone' } }
                 ]
-            });
+            })
+            .sort({ createdAt: -1 });
 
         res.status(200).json({ success: true, count: requests.length, data: requests });
     } catch (error) {
@@ -165,7 +166,7 @@ exports.cleanupRequests = async (req, res) => {
 // @access  Delivery
 exports.getMyRequests = async (req, res) => {
     try {
-        const requests = await DeliveryRequest.find({ delivery: req.user._id });
+        const requests = await DeliveryRequest.find({ delivery: req.user._id }).sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: requests });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
