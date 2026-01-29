@@ -100,6 +100,10 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         final dateA = _parseExpiryDate(a['expiryDate']);
         final dateB = _parseExpiryDate(b['expiryDate']);
         comparison = dateA.compareTo(dateB);
+      } else if (criteria == 'Sale %' && isExcess) {
+        final saleA = (a['salePercentage'] ?? 0) as num;
+        final saleB = (b['salePercentage'] ?? 0) as num;
+        comparison = saleB.compareTo(saleA);
       } else {
         comparison = 0;
       }
@@ -269,7 +273,13 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                         isDense: true,
                         items:
                             (isExcess
-                                    ? ['Time', 'Quantity', 'Balance', 'Expiry']
+                                    ? [
+                                        'Time',
+                                        'Quantity',
+                                        'Balance',
+                                        'Expiry',
+                                        'Sale %',
+                                      ]
                                     : ['Time', 'Quantity', 'Balance'])
                                 .map(
                                   (e) => DropdownMenuItem(
@@ -461,6 +471,15 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 Text(
                   'Price: ${item['selectedPrice']}',
                   style: const TextStyle(fontSize: 11),
+                ),
+              if (isExcess && item['salePercentage'] != null)
+                Text(
+                  'Sale Ratio: ${item['salePercentage']}%',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
                 ),
               if (isExcess && item['expiryDate'] != null)
                 Text(

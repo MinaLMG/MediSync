@@ -25,7 +25,6 @@ const deliveryRequestSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Ensure a delivery person can't make multiple pending requests for the same transaction
-deliveryRequestSchema.index({ delivery: 1, transaction: 1, status: 1 }, { unique: true });
+
 
 module.exports = mongoose.model('DeliveryRequest', deliveryRequestSchema);

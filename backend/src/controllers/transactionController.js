@@ -1,9 +1,9 @@
-const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User } = require('../models');
+const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User, ReversalTicket, } = require('../models');
 const mongoose = require('mongoose');
 const { addNotificationJob } = require('../utils/queueManager');
 const { syncExcessStatus } = require('./excessController');
 const { syncShortageStatus } = require('./shortageController');
-
+const { sendToUser } = require('../utils/socketManager');
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
 // @access  Admin
@@ -557,7 +557,6 @@ exports.updateTransactionStatus = async (req, res) => {
                     }], { session });
 
                     try {
-                        const { sendToUser } = require('../utils/socketManager');
                         const sellerUsers = await mongoose.model('User').find({ pharmacy: sellerPh._id });
                         for (const user of sellerUsers) {
                             sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
@@ -595,7 +594,6 @@ exports.updateTransactionStatus = async (req, res) => {
                 }], { session });
 
                 try {
-                    const { sendToUser } = require('../utils/socketManager');
                     const buyerUsers = await mongoose.model('User').find({ pharmacy: buyerPh._id });
                     for (const user of buyerUsers) {
                         sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
@@ -878,7 +876,6 @@ exports.revertTransaction = async (req, res) => {
         }
 
         // 2. Financial Reversal (Automatic)
-        const { sendToUser } = require('../utils/socketManager');
 
         // Revert Buyer
         const buyerPh = await Pharmacy.findById(transaction.stockShortage.shortage.pharmacy._id).session(session);

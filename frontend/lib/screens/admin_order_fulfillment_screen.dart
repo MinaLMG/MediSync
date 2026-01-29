@@ -404,6 +404,16 @@ class _AdminOrderFulfillmentScreenState
                                                   color: Colors.grey[600],
                                                 ),
                                               ),
+                                              if (excess['salePercentage'] !=
+                                                  null)
+                                                Text(
+                                                  'Sale Ratio: ${excess['salePercentage']}%',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green[700],
+                                                  ),
+                                                ),
                                               if (excess['expiryDate'] != null)
                                                 Text(
                                                   'Expiry: ${excess['expiryDate']}',

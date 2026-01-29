@@ -55,8 +55,14 @@ exports.getPendingRequests = async (req, res) => {
             .populate({
                 path: 'transaction',
                 populate: [
-                    { path: 'stockShortage.shortage', populate: { path: 'pharmacy', select: 'name address phone' } },
-                    { path: 'stockExcessSources.stockExcess', populate: { path: 'pharmacy', select: 'name address phone' } }
+                    { path: 'stockShortage.shortage', populate: [
+                        { path: 'pharmacy', select: 'name address phone' },
+                        { path: 'product', select: 'name' }
+                    ] },
+                    { path: 'stockExcessSources.stockExcess', populate: [
+                        { path: 'pharmacy', select: 'name address phone' },
+                        { path: 'product', select: 'name' }
+                    ] }
                 ]
             })
             .sort({ createdAt: -1 });
