@@ -1,7 +1,15 @@
 const jwt = require('jsonwebtoken');
 const { User, Pharmacy } = require('../models');
 const { deleteFiles } = require('../utils/fileHelper');
+const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
 
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 // Generate JWT Token
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -123,7 +131,7 @@ const getProfile = async (req, res) => {
 // @access  Private (Pending/Waiting)
 const linkPharmacy = async (req, res) => {
     try {
-        console.log("recived")
+        console.log("received")
         const { 
             name, ownerName, nationalId, phone, email,
             address, location 
@@ -135,7 +143,7 @@ const linkPharmacy = async (req, res) => {
             try { parsedLocation = JSON.parse(parsedLocation); } catch (e) {}
         }
 
-        // Helper to cleanup files if any error occurs
+        // Helper to cleanup files (local Multer files)
         const cleanup = () => {
             if (req.files) {
                 const files = Object.values(req.files).flat().map(f => f.path);
@@ -160,15 +168,46 @@ const linkPharmacy = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Account already active' });
         }
 
-        // Extract file paths
-        const pharmacistCard = req.files['pharmacistCard'] ? req.files['pharmacistCard'][0].path : null;
-        const commercialRegistry = req.files['commercialRegistry'] ? req.files['commercialRegistry'][0].path : null;
-        const taxCard = req.files['taxCard'] ? req.files['taxCard'][0].path : null;
-        const pharmacyLicense = req.files['pharmacyLicense'] ? req.files['pharmacyLicense'][0].path : null;
-
-        if (!pharmacistCard || !commercialRegistry || !taxCard || !pharmacyLicense) {
+        // Extract file paths from Multer (Required)
+        // Check if files exist
+        if (!req.files || !req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
             cleanup();
             return res.status(400).json({ success: false, message: 'All 4 documents are required' });
+        }
+
+        // --- All Validation Passed ---
+        const useCloudinary = process.env.USE_CLOUDINARY === 'true';
+        const fileKeys = ['pharmacistCard', 'commercialRegistry', 'taxCard', 'pharmacyLicense'];
+        const uploadResults = {};
+
+        if (useCloudinary) {
+            console.log("☁️ [Cloudinary] Uploading files...");
+            const uploadToCloudinary = async (filePath) => {
+                return await cloudinary.uploader.upload(filePath, {
+                    folder: 'pharmacy_docs',
+                    resource_type: 'image'
+                });
+            };
+
+            try {
+                for (const key of fileKeys) {
+                    const file = req.files[key][0];
+                    const result = await uploadToCloudinary(file.path);
+                    uploadResults[key] = result.secure_url;
+                    
+                    // Delete local file after upload
+                    fs.unlinkSync(file.path);
+                }
+            } catch (uploadError) {
+                cleanup(); // Try to delete remaining local files
+                console.error('Cloudinary Upload Error:', uploadError);
+                return res.status(500).json({ success: false, message: 'Image upload failed' });
+            }
+        } else {
+            console.log("📂 [Local] Using local file paths...");
+            for (const key of fileKeys) {
+                uploadResults[key] = req.files[key][0].path;
+            }
         }
 
         // Create new pharmacy record
@@ -178,10 +217,10 @@ const linkPharmacy = async (req, res) => {
             nationalId,
             phone: phone || user.phone,
             email: email || user.email,
-            pharmacistCard,
-            commercialRegistry,
-            taxCard,
-            pharmacyLicense,
+            pharmacistCard: uploadResults.pharmacistCard,
+            commercialRegistry: uploadResults.commercialRegistry,
+            taxCard: uploadResults.taxCard,
+            pharmacyLicense: uploadResults.pharmacyLicense,
             address,
             location: parsedLocation,
             status: 'pending'
@@ -199,9 +238,13 @@ const linkPharmacy = async (req, res) => {
         });
     } catch (error) {
         console.log(error);
-        // Cleanup if error occurs during DB operations
-        const files = req.files ? Object.values(req.files).flat().map(f => f.path) : [];
-        if (files.length > 0) deleteFiles(files);
+        const cleanup = () => {
+             if (req.files) {
+                 const files = Object.values(req.files).flat().map(f => f.path);
+                 if (files.length > 0) deleteFiles(files);
+             }
+        };
+        cleanup();
         res.status(500).json({ success: false, message: error.message });
     }
 };
