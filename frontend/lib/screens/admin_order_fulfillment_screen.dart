@@ -304,7 +304,7 @@ class _AdminOrderFulfillmentScreenState
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Volume: ${item['volume']['name']} | Price: ${item['targetPrice']} EGP',
+                                          'Volume: ${item['volume']['name']} | Price: ${item['targetPrice']} coins',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[600],

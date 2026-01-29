@@ -58,7 +58,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   ),
                 ),
                 Text('Volume: ${item['volume']['name']}'),
-                Text('Price: ${item['price']} EGP'),
+                Text('Price: ${item['price']} coins'),
                 Text('Available: $maxQty units'),
                 const SizedBox(height: 16),
                 const Text(
@@ -124,7 +124,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Total: ${(quantity * item['price']).toStringAsFixed(2)} EGP',
+                  'Total: ${(quantity * item['price']).toStringAsFixed(2)} coins',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,
@@ -265,13 +265,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             child: ListTile(
                               title: Text(item['product']['name']),
                               subtitle: Text(
-                                '${item['volume']['name']} • ${item['price']} EGP × $quantity',
+                                '${item['volume']['name']} • ${item['price']} coins × $quantity',
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '${(item['price'] * quantity).toStringAsFixed(2)} EGP',
+                                    '${(item['price'] * quantity).toStringAsFixed(2)} coins',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -309,7 +309,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       ),
                     ),
                     Text(
-                      '${_calculateTotal().toStringAsFixed(2)} EGP',
+                      '${_calculateTotal().toStringAsFixed(2)} coins',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -563,7 +563,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      '${item['price']} EGP',
+                                      '${item['price']} coins',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,

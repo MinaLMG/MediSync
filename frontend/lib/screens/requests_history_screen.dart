@@ -222,7 +222,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                 isBold: true,
               ),
               if (isExcess) ...[
-                _detailRow('Price', '${item['selectedPrice']} EGP'),
+                _detailRow('Price', '${item['selectedPrice']} coins'),
                 _detailRow('Expiry Date', item['expiryDate'] ?? 'N/A'),
                 if (item['salePercentage'] != null) ...[
                   const Divider(),
@@ -231,10 +231,10 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   _detailRow('Discount', '${item['salePercentage']}%'),
-                  _detailRow('Discount Amount', '${item['saleAmount']} EGP'),
+                  _detailRow('Discount Amount', '${item['saleAmount']} coins'),
                   _detailRow(
                     'Final Price',
-                    '${(item['selectedPrice'] - (item['saleAmount'] ?? 0)).toStringAsFixed(2)} EGP',
+                    '${(item['selectedPrice'] - (item['saleAmount'] ?? 0)).toStringAsFixed(2)} coins',
                     color: Colors.green[700],
                     isBold: true,
                   ),

@@ -344,17 +344,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              'Volume: ${widget.initialData!['volume']['name']}',
-                            ),
-                            Text('Expiry Date: $_expiryDate'),
-                            Text(
-                              'Price: ${widget.initialData!['selectedPrice']} EGP',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -411,7 +400,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
                     if (_selectedVolumeId != null && !isStockTaken) ...[
                       const Text(
-                        'Price (EGP)',
+                        'Price (coins)',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       if (!_isManualPrice)

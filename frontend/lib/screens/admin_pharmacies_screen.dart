@@ -105,7 +105,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                   _detailRow('Phone', ph['phone']),
                                   _detailRow(
                                     'Balance',
-                                    '${ph['balance'] ?? 0} EGP',
+                                    '${ph['balance'] ?? 0} coins',
                                   ),
                                   const Divider(),
                                   const Text(

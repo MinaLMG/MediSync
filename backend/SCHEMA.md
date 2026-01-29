@@ -176,7 +176,7 @@ Junction table linking products to their available volumes with pricing.
   product: ObjectId("Panadol"),
   volume: ObjectId("Box"),
   value: 100,  // 100 tablets per box
-  price: 50    // 50 EGP per box
+  price: 50    // 50 coins per box
 }
 ```
 

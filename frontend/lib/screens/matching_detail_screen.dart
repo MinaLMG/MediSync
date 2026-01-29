@@ -430,7 +430,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      '${(item['pharmacy']['balance'] ?? 0).toStringAsFixed(0)} EGP',
+                      '${(item['pharmacy']['balance'] ?? 0).toStringAsFixed(0)} coins',
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,

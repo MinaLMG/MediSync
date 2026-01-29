@@ -78,7 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'Balance: ${NumberFormat("#,##0").format(balance)} EGP',
+                        'Balance: ${NumberFormat("#,##0").format(balance)} coins',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,

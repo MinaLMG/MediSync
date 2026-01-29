@@ -235,7 +235,7 @@ class _FollowUpTransactionsScreenState
             const SizedBox(height: 8),
             Text('Buyer: $buyer', style: const TextStyle(color: Colors.blue)),
             Text('Total Qty: ${tx['totalQuantity']}'),
-            Text('Total Value: ${tx['totalAmount']} EGP'),
+            Text('Total Value: ${tx['totalAmount']} coins'),
             if (tx['delivery'] != null) ...[
               const SizedBox(height: 4),
               Row(

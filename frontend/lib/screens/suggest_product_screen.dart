@@ -87,7 +87,7 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
               TextFormField(
                 controller: _priceController,
                 decoration: const InputDecoration(
-                  labelText: 'Store Price (EGP)',
+                  labelText: 'Store Price (coins)',
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [

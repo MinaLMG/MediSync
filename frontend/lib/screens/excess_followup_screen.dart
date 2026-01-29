@@ -200,7 +200,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ),
 
-                    Text('Price: ${item['selectedPrice']} EGP'),
+                    Text('Price: ${item['selectedPrice']} coins'),
                     Text('Quantity: ${item['originalQuantity']}'),
 
                     Text(
@@ -480,7 +480,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ),
 
-                    Text('Price: ${item['selectedPrice']} EGP'),
+                    Text('Price: ${item['selectedPrice']} coins'),
                     Text(
                       'Remaining: ${item['remainingQuantity']}/${item['originalQuantity']}',
                     ),

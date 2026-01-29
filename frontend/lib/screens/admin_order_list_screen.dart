@@ -52,7 +52,7 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
                       children: [
                         Text('Pharmacy: $pharmacyName'),
                         Text(
-                          'Total Amount: ${totalAmount.toStringAsFixed(2)} EGP',
+                          'Total Amount: ${totalAmount.toStringAsFixed(2)} coins',
                         ),
                         Text('Status: $status'),
                         Text(

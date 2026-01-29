@@ -33,7 +33,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
             children: [
               ...currentPrices.asMap().entries.map(
                 (entry) => ListTile(
-                  title: Text('${entry.value} EGP'),
+                  title: Text('${entry.value} coins'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () async {
@@ -258,7 +258,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                           ],
                         ),
                         subtitle: Text(
-                          'Price: ${p['volumes'][0]['prices'].isEmpty ? "No prices set" : p['volumes'][0]['prices'].join(", ")} EGP',
+                          'Price: ${p['volumes'][0]['prices'].isEmpty ? "No prices set" : p['volumes'][0]['prices'].join(", ")} coins',
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.edit_note, color: Colors.blue),

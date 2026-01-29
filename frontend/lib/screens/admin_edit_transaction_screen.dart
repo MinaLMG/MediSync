@@ -286,7 +286,7 @@ class _AdminEditTransactionScreenState
                                           ),
                                         ),
                                         Text(
-                                          'Price: ${excess['selectedPrice']} EGP',
+                                          'Price: ${excess['selectedPrice']} coins',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,

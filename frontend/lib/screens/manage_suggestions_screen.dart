@@ -132,7 +132,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                               const SizedBox(height: 8),
                               _InfoRow(
                                 label: 'Proposed Price',
-                                value: '${s['price']} EGP',
+                                value: '${s['price']} coins',
                               ),
                               const Divider(),
                               _InfoRow(
