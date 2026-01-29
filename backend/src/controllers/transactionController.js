@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { addNotificationJob } = require('../utils/queueManager');
 const { syncExcessStatus } = require('./excessController');
 const { syncShortageStatus } = require('./shortageController');
-const { sendToUser } = require('../utils/socketManager');
+const { sendToUser } = require('../utils/pusherManager');
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
 // @access  Admin
