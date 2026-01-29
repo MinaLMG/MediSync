@@ -7,7 +7,7 @@ const { addNotificationJob } = require('../utils/queueManager');
 // @access  Admin
 const getWaitingUsers = async (req, res) => {
     try {
-        const users = await User.find({ status: 'waiting' }).populate('pharmacy').sort({ name: 1 });
+        const users = await User.find({ status: 'waiting' }).populate('pharmacy').sort({ createdAt: -1 });
         res.status(200).json({ success: true, count: users.length, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -19,7 +19,7 @@ const getWaitingUsers = async (req, res) => {
 // @access  Admin
 const getActiveUsers = async (req, res) => {
     try {
-        const users = await User.find({ status: 'active' }).populate('pharmacy').sort({ name: 1 });
+        const users = await User.find({ status: 'active' }).populate('pharmacy').sort({ createdAt: -1 });
         res.status(200).json({ success: true, count: users.length, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -101,7 +101,7 @@ const reviewUser = async (req, res) => {
 // @access  Admin
 const getAllPharmacies = async (req, res) => {
     try {
-        const pharmacies = await Pharmacy.find().sort({ name: 1 });
+        const pharmacies = await Pharmacy.find().sort({ createdAt: -1 });
         const data = [];
 
         for (const ph of pharmacies) {
@@ -191,7 +191,7 @@ const resetUserPassword = async (req, res) => {
 // @access  Admin
 const getUsersWithPendingUpdates = async (req, res) => {
     try {
-        const users = await User.find({ pendingUpdate: { $ne: null } }).populate('pharmacy').sort({ name: 1 });
+        const users = await User.find({ pendingUpdate: { $ne: null } }).populate('pharmacy').sort({ updatedAt: -1 });
         res.status(200).json({ success: true, count: users.length, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

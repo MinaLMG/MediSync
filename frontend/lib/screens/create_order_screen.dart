@@ -70,7 +70,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      onPressed: quantity > 1
+                      onPressed: quantity > 0
                           ? () => setState(() => quantity--)
                           : null,
                       icon: const Icon(Icons.remove_circle_outline),
@@ -100,7 +100,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         onChanged: (value) {
                           final newQty = int.tryParse(value);
                           if (newQty != null &&
-                              newQty > 0 &&
+                              newQty >= 0 &&
                               newQty <= maxQty) {
                             setState(() => quantity = newQty);
                           } else if (newQty != null && newQty > maxQty) {
@@ -140,14 +140,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ElevatedButton(
                 onPressed: () {
                   this.setState(() {
-                    _cart[key] = {'item': item, 'quantity': quantity};
+                    if (quantity == 0) {
+                      _cart.remove(key);
+                    } else {
+                      _cart[key] = {'item': item, 'quantity': quantity};
+                    }
                   });
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to cart!')),
+                    SnackBar(
+                      content: Text(
+                        quantity == 0 ? 'Removed from cart' : 'Added to cart!',
+                      ),
+                    ),
                   );
                 },
-                child: const Text('Add to Cart'),
+                child: Text(quantity == 0 ? 'Update Cart' : 'Add to Cart'),
               ),
             ],
           ),

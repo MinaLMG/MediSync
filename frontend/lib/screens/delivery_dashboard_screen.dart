@@ -514,20 +514,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                   const SizedBox(height: 12),
                   const Divider(),
                   const Text(
-                    'Shortage Pharmacy:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(shortagePh['name'] ?? 'Unknown Pharmacy'),
-                    subtitle: Text(shortagePh['address'] ?? 'No address'),
-                    trailing: const Icon(
-                      Icons.info_outline,
-                      color: Colors.blue,
-                    ),
-                    onTap: () => UIUtils.showPharmacyInfo(context, shortagePh),
-                  ),
-                  const Text(
                     'Excess Pharmacy:',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
@@ -567,6 +553,21 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                       onTap: () => UIUtils.showPharmacyInfo(context, eph),
                     );
                   }),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Shortage Pharmacy:',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(shortagePh['name'] ?? 'Unknown Pharmacy'),
+                    subtitle: Text(shortagePh['address'] ?? 'No address'),
+                    trailing: const Icon(
+                      Icons.info_outline,
+                      color: Colors.blue,
+                    ),
+                    onTap: () => UIUtils.showPharmacyInfo(context, shortagePh),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,

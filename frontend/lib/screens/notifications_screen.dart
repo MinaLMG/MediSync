@@ -22,8 +22,10 @@ class NotificationsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.done_all),
             onPressed: () {
-              // Mark all as seen placeholder (backend has the endpoint)
-              // We'll implement this in the provider if needed
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).markAllAsSeen();
             },
             tooltip: 'Mark all as seen',
           ),

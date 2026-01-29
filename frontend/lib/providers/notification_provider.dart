@@ -144,7 +144,6 @@ class NotificationProvider with ChangeNotifier {
         Uri.parse('${Constants.baseUrl}/notifications/$notificationId/seen'),
         headers: {'Authorization': 'Bearer ${authProvider.token}'},
       );
-
       if (response.statusCode == 200) {
         final index = _notifications.indexWhere(
           (n) => n['_id'] == notificationId,
@@ -157,6 +156,28 @@ class NotificationProvider with ChangeNotifier {
       }
     } catch (e) {
       print('Error marking notification as seen: $e');
+    }
+  }
+
+  Future<void> markAllAsSeen() async {
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/notifications/mark-all-seen'),
+        headers: {
+          'Authorization': 'Bearer ${authProvider.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        for (var n in _notifications) {
+          n['seen'] = true;
+        }
+        _unreadCount = 0;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error marking all notifications as seen: $e');
     }
   }
 
