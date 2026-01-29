@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/order_provider.dart';
 import '../utils/ui_utils.dart';
 
@@ -404,16 +405,31 @@ class _AdminOrderFulfillmentScreenState
                                                   color: Colors.grey[600],
                                                 ),
                                               ),
-                                              if (excess['salePercentage'] !=
-                                                  null)
-                                                Text(
-                                                  'Sale Ratio: ${excess['salePercentage']}%',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.green[700],
-                                                  ),
-                                                ),
+                                              Builder(
+                                                builder: (context) {
+                                                  final settings =
+                                                      Provider.of<
+                                                        SettingsProvider
+                                                      >(context);
+                                                  final effectiveSale =
+                                                      excess['salePercentage'] ??
+                                                      (excess['shortage_fulfillment'] ==
+                                                              true
+                                                          ? settings
+                                                                .shortageCommission
+                                                          : settings
+                                                                .minimumCommission);
+                                                  return Text(
+                                                    'Sale Ratio: ${effectiveSale}%',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.green[700],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
                                               if (excess['expiryDate'] != null)
                                                 Text(
                                                   'Expiry: ${excess['expiryDate']}',

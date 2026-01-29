@@ -231,11 +231,13 @@ exports.createTransaction = async (req, res) => {
 
         // Notify Buyer about transaction creation
         try {
+            console.log('🔔 [Transaction] Notifying Buyer(s)...');
             const product = await mongoose.model('Product').findById(shortage.product);
             const buyerPharmacy = await Pharmacy.findById(shortage.pharmacy);
             const buyerUsers = await User.find({ pharmacy: shortage.pharmacy });
             
             for (const buyer of buyerUsers) {
+                console.log(`   -> Queueing for Buyer: ${buyer._id}`);
                 await addNotificationJob(
                     buyer._id.toString(),
                     'transaction',
@@ -248,11 +250,13 @@ exports.createTransaction = async (req, res) => {
             }
 
             // Notify Seller(s) about new transaction request
+            console.log('🔔 [Transaction] Notifying Seller(s)...');
             for (const source of transaction.stockExcessSources) {
                 const excess = await StockExcess.findById(source.stockExcess).populate('pharmacy');
                 if (excess) {
                     const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
                     for (const seller of sellerUsers) {
+                        console.log(`   -> Queueing for Seller: ${seller._id} (Pharmacy: ${excess.pharmacy.name})`);
                         await addNotificationJob(
                             seller._id.toString(),
                             'transaction',
@@ -265,12 +269,14 @@ exports.createTransaction = async (req, res) => {
                     }
                 }
             }
+            console.log('✅ [Transaction] Notification jobs queued successfully.');
         } catch (notifErr) {
-            console.error('Notification error in createTransaction:', notifErr);
+            console.error('❌ [Transaction] Notification error in createTransaction:', notifErr);
         }
 
         res.status(201).json({ success: true, data: transaction });
     } catch (error) {
+        console.error('❌ [Transaction] Transaction creation failed:', error);
         await session.abortTransaction();
         res.status(400).json({ success: false, message: error.message });
     } finally {

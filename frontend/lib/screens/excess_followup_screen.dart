@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/notification_provider.dart';
 import 'add_excess_screen.dart';
 import '../utils/ui_utils.dart';
@@ -215,15 +216,26 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ],
                       ),
 
-                      // Always show percentage if available
-                      if (item['salePercentage'] != null)
-                        Text(
-                          '${item['salePercentage'].toStringAsFixed(1)}% Off',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      // Always show percentage (default if not provided)
+                      Builder(
+                        builder: (context) {
+                          final settings = Provider.of<SettingsProvider>(
+                            context,
+                          );
+                          final effectiveSale =
+                              item['salePercentage'] ??
+                              (item['shortage_fulfillment'] == true
+                                  ? settings.shortageCommission
+                                  : settings.minimumCommission);
+                          return Text(
+                            '${effectiveSale.toStringAsFixed(1)}% Off',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                      ),
 
                       Text('Price: ${item['selectedPrice']} coins'),
                       Text('Quantity: ${item['originalQuantity']}'),
@@ -521,15 +533,26 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           ),
                         ),
 
-                      // Always show percentage if available
-                      if (item['salePercentage'] != null)
-                        Text(
-                          '${item['salePercentage'].toStringAsFixed(1)}% Off',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      // Always show percentage (default if not provided)
+                      Builder(
+                        builder: (context) {
+                          final settings = Provider.of<SettingsProvider>(
+                            context,
+                          );
+                          final effectiveSale =
+                              item['salePercentage'] ??
+                              (item['shortage_fulfillment'] == true
+                                  ? settings.shortageCommission
+                                  : settings.minimumCommission);
+                          return Text(
+                            '${effectiveSale.toStringAsFixed(1)}% Off',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                      ),
 
                       Text('Price: ${item['selectedPrice']} coins'),
                       Text(

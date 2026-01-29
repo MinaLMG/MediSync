@@ -39,6 +39,7 @@ app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/suggestions', require('./src/routes/suggestionRoutes'));
 app.use('/api/delivery-requests', require('./src/routes/deliveryRequestRoutes'));
 app.use('/api/balance-history', require('./src/routes/balanceHistoryRoutes'));
+app.use('/api/pusher', require('./src/routes/pusherRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -59,16 +60,11 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const server = require('http').createServer(app);
-
-// Initialize Socket.io
-const { initSocket } = require('./src/utils/socketManager');
-initSocket(server);
 
 // Start the background notification worker
 require('./worker');
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`🚀 MediSync server is running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

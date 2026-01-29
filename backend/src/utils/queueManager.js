@@ -32,9 +32,9 @@ const addNotificationJob = async (userId, type, message, metadata = {}) => {
                 delay: 1000,
             }
         });
-        console.log(`Notification job added for user: ${userId}`);
+        console.log(`[QueueManager] 📤 Job added to queue 'sendNotification' | User: ${userId} | Type: ${type}`);
     } catch (error) {
-        console.error('Error adding notification job to queue:', error);
+        console.error('[QueueManager] ❌ Error adding job:', error);
     }
 };
 

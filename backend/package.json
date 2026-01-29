@@ -29,6 +29,7 @@
         "jsonwebtoken": "^9.0.0",
         "mongoose": "^7.0.0",
         "multer": "^2.0.2",
+        "pusher": "^5.3.2",
         "socket.io": "^4.8.3"
     },
     "devDependencies": {

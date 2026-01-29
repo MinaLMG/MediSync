@@ -77,6 +77,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
     bool descending,
   ) {
     final sortedList = List.from(list);
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
 
     sortedList.sort((a, b) {
       int comparison;
@@ -101,8 +102,18 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         final dateB = _parseExpiryDate(b['expiryDate']);
         comparison = dateA.compareTo(dateB);
       } else if (criteria == 'Sale %' && isExcess) {
-        final saleA = (a['salePercentage'] ?? 0) as num;
-        final saleB = (b['salePercentage'] ?? 0) as num;
+        final saleA =
+            (a['salePercentage'] ??
+                    (a['shortage_fulfillment'] == true
+                        ? settings.shortageCommission
+                        : settings.minimumCommission))
+                as num;
+        final saleB =
+            (b['salePercentage'] ??
+                    (b['shortage_fulfillment'] == true
+                        ? settings.shortageCommission
+                        : settings.minimumCommission))
+                as num;
         comparison = saleB.compareTo(saleA);
       } else {
         comparison = 0;
@@ -472,14 +483,24 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                   'Price: ${item['selectedPrice']}',
                   style: const TextStyle(fontSize: 11),
                 ),
-              if (isExcess && item['salePercentage'] != null)
-                Text(
-                  'Sale Ratio: ${item['salePercentage']}%',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
+              if (isExcess)
+                Builder(
+                  builder: (context) {
+                    final settings = Provider.of<SettingsProvider>(context);
+                    final effectiveSale =
+                        item['salePercentage'] ??
+                        (item['shortage_fulfillment'] == true
+                            ? settings.shortageCommission
+                            : settings.minimumCommission);
+                    return Text(
+                      'Sale Ratio: ${effectiveSale}%',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    );
+                  },
                 ),
               if (isExcess && item['expiryDate'] != null)
                 Text(

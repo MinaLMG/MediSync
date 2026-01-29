@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:dart_pusher_channels/dart_pusher_channels.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -8,7 +8,9 @@ import 'auth_provider.dart';
 
 class NotificationProvider with ChangeNotifier {
   final AuthProvider authProvider;
-  io.Socket? _socket;
+  PusherChannelsClient? _pusher;
+  StreamSubscription? _eventSubscription;
+  StreamSubscription? _connectionSubscription;
 
   List<dynamic> _notifications = [];
   int _unreadCount = 0;
@@ -26,69 +28,123 @@ class NotificationProvider with ChangeNotifier {
 
   void _init() {
     if (authProvider.isAuthenticated) {
-      _initSocket();
       fetchNotifications();
+      _initPusher();
     }
   }
 
-  // Called via proxy provider update
   void update(AuthProvider auth) {
-    if (auth.isAuthenticated && _socket == null) {
-      _initSocket();
-      fetchNotifications();
-    } else if (!auth.isAuthenticated && _socket != null) {
-      _socket?.dispose();
-      _socket = null;
+    if (auth.isAuthenticated) {
+      if (_pusher == null) {
+        _initPusher();
+      }
+    } else {
+      _disconnectPusher();
       _notifications = [];
       _unreadCount = 0;
       notifyListeners();
     }
   }
 
-  void _initSocket() {
+  Future<void> _initPusher() async {
     final userId = authProvider.userId;
-    if (userId == null) return;
+    if (userId == null || !authProvider.isAuthenticated) return;
+    if (_pusher != null) return;
 
-    print('Initializing Notification Socket for user: $userId');
+    try {
+      print('Initializing Dart Pusher for user: $userId');
 
-    // Build socket connection
-    _socket = io.io(
-      Constants.baseUrl.replaceAll('/api', ''),
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .setQuery({'userId': userId})
-          .enableForceNew()
-          .build(),
+      final options = PusherChannelsOptions.fromCluster(
+        scheme: 'wss',
+        cluster: Constants.pusherCluster,
+        key: Constants.pusherKey,
+        port: 443,
+      );
+
+      _pusher = PusherChannelsClient.websocket(
+        options: options,
+        connectionErrorHandler: (error, trace, refresh) {
+          print("Pusher Connection Error: $error");
+          refresh();
+        },
+      );
+
+      // Listen to connection changes via event stream
+      _connectionSubscription = _pusher!.eventStream.listen((event) {
+        if (event.name == 'pusher:connection_established') {
+          print("Pusher Connected");
+          _subscribeToPrivateChannel(userId);
+        }
+      });
+
+      await _pusher?.connect();
+      print("Pusher Connecting...");
+    } catch (e) {
+      print("Error initializing Pusher: $e");
+    }
+  }
+
+  void _subscribeToPrivateChannel(String userId) {
+    if (_pusher == null) return;
+
+    final channelName = "private-user-$userId";
+
+    // Custom Authorizer Delegate
+
+    final privateChannel = _pusher!.privateChannel(
+      channelName,
+      authorizationDelegate:
+          EndpointAuthorizableChannelTokenAuthorizationDelegate.forPrivateChannel(
+            authorizationEndpoint: Uri.parse(
+              "${Constants.baseUrl}/pusher/auth",
+            ),
+            headers: {
+              'Authorization': 'Bearer ${authProvider.token}',
+              'Content-Type': 'application/json',
+            },
+          ),
     );
 
-    _socket!.onConnect((_) {
-      print('✅ Connected to Notification Socket');
+    print("Subscribing to $channelName");
+    privateChannel.subscribe();
+
+    _eventSubscription = privateChannel.bind('notification').listen((event) {
+      print('📢 [Pusher] RAW EVENT: ${event.name} | Data: ${event.data}');
+      if (event.data != null) {
+        try {
+          final data = json.decode(event.data!);
+          print('🔔 [Pusher] ✅ Notification MATCHED! Value: $data');
+          _notifications.insert(0, data);
+          _unreadCount++;
+          notifyListeners();
+        } catch (e) {
+          print("Error parsing notification data: $e");
+        }
+      }
     });
 
-    _socket!.onConnectError((data) {
-      print('❌ Socket Connect Error: $data');
+    // Also log balance updates
+    privateChannel.bind('balanceUpdate').listen((event) {
+      print('💰 [Pusher] Balance Update: ${event.data}');
+      if (event.data != null) {
+        try {
+          final data = json.decode(event.data!);
+          final newBalance = (data['balance'] as num).toDouble();
+          authProvider.updateBalance(newBalance);
+        } catch (e) {
+          print("Error parsing balance data: $e");
+        }
+      }
     });
+  }
 
-    _socket!.onError((data) {
-      print('❌ Socket Error: $data');
-    });
-
-    _socket!.on('notification', (data) {
-      print('🔔 New real-time notification received: $data');
-      _notifications.insert(0, data);
-      _unreadCount++;
-      notifyListeners();
-    });
-
-    _socket!.on('balanceUpdate', (data) {
-      print('💰 Real-time balance update received: $data');
-      final newBalance = (data['balance'] as num).toDouble();
-      authProvider.updateBalance(newBalance);
-    });
-
-    _socket!.onDisconnect((_) {
-      print('🔌 Disconnected from Notification Socket');
-    });
+  void _disconnectPusher() {
+    _eventSubscription?.cancel();
+    _connectionSubscription?.cancel();
+    _pusher?.disconnect();
+    _pusher?.dispose();
+    _pusher = null;
+    print("Pusher Disconnected");
   }
 
   Future<void> fetchNotifications() async {
@@ -112,7 +168,6 @@ class NotificationProvider with ChangeNotifier {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('🌐 [NotificationProvider] Status: ${response.statusCode}');
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
@@ -124,14 +179,11 @@ class NotificationProvider with ChangeNotifier {
       } else {
         _errorMessage =
             data['message'] ?? 'Server error ${response.statusCode}';
-        print('❌ [NotificationProvider] Fetch failed: $_errorMessage');
       }
     } on TimeoutException {
       _errorMessage = 'Connection timed out';
-      print('❌ [NotificationProvider] Timeout');
     } catch (e) {
       _errorMessage = 'Failed to load notifications: $e';
-      print('❌ [NotificationProvider] Error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -183,7 +235,7 @@ class NotificationProvider with ChangeNotifier {
 
   @override
   void dispose() {
-    _socket?.dispose();
+    _disconnectPusher();
     super.dispose();
   }
 }

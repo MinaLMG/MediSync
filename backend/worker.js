@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Worker } = require('bullmq');
 const { redisConnection } = require('./src/utils/queueManager');
-const { sendToUser } = require('./src/utils/socketManager');
+const { sendToUser } = require('./src/utils/pusherManager');
 const connectDB = require('./src/db/mongoose');
 const Notification = require('./src/models/Notification');
 
@@ -33,7 +33,7 @@ const worker = new Worker('notificationQueue', async (job) => {
 
         console.log(`✅ Saved notification ${notification._id} to database`);
 
-        // 2. Push to connected user via Socket.io
+        // 2. Push to connected user via Pusher
         sendToUser(userId.toString(), 'notification', notification);
         console.log(`📡 Emitted real-time event to user: ${userId}`);
         
