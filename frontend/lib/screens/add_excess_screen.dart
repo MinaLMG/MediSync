@@ -87,15 +87,91 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   }
 
   Future<void> _selectExpiryDate() async {
-    if (isEditMode) return; // Locked in edit mode per backend rule
-    final DateTime? picked = await showDatePicker(
+    if (isEditMode) return;
+
+    int selectedYear = _expiryDate != null
+        ? 2000 + int.parse(_expiryDate!.split('/')[1])
+        : DateTime.now().year;
+    int selectedMonth = _expiryDate != null
+        ? int.parse(_expiryDate!.split('/')[0])
+        : DateTime.now().month;
+
+    final DateTime? picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _expiryDate != null
-          ? _parseMMYY(_expiryDate!)
-          : DateTime.now().add(const Duration(days: 30)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Select Expiry (Month/Year)'),
+              content: SizedBox(
+                height: 300,
+                width: 300,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: YearPicker(
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 365 * 10),
+                        ),
+                        selectedDate: DateTime(selectedYear, selectedMonth),
+                        onChanged: (DateTime dateTime) {
+                          setDialogState(() {
+                            selectedYear = dateTime.year;
+                          });
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              childAspectRatio: 2,
+                            ),
+                        itemCount: 12,
+                        itemBuilder: (context, index) {
+                          final month = index + 1;
+                          return InkWell(
+                            onTap: () {
+                              Navigator.pop(
+                                context,
+                                DateTime(selectedYear, month),
+                              );
+                            },
+                            child: Center(
+                              child: Text(
+                                DateFormat('MMM').format(DateTime(0, month)),
+                                style: TextStyle(
+                                  fontWeight: selectedMonth == month
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: selectedMonth == month
+                                      ? Colors.blue
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+
     if (picked != null) {
       setState(() {
         _expiryDate = DateFormat('MM/yy').format(picked);
@@ -109,7 +185,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       final parts = mmyy.split('/');
       final month = int.parse(parts[0]);
       final year = 2000 + int.parse(parts[1]);
-      return DateTime(year, month);
+      // Return the LAST day of that month for correctness
+      return DateTime(year, month + 1, 0);
     } catch (e) {
       return DateTime.now().add(const Duration(days: 30));
     }

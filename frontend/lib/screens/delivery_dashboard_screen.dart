@@ -40,6 +40,10 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
       context,
       listen: false,
     ).fetchMyRequests();
+    Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    ).fetchNotifications();
   }
 
   void _handleTabChange() {
@@ -368,10 +372,17 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
 
     return RefreshIndicator(
       onRefresh: () async {
-        await transProvider.fetchTransactions();
-        await dripProvider.fetchMyRequests();
+        await Future.wait([
+          transProvider.fetchTransactions(),
+          dripProvider.fetchMyRequests(),
+          Provider.of<NotificationProvider>(
+            context,
+            listen: false,
+          ).fetchNotifications(),
+        ]);
       },
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: transactions.length,
         itemBuilder: (context, index) {
           final tx = transactions[index];

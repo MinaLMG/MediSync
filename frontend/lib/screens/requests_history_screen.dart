@@ -7,6 +7,7 @@ import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/requests_history_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 
 class RequestsHistoryScreen extends StatefulWidget {
   const RequestsHistoryScreen({super.key});
@@ -25,6 +26,37 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
         listen: false,
       ).fetchRequestsHistory(),
     );
+  }
+
+  bool _isNearExpiry(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return false;
+    try {
+      DateTime expiry;
+      if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 2) {
+          final month = int.parse(parts[0]);
+          final year = 2000 + int.parse(parts[1]);
+          expiry = DateTime(year, month + 1, 0);
+        } else {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          expiry = DateTime(year, month, day);
+        }
+      } else if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
+        expiry = DateTime(year, month, day);
+      } else {
+        return false;
+      }
+      return expiry.difference(DateTime.now()).inDays < 180;
+    } catch (e) {
+      return false;
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -75,107 +107,135 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
             return const Center(child: Text('No history found'));
           }
 
-          return ListView.builder(
-            itemCount: provider.history.length,
-            itemBuilder: (context, index) {
-              final item = provider.history[index];
-              final isExcess = item['type'] == 'excess';
-              final date = DateTime.parse(item['createdAt']);
-              final status = item['displayStatus'];
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                provider.fetchRequestsHistory(),
+                Provider.of<NotificationProvider>(
+                  context,
+                  listen: false,
+                ).fetchNotifications(),
+              ]);
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: provider.history.length,
+              itemBuilder: (context, index) {
+                final item = provider.history[index];
+                final isExcess = item['type'] == 'excess';
+                final date = DateTime.parse(item['createdAt']);
+                final status = item['displayStatus'];
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: InkWell(
-                  onTap: () {
-                    _showDetailsDialog(context, item);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Icon Type
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isExcess ? Colors.green[50] : Colors.red[50],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isExcess ? Icons.add_circle : Icons.remove_circle,
-                            color: isExcess ? Colors.green : Colors.red,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-
-                        // Info
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['product']['name'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                isExcess ? 'Excess Offer' : 'Shortage Request',
-                                style: TextStyle(
-                                  color: isExcess
-                                      ? Colors.green[700]
-                                      : Colors.red[700],
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat('MMM d, yyyy').format(date),
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Status
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: _getStatusColor(status).withOpacity(0.5),
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      _showDetailsDialog(context, item);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Icon Type
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isExcess
+                                  ? Colors.green[50]
+                                  : Colors.red[50],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isExcess ? Icons.add_circle : Icons.remove_circle,
+                              color: isExcess ? Colors.green : Colors.red,
+                              size: 24,
                             ),
                           ),
-                          child: Text(
-                            status.toUpperCase(),
-                            style: TextStyle(
-                              color: _getStatusColor(status),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 16),
+
+                          // Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['product']['name'] ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isExcess
+                                      ? 'Excess Offer'
+                                      : 'Shortage Request',
+                                  style: TextStyle(
+                                    color: isExcess
+                                        ? Colors.green[700]
+                                        : Colors.red[700],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('MMM d, yyyy').format(date),
+                                  style: TextStyle(
+                                    color:
+                                        item['expiryDate'] != null &&
+                                            _isNearExpiry(item['expiryDate'])
+                                        ? Colors.red
+                                        : Colors.grey[600],
+                                    fontSize: 12,
+                                    fontWeight:
+                                        item['expiryDate'] != null &&
+                                            _isNearExpiry(item['expiryDate'])
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+
+                          // Status
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(status).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _getStatusColor(status).withOpacity(0.5),
+                              ),
+                            ),
+                            child: Text(
+                              status.toUpperCase(),
+                              style: TextStyle(
+                                color: _getStatusColor(status),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),

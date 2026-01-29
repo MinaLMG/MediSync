@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
+import '../providers/notification_provider.dart';
 import 'add_excess_screen.dart';
 import '../utils/ui_utils.dart';
 
@@ -37,32 +38,32 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
     if (dateStr == null || dateStr.isEmpty) return false;
     try {
       DateTime expiry;
-      if (dateStr.contains('-')) {
-        final parts = dateStr.split('-');
-        final year = int.parse(parts[0]);
-        final month = int.parse(parts[1]);
-        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
-        expiry = DateTime(year, month, day);
-      } else if (dateStr.contains('/')) {
+      if (dateStr.contains('/')) {
         final parts = dateStr.split('/');
-        // Assuming MM/YYYY or DD/MM/YYYY
         if (parts.length == 2) {
           final month = int.parse(parts[0]);
-          final year = int.parse(parts[1]);
-          expiry = DateTime(year, month, 1);
+          final year = 2000 + int.parse(parts[1]);
+          // Use last day of the month
+          expiry = DateTime(year, month + 1, 0);
         } else {
           final day = int.parse(parts[0]);
           final month = int.parse(parts[1]);
           final year = int.parse(parts[2]);
           expiry = DateTime(year, month, day);
         }
+      } else if (dateStr.contains('-')) {
+        final parts = dateStr.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = parts.length > 2 ? int.parse(parts[2]) : 1;
+        expiry = DateTime(year, month, day);
       } else {
         return false;
       }
 
       final now = DateTime.now();
-      final difference = expiry.difference(now).inDays;
-      return difference < (6 * 30); // Approx 6 months
+      // Near expiry if within 6 months (180 days)
+      return expiry.difference(now).inDays < 180;
     } catch (e) {
       return false;
     }
@@ -112,289 +113,305 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
           return const Center(child: Text('No pending excesses'));
         }
 
-        return ListView.builder(
-          itemCount: provider.pendingExcesses.length,
-          itemBuilder: (context, index) {
-            final item = provider.pendingExcesses[index];
-            // Highlighting Logic
-            final expiryStr = item['expiryDate'];
-            final isNewPrice = item['isNewPrice'] == true;
-            final isShortageFulfillment = item['shortage_fulfillment'] == true;
-            final isRejected = item['status'] == 'rejected';
+        return RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchPendingExcesses(),
+              provider.fetchAvailableExcesses(),
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: provider.pendingExcesses.length,
+            itemBuilder: (context, index) {
+              final item = provider.pendingExcesses[index];
+              // Highlighting Logic
+              final expiryStr = item['expiryDate'];
+              final isNewPrice = item['isNewPrice'] == true;
+              final isShortageFulfillment =
+                  item['shortage_fulfillment'] == true;
+              final isRejected = item['status'] == 'rejected';
 
-            Color cardColor = Colors.white;
-            if (isRejected) {
-              cardColor = Colors.red[50]!;
-            } else if (isNewPrice) {
-              cardColor = Colors.blue[50]!;
-            } else if (isShortageFulfillment) {
-              cardColor = Colors.purple[50]!;
-            }
+              Color cardColor = Colors.white;
+              if (isRejected) {
+                cardColor = Colors.red[50]!;
+              } else if (isNewPrice) {
+                cardColor = Colors.blue[50]!;
+              } else if (isShortageFulfillment) {
+                cardColor = Colors.purple[50]!;
+              }
 
-            return Card(
-              color: cardColor,
-              margin: const EdgeInsets.all(8.0),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['product']['name'] ?? 'Unknown Product',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () =>
-                          UIUtils.showPharmacyInfo(context, item['pharmacy']),
-                      child: Text(
-                        '${item['pharmacy']['name']}',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Row(
-                      children: [
-                        if (isNewPrice)
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'New Price',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        if (isShortageFulfillment)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.purple,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Shortage Fulfillment',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-
-                    // Always show percentage if available
-                    if (item['salePercentage'] != null)
+              return Card(
+                color: cardColor,
+                margin: const EdgeInsets.all(8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '${item['salePercentage'].toStringAsFixed(1)}% Off',
+                        item['product']['name'] ?? 'Unknown Product',
                         style: const TextStyle(
-                          color: Colors.green,
                           fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-
-                    Text('Price: ${item['selectedPrice']} coins'),
-                    Text('Quantity: ${item['originalQuantity']}'),
-
-                    Text(
-                      'Expiry: $expiryStr',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _isNearExpiry(expiryStr) ? Colors.red : null,
-                      ),
-                    ),
-
-                    if (isRejected && item['rejectionReason'] != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
                         child: Text(
-                          'Rejection Reason: ${item['rejectionReason']}',
+                          '${item['pharmacy']['name']}',
                           style: const TextStyle(
-                            color: Colors.red,
+                            color: Colors.blue,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
                           ),
                         ),
                       ),
-                    ],
+                      const SizedBox(height: 8),
 
-                    const Divider(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            final int total = item['originalQuantity'] ?? 0;
-                            final int remaining =
-                                item['remainingQuantity'] ?? 0;
-                            if (total - remaining > 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Cannot delete excess where stock has already been taken.',
+                      Row(
+                        children: [
+                          if (isNewPrice)
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'New Price',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          if (isShortageFulfillment)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.purple,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Shortage Fulfillment',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Always show percentage if available
+                      if (item['salePercentage'] != null)
+                        Text(
+                          '${item['salePercentage'].toStringAsFixed(1)}% Off',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                      Text('Price: ${item['selectedPrice']} coins'),
+                      Text('Quantity: ${item['originalQuantity']}'),
+
+                      Text(
+                        'Expiry: $expiryStr',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _isNearExpiry(expiryStr) ? Colors.red : null,
+                        ),
+                      ),
+
+                      if (isRejected && item['rejectionReason'] != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Rejection Reason: ${item['rejectionReason']}',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              final int total = item['originalQuantity'] ?? 0;
+                              final int remaining =
+                                  item['remainingQuantity'] ?? 0;
+                              if (total - remaining > 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cannot delete excess where stock has already been taken.',
+                                    ),
                                   ),
+                                );
+                                return;
+                              }
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Confirm Delete'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this excess?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        provider.deleteExcess(item['_id']);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
                                 ),
                               );
-                              return;
-                            }
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Confirm Delete'),
-                                content: const Text(
-                                  'Are you sure you want to delete this excess?',
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Delete'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AddExcessScreen(initialData: item),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      provider.deleteExcess(item['_id']);
-                                    },
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red,
+                              ).then((_) {
+                                if (mounted) {
+                                  provider.fetchPendingExcesses();
+                                  provider.fetchAvailableExcesses();
+                                }
+                              });
+                            },
+                            child: const Text('Edit'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              final reasonController = TextEditingController();
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Reject Excess Offer'),
+                                  content: TextField(
+                                    controller: reasonController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Rejection Reason',
+                                      hintText:
+                                          'e.g., Price too high, Expiry too near',
                                     ),
-                                    child: const Text('Delete'),
+                                    maxLines: 2,
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                          ),
-                          child: const Text('Delete'),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    AddExcessScreen(initialData: item),
-                              ),
-                            ).then((_) {
-                              if (mounted) {
-                                provider.fetchPendingExcesses();
-                                provider.fetchAvailableExcesses();
-                              }
-                            });
-                          },
-                          child: const Text('Edit'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            final reasonController = TextEditingController();
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Reject Excess Offer'),
-                                content: TextField(
-                                  controller: reasonController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Rejection Reason',
-                                    hintText:
-                                        'e.g., Price too high, Expiry too near',
-                                  ),
-                                  maxLines: 2,
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      if (reasonController.text.trim().isEmpty)
-                                        return;
-                                      Navigator.pop(ctx);
-                                      provider.rejectExcess(
-                                        item['_id'],
-                                        reasonController.text.trim(),
-                                      );
-                                    },
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red,
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
                                     ),
-                                    child: const Text('Reject'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Reject'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Confirm Approval'),
-                                content: const Text(
-                                  'Are you sure you want to approve this excess and make it available for matches?',
+                                    TextButton(
+                                      onPressed: () {
+                                        if (reasonController.text
+                                            .trim()
+                                            .isEmpty)
+                                          return;
+                                        Navigator.pop(ctx);
+                                        provider.rejectExcess(
+                                          item['_id'],
+                                          reasonController.text.trim(),
+                                        );
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Reject'),
+                                    ),
+                                  ],
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      provider.approveExcess(item['_id']);
-                                    },
-                                    child: const Text('Approve'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Reject'),
                           ),
-                          child: const Text('Approve'),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Confirm Approval'),
+                                  content: const Text(
+                                    'Are you sure you want to approve this excess and make it available for matches?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        provider.approveExcess(item['_id']);
+                                      },
+                                      child: const Text('Approve'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Approve'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
@@ -411,184 +428,198 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
           return const Center(child: Text('No available excesses'));
         }
 
-        return ListView.builder(
-          itemCount: provider.availableExcesses.length,
-          itemBuilder: (context, index) {
-            final item = provider.availableExcesses[index];
-            // Highlighting Logic
-            final expiryStr = item['expiryDate'];
-            final isShortageFulfillment = item['shortage_fulfillment'] == true;
+        return RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchPendingExcesses(),
+              provider.fetchAvailableExcesses(),
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: provider.availableExcesses.length,
+            itemBuilder: (context, index) {
+              final item = provider.availableExcesses[index];
+              // Highlighting Logic
+              final expiryStr = item['expiryDate'];
+              final isShortageFulfillment =
+                  item['shortage_fulfillment'] == true;
 
-            return Card(
-              margin: const EdgeInsets.all(8.0),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item['product']['name'] ?? 'Unknown Product',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+              return Card(
+                margin: const EdgeInsets.all(8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item['product']['name'] ?? 'Unknown Product',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
-                        ),
-                        Chip(
-                          label: Text(
-                            item['status'] == 'partially_fulfilled'
-                                ? 'Partially Taken'
-                                : 'Available',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                          backgroundColor:
+                          Chip(
+                            label: Text(
                               item['status'] == 'partially_fulfilled'
-                              ? Colors.orange[100]
-                              : Colors.green[100],
-                          padding: EdgeInsets.zero,
-                          avatar: Icon(
-                            item['status'] == 'partially_fulfilled'
-                                ? Icons.pending_actions
-                                : Icons.check_circle,
-                            color: item['status'] == 'partially_fulfilled'
-                                ? Colors.orange
-                                : Colors.green,
-                            size: 14,
+                                  ? 'Partially Taken'
+                                  : 'Available',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                            backgroundColor:
+                                item['status'] == 'partially_fulfilled'
+                                ? Colors.orange[100]
+                                : Colors.green[100],
+                            padding: EdgeInsets.zero,
+                            avatar: Icon(
+                              item['status'] == 'partially_fulfilled'
+                                  ? Icons.pending_actions
+                                  : Icons.check_circle,
+                              color: item['status'] == 'partially_fulfilled'
+                                  ? Colors.orange
+                                  : Colors.green,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                        child: Text(
+                          '${item['pharmacy']['name']}',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
-                    InkWell(
-                      onTap: () =>
-                          UIUtils.showPharmacyInfo(context, item['pharmacy']),
-                      child: Text(
-                        '${item['pharmacy']['name']}',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
 
-                    if (isShortageFulfillment)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                      if (isShortageFulfillment)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.purple,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Shortage Fulfillment',
+                            style: TextStyle(color: Colors.white, fontSize: 10),
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.purple,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Shortage Fulfillment',
-                          style: TextStyle(color: Colors.white, fontSize: 10),
-                        ),
-                      ),
 
-                    // Always show percentage if available
-                    if (item['salePercentage'] != null)
+                      // Always show percentage if available
+                      if (item['salePercentage'] != null)
+                        Text(
+                          '${item['salePercentage'].toStringAsFixed(1)}% Off',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                      Text('Price: ${item['selectedPrice']} coins'),
                       Text(
-                        '${item['salePercentage'].toStringAsFixed(1)}% Off',
-                        style: const TextStyle(
-                          color: Colors.green,
+                        'Remaining: ${item['remainingQuantity']}/${item['originalQuantity']}',
+                      ),
+
+                      Text(
+                        'Expiry: $expiryStr',
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          color: _isNearExpiry(expiryStr) ? Colors.red : null,
                         ),
                       ),
 
-                    Text('Price: ${item['selectedPrice']} coins'),
-                    Text(
-                      'Remaining: ${item['remainingQuantity']}/${item['originalQuantity']}',
-                    ),
-
-                    Text(
-                      'Expiry: $expiryStr',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _isNearExpiry(expiryStr) ? Colors.red : null,
-                      ),
-                    ),
-
-                    const Divider(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            final int total = item['originalQuantity'] ?? 0;
-                            final int remaining =
-                                item['remainingQuantity'] ?? 0;
-                            if (total - remaining > 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Cannot delete available excess where stock has already been taken.',
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              final int total = item['originalQuantity'] ?? 0;
+                              final int remaining =
+                                  item['remainingQuantity'] ?? 0;
+                              if (total - remaining > 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cannot delete available excess where stock has already been taken.',
+                                    ),
                                   ),
+                                );
+                                return;
+                              }
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Confirm Delete'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this available excess?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        provider.deleteExcess(item['_id']);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
                                 ),
                               );
-                              return;
-                            }
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Confirm Delete'),
-                                content: const Text(
-                                  'Are you sure you want to delete this available excess?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      provider.deleteExcess(item['_id']);
-                                    },
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                    ),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Delete'),
                           ),
-                          child: const Text('Delete'),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    AddExcessScreen(initialData: item),
-                              ),
-                            ).then((_) {
-                              if (mounted) {
-                                provider.fetchPendingExcesses();
-                                provider.fetchAvailableExcesses();
-                              }
-                            });
-                          },
-                          child: const Text('Edit'),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AddExcessScreen(initialData: item),
+                                ),
+                              ).then((_) {
+                                if (mounted) {
+                                  provider.fetchPendingExcesses();
+                                  provider.fetchAvailableExcesses();
+                                }
+                              });
+                            },
+                            child: const Text('Edit'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );

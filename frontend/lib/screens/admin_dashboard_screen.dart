@@ -181,47 +181,62 @@ class AdminHomeTab extends StatelessWidget {
       },
     ];
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Consumer<AppSuggestionProvider>(
-        builder: (context, suggestionProvider, _) {
-          return GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
-            ),
-            itemCount: menuItems.length,
-            itemBuilder: (context, index) {
-              final item = menuItems[index];
-              int badgeCount = 0;
-              if (item['title'] == 'Follow-up Excesses') {
-                badgeCount = suggestionProvider.pendingExcessCount;
-              } else if (item['title'] == 'Product Suggestions') {
-                badgeCount = suggestionProvider.pendingProductSuggestionsCount;
-              } else if (item['title'] == 'Manage Users') {
-                badgeCount = suggestionProvider.waitingUsersCount;
-              } else if (item['title'] == 'App Suggestions') {
-                badgeCount = suggestionProvider.appSuggestionsCount;
-              } else if (item['title'] == 'Delivery Requests') {
-                badgeCount = suggestionProvider.deliveryRequestsCount;
-              } else if (item['title'] == 'Account Updates') {
-                badgeCount = suggestionProvider.pendingAccountUpdatesCount;
-              } else if (item['title'] == 'Manage Orders') {
-                badgeCount = suggestionProvider.pendingOrdersCount;
-              }
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Provider.of<AppSuggestionProvider>(
+          context,
+          listen: false,
+        ).fetchPendingCounts();
+        await Provider.of<NotificationProvider>(
+          context,
+          listen: false,
+        ).fetchNotifications();
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Consumer<AppSuggestionProvider>(
+          builder: (context, suggestionProvider, _) {
+            return GridView.builder(
+              physics:
+                  const AlwaysScrollableScrollPhysics(), // Important for pull-to-refresh
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: menuItems.length,
+              itemBuilder: (context, index) {
+                final item = menuItems[index];
+                int badgeCount = 0;
+                if (item['title'] == 'Follow-up Excesses') {
+                  badgeCount = suggestionProvider.pendingExcessCount;
+                } else if (item['title'] == 'Product Suggestions') {
+                  badgeCount =
+                      suggestionProvider.pendingProductSuggestionsCount;
+                } else if (item['title'] == 'Manage Users') {
+                  badgeCount = suggestionProvider.waitingUsersCount;
+                } else if (item['title'] == 'App Suggestions') {
+                  badgeCount = suggestionProvider.appSuggestionsCount;
+                } else if (item['title'] == 'Delivery Requests') {
+                  badgeCount = suggestionProvider.deliveryRequestsCount;
+                } else if (item['title'] == 'Account Updates') {
+                  badgeCount = suggestionProvider.pendingAccountUpdatesCount;
+                } else if (item['title'] == 'Manage Orders') {
+                  badgeCount = suggestionProvider.pendingOrdersCount;
+                }
 
-              return _buildMenuCard(
-                context,
-                item['title'],
-                item['icon'],
-                item['color'],
-                badgeCount: badgeCount,
-              );
-            },
-          );
-        },
+                return _buildMenuCard(
+                  context,
+                  item['title'],
+                  item['icon'],
+                  item['color'],
+                  badgeCount: badgeCount,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

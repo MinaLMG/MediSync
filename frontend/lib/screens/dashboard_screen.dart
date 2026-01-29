@@ -93,6 +93,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
+              // Always refresh notifications
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications();
+
               if (_selectedIndex == 0) {
                 Provider.of<ShortageProvider>(
                   context,

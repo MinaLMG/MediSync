@@ -15,6 +15,7 @@ import 'suggestions_complaints_screen.dart';
 import 'admin_view_suggestions_screen.dart';
 import 'admin_manage_users_screen.dart';
 import '../providers/app_suggestion_provider.dart';
+import '../providers/notification_provider.dart';
 import 'balance_history_screen.dart';
 import 'create_order_screen.dart';
 
@@ -64,6 +65,26 @@ class _HomeTabState extends State<HomeTab> {
         }
       }
     });
+  }
+
+  Future<void> _onRefresh() async {
+    final shortages = Provider.of<ShortageProvider>(context, listen: false);
+    final products = Provider.of<ProductProvider>(context, listen: false);
+    final suggestions = Provider.of<AppSuggestionProvider>(
+      context,
+      listen: false,
+    );
+    final notifications = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
+
+    await Future.wait([
+      shortages.fetchGlobalActiveShortages(),
+      products.fetchProducts(),
+      suggestions.fetchPendingCounts(),
+      notifications.fetchNotifications(),
+    ]);
   }
 
   @override
@@ -144,155 +165,163 @@ class _HomeTabState extends State<HomeTab> {
             return SearchUtils.matches(p['name']?.toString(), _searchQuery);
           }).toList();
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // News Line (Shortages Marquee)
-          Container(
-            height: 40,
-            width: double.infinity,
-            color: Colors.red[800] ?? Colors.red,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  color: Colors.black,
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'URGENT SHORTAGES',
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: SingleChildScrollView(
+        physics:
+            const AlwaysScrollableScrollPhysics(), // Ensure it's always scrollable for refresh
+        child: Column(
+          children: [
+            // News Line (Shortages Marquee)
+            Container(
+              height: 40,
+              width: double.infinity,
+              color: Colors.red[800] ?? Colors.red,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    color: Colors.black,
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'URGENT SHORTAGES',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: provider.isLoading && shortages.isEmpty
+                        ? const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          )
+                        : shortages.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No current shortages reported',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          )
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: shortages.length,
+                            itemBuilder: (context, index) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                  child: Text(
+                                    '• ${shortages[index]} •',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+
+            if (_searchQuery.isEmpty) ...[
+              // Advertisement space
+              Container(
+                height: 120,
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ), // Added margin to avoid overlap
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[400]!, Colors.blue[800]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    'Advertisement Space\n(Promotions & Offers)',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                Expanded(
-                  child: provider.isLoading && shortages.isEmpty
-                      ? const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        )
-                      : shortages.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No current shortages reported',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-                        )
-                      : PageView.builder(
-                          controller: _pageController,
-                          itemCount: shortages.length,
-                          itemBuilder: (context, index) {
-                            return Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                ),
-                                child: Text(
-                                  '• ${shortages[index]} •',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-
-          if (_searchQuery.isEmpty) ...[
-            // Advertisement space
-            Container(
-              height: 120,
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[400]!, Colors.blue[800]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
               ),
-              child: const Center(
-                child: Text(
-                  'Advertisement Space\n(Promotions & Offers)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+              // Menu Grid
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.0,
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Menu Grid
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: menuItems.length,
-                itemBuilder: (context, index) {
-                  final item = menuItems[index];
-                  int badgeCount = 0;
-                  if (isAdmin) {
-                    final suggestionProvider =
-                        Provider.of<AppSuggestionProvider>(context);
-                    if (item['title'] == 'Suggest Product') {
-                      badgeCount =
-                          suggestionProvider.pendingProductSuggestionsCount;
-                    } else if (item['title'] == 'View Transactions') {
-                      badgeCount = suggestionProvider.pendingExcessCount;
-                    } else if (item['title'] == 'Manage Users') {
-                      badgeCount = suggestionProvider.waitingUsersCount;
+                  itemCount: menuItems.length,
+                  itemBuilder: (context, index) {
+                    final item = menuItems[index];
+                    int badgeCount = 0;
+                    if (isAdmin) {
+                      final suggestionProvider =
+                          Provider.of<AppSuggestionProvider>(context);
+                      if (item['title'] == 'Suggest Product') {
+                        badgeCount =
+                            suggestionProvider.pendingProductSuggestionsCount;
+                      } else if (item['title'] == 'View Transactions') {
+                        badgeCount = suggestionProvider.pendingExcessCount;
+                      } else if (item['title'] == 'Manage Users') {
+                        badgeCount = suggestionProvider.waitingUsersCount;
+                      }
                     }
-                  }
 
-                  return _buildMenuCard(
-                    context,
-                    item['title'] ?? 'Menu Item',
-                    item['icon'] ?? Icons.help,
-                    item['color'] ?? Colors.blue,
-                    badgeCount: badgeCount,
-                  );
-                },
+                    return _buildMenuCard(
+                      context,
+                      item['title'] ?? 'Menu Item',
+                      item['icon'] ?? Icons.help,
+                      item['color'] ?? Colors.blue,
+                      badgeCount: badgeCount,
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
+            const SizedBox(height: 24),
           ],
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
