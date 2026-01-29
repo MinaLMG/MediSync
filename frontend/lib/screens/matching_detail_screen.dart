@@ -590,13 +590,22 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           ],
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: isReady ? _submitTransaction : null,
+            onPressed: isReady && !tp.isLoading ? _submitTransaction : null,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
               backgroundColor: Colors.blue[800],
               foregroundColor: Colors.white,
             ),
-            child: const Text('SUBMIT TRANSACTION'),
+            child: tp.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text('SUBMIT TRANSACTION'),
           ),
         ],
       ),

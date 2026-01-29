@@ -106,12 +106,27 @@ class _AdminDeliveryRequestsScreenState
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancel'),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _cleanup();
+                    StatefulBuilder(
+                      builder: (context, setDialogState) {
+                        final p = Provider.of<DeliveryRequestProvider>(context);
+                        return TextButton(
+                          onPressed: p.isLoading
+                              ? null
+                              : () async {
+                                  Navigator.pop(context);
+                                  _cleanup();
+                                },
+                          child: p.isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Delete'),
+                        );
                       },
-                      child: const Text('Delete'),
                     ),
                   ],
                 ),
@@ -208,13 +223,17 @@ class _AdminDeliveryRequestsScreenState
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
-                              onPressed: () => _confirmAction(
-                                title: 'Reject Request',
-                                message:
-                                    'Are you sure you want to reject this delivery request?',
-                                onConfirm: () =>
-                                    _reviewRequest(request['_id'], 'rejected'),
-                              ),
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () => _confirmAction(
+                                      title: 'Reject Request',
+                                      message:
+                                          'Are you sure you want to reject this delivery request?',
+                                      onConfirm: () => _reviewRequest(
+                                        request['_id'],
+                                        'rejected',
+                                      ),
+                                    ),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
@@ -222,18 +241,31 @@ class _AdminDeliveryRequestsScreenState
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
-                              onPressed: () => _confirmAction(
-                                title: 'Approve Request',
-                                message:
-                                    'Are you sure you want to approve this delivery request?',
-                                onConfirm: () =>
-                                    _reviewRequest(request['_id'], 'approved'),
-                              ),
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () => _confirmAction(
+                                      title: 'Approve Request',
+                                      message:
+                                          'Are you sure you want to approve this delivery request?',
+                                      onConfirm: () => _reviewRequest(
+                                        request['_id'],
+                                        'approved',
+                                      ),
+                                    ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
                               ),
-                              child: const Text('Approve'),
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Approve'),
                             ),
                           ],
                         ),

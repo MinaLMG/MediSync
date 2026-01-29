@@ -44,6 +44,7 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
   }
 
   Future<void> _reviewUpdate(String userId, String action) async {
+    setState(() => _isLoading = true);
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     try {
       final response = await http.put(
@@ -79,6 +80,8 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -208,13 +211,17 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => _confirmAction(
-                                  title: 'Reject Request',
-                                  message:
-                                      'Are you sure you want to reject these profile changes?',
-                                  onConfirm: () =>
-                                      _reviewUpdate(user['_id'], 'reject'),
-                                ),
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => _confirmAction(
+                                        title: 'Reject Request',
+                                        message:
+                                            'Are you sure you want to reject these profile changes?',
+                                        onConfirm: () => _reviewUpdate(
+                                          user['_id'],
+                                          'reject',
+                                        ),
+                                      ),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.red,
                                 ),
@@ -224,18 +231,31 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () => _confirmAction(
-                                  title: 'Approve Changes',
-                                  message:
-                                      'Are you sure you want to apply these changes to the user profile?',
-                                  onConfirm: () =>
-                                      _reviewUpdate(user['_id'], 'approve'),
-                                ),
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => _confirmAction(
+                                        title: 'Approve Changes',
+                                        message:
+                                            'Are you sure you want to apply these changes to the user profile?',
+                                        onConfirm: () => _reviewUpdate(
+                                          user['_id'],
+                                          'approve',
+                                        ),
+                                      ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   foregroundColor: Colors.white,
                                 ),
-                                child: const Text('Approve & Apply'),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Approve & Apply'),
                               ),
                             ),
                           ],

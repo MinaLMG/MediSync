@@ -172,16 +172,20 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _saveSettings,
+                onPressed: Provider.of<SettingsProvider>(context).isLoading
+                    ? null
+                    : _saveSettings,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[900],
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text(
-                  'Save Settings',
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: Provider.of<SettingsProvider>(context).isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Save Settings',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
             ],
           ),

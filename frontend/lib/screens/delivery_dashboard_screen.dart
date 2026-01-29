@@ -612,9 +612,23 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                           !hasPendingRequest &&
                           status == 'pending')
                         ElevatedButton.icon(
-                          onPressed: () =>
-                              _requestAction(context, tx['_id'], 'accept'),
-                          icon: const Icon(Icons.check),
+                          onPressed: dripProvider.isLoading
+                              ? null
+                              : () => _requestAction(
+                                  context,
+                                  tx['_id'],
+                                  'accept',
+                                ),
+                          icon: dripProvider.isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.check),
                           label: const Text('Request Acceptance'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
@@ -626,9 +640,23 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                           !hasPendingRequest &&
                           status == 'accepted')
                         ElevatedButton.icon(
-                          onPressed: () =>
-                              _requestAction(context, tx['_id'], 'complete'),
-                          icon: const Icon(Icons.done_all),
+                          onPressed: dripProvider.isLoading
+                              ? null
+                              : () => _requestAction(
+                                  context,
+                                  tx['_id'],
+                                  'complete',
+                                ),
+                          icon: dripProvider.isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.done_all),
                           label: const Text('Request Completion'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,

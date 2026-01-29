@@ -26,87 +26,113 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Manage Prices'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ...currentPrices.asMap().entries.map(
-                (entry) => ListTile(
-                  title: Text('${entry.value} coins'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      final success =
-                          await Provider.of<ProductProvider>(
-                            context,
-                            listen: false,
-                          ).updateProductPrice(
-                            hasVolumeId,
-                            0,
-                            false,
-                            index: entry.key,
-                          );
-                      if (success) {
-                        setState(() => currentPrices.removeAt(entry.key));
-                      }
-                    },
+        builder: (context, setState) {
+          final provider = Provider.of<ProductProvider>(context);
+          return AlertDialog(
+            title: const Text('Manage Prices'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...currentPrices.asMap().entries.map(
+                  (entry) => ListTile(
+                    title: Text('${entry.value} coins'),
+                    trailing: IconButton(
+                      icon: provider.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.delete, color: Colors.red),
+                      onPressed: provider.isLoading
+                          ? null
+                          : () async {
+                              final success = await provider.updateProductPrice(
+                                hasVolumeId,
+                                0,
+                                false,
+                                index: entry.key,
+                              );
+                              if (success) {
+                                setState(
+                                  () => currentPrices.removeAt(entry.key),
+                                );
+                              }
+                            },
+                    ),
                   ),
                 ),
-              ),
-              const Divider(),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final priceController = TextEditingController();
-                  final double? newPrice = await showDialog<double>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: const Text('Add Price'),
-                      content: TextField(
-                        controller: priceController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Store Price',
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(c),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(
-                            c,
-                            double.tryParse(priceController.text),
+                const Divider(),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final priceController = TextEditingController();
+                    final double? newPrice = await showDialog<double>(
+                      context: context,
+                      builder: (c) => AlertDialog(
+                        title: const Text('Add Price'),
+                        content: TextField(
+                          controller: priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Customer Price',
                           ),
-                          child: const Text('Add'),
                         ),
-                      ],
-                    ),
-                  );
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(c),
+                            child: const Text('Cancel'),
+                          ),
+                          StatefulBuilder(
+                            builder: (context, setDialogState) {
+                              final p = Provider.of<ProductProvider>(context);
+                              return ElevatedButton(
+                                onPressed: p.isLoading
+                                    ? null
+                                    : () => Navigator.pop(
+                                        c,
+                                        double.tryParse(priceController.text),
+                                      ),
+                                child: p.isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Add'),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    );
 
-                  if (newPrice != null) {
-                    final success = await Provider.of<ProductProvider>(
-                      context,
-                      listen: false,
-                    ).updateProductPrice(hasVolumeId, newPrice, true);
-                    if (success) {
-                      setState(() => currentPrices.add(newPrice));
+                    if (newPrice != null) {
+                      final success = await provider.updateProductPrice(
+                        hasVolumeId,
+                        newPrice,
+                        true,
+                      );
+                      if (success) {
+                        setState(() => currentPrices.add(newPrice));
+                      }
                     }
-                  }
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add New Price'),
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add New Price'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Done'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Done'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -116,36 +142,49 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Product Info'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Product Name'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final provider = Provider.of<ProductProvider>(context);
+          return AlertDialog(
+            title: const Text('Edit Product Info'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Product Name'),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final success =
-                  await Provider.of<ProductProvider>(
-                    context,
-                    listen: false,
-                  ).updateProduct(product['_id'], {
-                    'name': nameController.text.trim(),
-                  });
-              if (success && mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Update'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () async {
+                        final success = await provider.updateProduct(
+                          product['_id'],
+                          {'name': nameController.text.trim()},
+                        );
+                        if (success && mounted) Navigator.pop(ctx);
+                      },
+                child: provider.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Update'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -232,20 +271,30 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(
-                                p['status'] == 'active'
-                                    ? Icons.block
-                                    : Icons.check_circle_outline,
-                                size: 18,
-                                color: p['status'] == 'active'
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
+                              icon: provider.isLoading
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Icon(
+                                      p['status'] == 'active'
+                                          ? Icons.block
+                                          : Icons.check_circle_outline,
+                                      size: 18,
+                                      color: p['status'] == 'active'
+                                          ? Colors.red
+                                          : Colors.green,
+                                    ),
                               tooltip: p['status'] == 'active'
                                   ? 'Deactivate'
                                   : 'Activate',
-                              onPressed: () =>
-                                  provider.toggleProductStatus(p['_id']),
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () =>
+                                        provider.toggleProductStatus(p['_id']),
                             ),
                             IconButton(
                               icon: const Icon(

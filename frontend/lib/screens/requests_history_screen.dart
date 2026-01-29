@@ -395,31 +395,46 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = item['type'] == 'excess'
-                  ? await Provider.of<ExcessProvider>(
-                      context,
-                      listen: false,
-                    ).deleteExcess(item['_id'])
-                  : await Provider.of<ShortageProvider>(
-                      context,
-                      listen: false,
-                    ).deleteShortage(item['_id']);
+          StatefulBuilder(
+            builder: (context, setDialogState) {
+              final excessProvider = Provider.of<ExcessProvider>(context);
+              final shortageProvider = Provider.of<ShortageProvider>(context);
+              final isLoading =
+                  excessProvider.isLoading || shortageProvider.isLoading;
 
-              if (success) {
-                Provider.of<RequestsHistoryProvider>(
-                  context,
-                  listen: false,
-                ).fetchRequestsHistory();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Deleted successfully')),
-                );
-              }
+              return TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final success = item['type'] == 'excess'
+                            ? await excessProvider.deleteExcess(item['_id'])
+                            : await shortageProvider.deleteShortage(
+                                item['_id'],
+                              );
+
+                        if (success) {
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          Provider.of<RequestsHistoryProvider>(
+                            context,
+                            listen: false,
+                          ).fetchRequestsHistory();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Deleted successfully'),
+                            ),
+                          );
+                        }
+                      },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Delete'),
+              );
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
           ),
         ],
       ),

@@ -205,13 +205,25 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () => _confirmAction(
-                        title: 'Reject Request',
-                        message:
-                            'Are you sure you want to reject this user registration?',
-                        onConfirm: () => _reviewUser(user['_id'], 'rejected'),
-                      ),
-                      child: const Text('Reject'),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _confirmAction(
+                              title: 'Reject Request',
+                              message:
+                                  'Are you sure you want to reject this user registration?',
+                              onConfirm: () =>
+                                  _reviewUser(user['_id'], 'rejected'),
+                            ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Reject'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -221,13 +233,25 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () => _confirmAction(
-                        title: 'Approve User',
-                        message:
-                            'Are you sure you want to approve this user and activate their account?',
-                        onConfirm: () => _reviewUser(user['_id'], 'active'),
-                      ),
-                      child: const Text('Approve'),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _confirmAction(
+                              title: 'Approve User',
+                              message:
+                                  'Are you sure you want to approve this user and activate their account?',
+                              onConfirm: () =>
+                                  _reviewUser(user['_id'], 'active'),
+                            ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Approve'),
                     ),
                   ),
                 ],
@@ -258,14 +282,17 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                             ? Colors.green
                             : Colors.orange,
                       ),
-                      onPressed: () => _confirmAction(
-                        title: user['status'] == 'suspended'
-                            ? 'Activate User'
-                            : 'Suspend User',
-                        message:
-                            'Are you sure you want to ${user['status'] == 'suspended' ? 'activate' : 'suspend'} this account?',
-                        onConfirm: () => _adminAction(user['_id'], 'suspend'),
-                      ),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _confirmAction(
+                              title: user['status'] == 'suspended'
+                                  ? 'Activate User'
+                                  : 'Suspend User',
+                              message:
+                                  'Are you sure you want to ${user['status'] == 'suspended' ? 'activate' : 'suspend'} this account?',
+                              onConfirm: () =>
+                                  _adminAction(user['_id'], 'suspend'),
+                            ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -276,13 +303,15 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                       ),
-                      onPressed: () => _confirmAction(
-                        title: 'Reset Password',
-                        message:
-                            'Are you sure you want to reset this user\'s password to "00000000"?',
-                        onConfirm: () =>
-                            _adminAction(user['_id'], 'reset-password'),
-                      ),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _confirmAction(
+                              title: 'Reset Password',
+                              message:
+                                  'Are you sure you want to reset this user\'s password to "00000000"?',
+                              onConfirm: () =>
+                                  _adminAction(user['_id'], 'reset-password'),
+                            ),
                     ),
                   ),
                 ],
@@ -330,6 +359,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         ? '${Constants.baseUrl}/admin/suspend-user/$userId'
         : '${Constants.baseUrl}/admin/reset-password/$userId';
 
+    setState(() => _isLoading = true);
     try {
       final response = await http.put(
         Uri.parse(url),
@@ -337,7 +367,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
       );
       final data = json.decode(response.body);
       if (data['success']) {
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
         _fetchUsers();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? 'Action successful')),
@@ -400,47 +430,69 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final token = Provider.of<AuthProvider>(
-                  context,
-                  listen: false,
-                ).token;
-                final response = await http.post(
-                  Uri.parse('${Constants.baseUrl}/admin/create-delivery'),
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer $token',
-                  },
-                  body: json.encode({
-                    'name': nameController.text,
-                    'email': emailController.text,
-                    'phone': phoneController.text,
-                    'password': passwordController.text,
-                  }),
-                );
-                final data = json.decode(response.body);
-                if (data['success']) {
-                  Navigator.pop(context);
-                  _fetchUsers();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Delivery user created and pending approval',
+          StatefulBuilder(
+            builder: (context, setDialogState) => ElevatedButton(
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        setDialogState(() => _isLoading = true);
+                        final token = Provider.of<AuthProvider>(
+                          context,
+                          listen: false,
+                        ).token;
+                        try {
+                          final response = await http.post(
+                            Uri.parse(
+                              '${Constants.baseUrl}/admin/create-delivery',
+                            ),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': 'Bearer $token',
+                            },
+                            body: json.encode({
+                              'name': nameController.text,
+                              'email': emailController.text,
+                              'phone': phoneController.text,
+                              'password': passwordController.text,
+                            }),
+                          );
+                          final data = json.decode(response.body);
+                          if (data['success']) {
+                            Navigator.pop(context);
+                            _fetchUsers();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Delivery user created and pending approval',
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  data['message'] ?? 'Failed to create user',
+                                ),
+                              ),
+                            );
+                          }
+                        } finally {
+                          setDialogState(() => _isLoading = false);
+                        }
+                      }
+                    },
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(data['message'] ?? 'Failed to create user'),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Create'),
+                    )
+                  : const Text('Create'),
+            ),
           ),
         ],
       ),
@@ -506,18 +558,23 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   }
 
   Future<void> _reviewUser(String id, String status) async {
+    setState(() => _isLoading = true);
     final token = Provider.of<AuthProvider>(context, listen: false).token;
-    final response = await http.put(
-      Uri.parse('${Constants.baseUrl}/admin/review-user/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: json.encode({'status': status}),
-    );
-    if (json.decode(response.body)['success']) {
-      Navigator.pop(context);
-      _fetchUsers();
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/admin/review-user/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'status': status}),
+      );
+      if (json.decode(response.body)['success']) {
+        if (mounted) Navigator.pop(context);
+        _fetchUsers();
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }

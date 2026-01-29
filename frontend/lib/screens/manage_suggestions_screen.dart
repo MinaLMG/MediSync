@@ -27,6 +27,8 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
 
   void _handleStatus(String id, String status) async {
     final notesController = TextEditingController();
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -63,10 +65,11 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
     );
 
     if (confirm == true && mounted) {
-      await Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      ).updateSuggestionStatus(id, status, notes: notesController.text.trim());
+      await provider.updateSuggestionStatus(
+        id,
+        status,
+        notes: notesController.text.trim(),
+      );
     }
   }
 
@@ -155,8 +158,12 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                   children: [
                                     Expanded(
                                       child: OutlinedButton(
-                                        onPressed: () =>
-                                            _handleStatus(s['_id'], 'rejected'),
+                                        onPressed: provider.isLoading
+                                            ? null
+                                            : () => _handleStatus(
+                                                s['_id'],
+                                                'rejected',
+                                              ),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red,
                                         ),
@@ -166,18 +173,32 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: ElevatedButton(
-                                        onPressed: () =>
-                                            _handleStatus(s['_id'], 'approved'),
+                                        onPressed: provider.isLoading
+                                            ? null
+                                            : () => _handleStatus(
+                                                s['_id'],
+                                                'approved',
+                                              ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.green,
                                           foregroundColor: Colors.white,
                                         ),
-                                        child: const Center(
-                                          child: Text(
-                                            'APPROVE',
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
+                                        child: provider.isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      color: Colors.white,
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Center(
+                                                child: Text(
+                                                  'APPROVE',
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   ],

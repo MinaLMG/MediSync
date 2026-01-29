@@ -87,7 +87,7 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
               TextFormField(
                 controller: _priceController,
                 decoration: const InputDecoration(
-                  labelText: 'Store Price (coins)',
+                  labelText: 'Customer Price (coins)',
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -102,7 +102,14 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _submit,
                   child: isLoading
-                      ? const CircularProgressIndicator()
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text('Submit Suggestion'),
                 ),
               ),
