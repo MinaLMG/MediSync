@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/settings_provider.dart';
+import '../utils/ui_utils.dart';
 
 class MatchingDetailScreen extends StatefulWidget {
   final String productId;
@@ -412,11 +413,16 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      item['pharmacy']['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                    child: InkWell(
+                      onTap: () =>
+                          UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                      child: Text(
+                        item['pharmacy']['name'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Colors.blue,
+                        ),
                       ),
                     ),
                   ),

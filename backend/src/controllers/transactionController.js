@@ -71,7 +71,7 @@ exports.getMatchesForProduct = async (req, res) => {
         const shortages = await StockShortage.find({
             product: productId,
             remainingQuantity: { $gt: 0 }
-        }).populate('pharmacy', 'name balance').populate('volume', 'name').sort({ createdAt: -1 });
+        }).populate('pharmacy', 'name balance address phone').populate('volume', 'name').sort({ createdAt: -1 });
         console.log(3)
 
 
@@ -96,7 +96,7 @@ exports.getMatchesForProduct = async (req, res) => {
         }
         console.log(excessQuery )
         const excesses = await StockExcess.find(excessQuery)
-            .populate('pharmacy', 'name balance')
+            .populate('pharmacy', 'name balance address phone')
             .populate('volume', 'name')
             .populate('product', 'name')
             .sort({ createdAt: -1 });

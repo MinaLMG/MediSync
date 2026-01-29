@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
 import 'add_excess_screen.dart';
+import '../utils/ui_utils.dart';
 
 class ExcessFollowUpScreen extends StatefulWidget {
   const ExcessFollowUpScreen({super.key});
@@ -145,7 +146,17 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         fontSize: 16,
                       ),
                     ),
-                    Text('${item['pharmacy']['name']}'),
+                    InkWell(
+                      onTap: () =>
+                          UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                      child: Text(
+                        '${item['pharmacy']['name']}',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
 
                     Row(
@@ -451,7 +462,17 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ],
                     ),
-                    Text('${item['pharmacy']['name']}'),
+                    InkWell(
+                      onTap: () =>
+                          UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                      child: Text(
+                        '${item['pharmacy']['name']}',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
 
                     if (isShortageFulfillment)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/order_provider.dart';
+import '../utils/ui_utils.dart';
 
 class AdminOrderFulfillmentScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -382,10 +383,18 @@ class _AdminOrderFulfillmentScreenState
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                excess['pharmacy']['name'],
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                              InkWell(
+                                                onTap: () =>
+                                                    UIUtils.showPharmacyInfo(
+                                                      context,
+                                                      excess['pharmacy'],
+                                                    ),
+                                                child: Text(
+                                                  excess['pharmacy']['name'],
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.blue,
+                                                  ),
                                                 ),
                                               ),
                                               Text(

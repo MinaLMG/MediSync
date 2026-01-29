@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../utils/config.dart';
 import '../utils/search_utils.dart';
+import '../utils/ui_utils.dart';
 
 class AdminManageUsersScreen extends StatefulWidget {
   const AdminManageUsersScreen({super.key});
@@ -134,8 +135,25 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           margin: const EdgeInsets.all(8),
           child: ListTile(
             title: Text(user['name']),
-            subtitle: Text(
-              '${user['email']}\n${pharmacy?['name'] ?? 'No Pharmacy Linked'}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user['email']),
+                InkWell(
+                  onTap: pharmacy != null
+                      ? () => UIUtils.showPharmacyInfo(context, pharmacy)
+                      : null,
+                  child: Text(
+                    pharmacy?['name'] ?? 'No Pharmacy Linked',
+                    style: TextStyle(
+                      color: pharmacy != null ? Colors.blue : Colors.grey,
+                      fontWeight: pharmacy != null
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
             ),
             isThreeLine: true,
             trailing: isWaiting

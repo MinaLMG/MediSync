@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
+import '../utils/ui_utils.dart';
 import '../providers/auth_provider.dart';
 import 'admin_edit_transaction_screen.dart';
 
@@ -233,7 +234,19 @@ class _FollowUpTransactionsScreenState
               ],
             ),
             const SizedBox(height: 8),
-            Text('Buyer: $buyer', style: const TextStyle(color: Colors.blue)),
+            InkWell(
+              onTap: () => UIUtils.showPharmacyInfo(
+                context,
+                tx['stockShortage']['shortage']['pharmacy'],
+              ),
+              child: Text(
+                'Buyer: $buyer',
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             Text('Total Qty: ${tx['totalQuantity']}'),
             Text('Total Value: ${tx['totalAmount']} coins'),
             if (tx['delivery'] != null) ...[
@@ -263,9 +276,22 @@ class _FollowUpTransactionsScreenState
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
             ...(tx['stockExcessSources'] as List).map(
-              (s) => Text(
-                '- ${s['stockExcess']['pharmacy']['name']} (${s['quantity']} units)',
-                style: const TextStyle(fontSize: 12),
+              (s) => InkWell(
+                onTap: () => UIUtils.showPharmacyInfo(
+                  context,
+                  s['stockExcess']['pharmacy'],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Text(
+                    '- ${s['stockExcess']['pharmacy']['name']} (${s['quantity']} units)',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),

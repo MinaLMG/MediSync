@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/shortage_provider.dart';
+import '../utils/ui_utils.dart';
 
 class ShortageFollowUpScreen extends StatefulWidget {
   const ShortageFollowUpScreen({super.key});
@@ -64,7 +65,17 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
                           fontSize: 16,
                         ),
                       ),
-                      Text('Pharmacy: ${item['pharmacy']['name']}'),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                        child: Text(
+                          'Pharmacy: ${item['pharmacy']['name']}',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                       Text('Volume: ${item['volume']['name']}'),
                       const SizedBox(height: 8),
                       Text('Quantity Needed: ${item['quantity']}'),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/delivery_request_provider.dart';
 import '../providers/app_suggestion_provider.dart';
+import '../utils/ui_utils.dart';
 
 class AdminDeliveryRequestsScreen extends StatefulWidget {
   const AdminDeliveryRequestsScreen({super.key});
@@ -155,6 +156,13 @@ class _AdminDeliveryRequestsScreenState
                 final tx = request['transaction'];
                 final date = DateTime.parse(request['createdAt']).toLocal();
 
+                final shortagePh =
+                    tx['stockShortage']?['shortage']?['pharmacy'];
+                final List sources = tx['stockExcessSources'] ?? [];
+                final excessPh = sources.isEmpty
+                    ? null
+                    : sources[0]['stockExcess']?['pharmacy'];
+
                 return Card(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -205,34 +213,51 @@ class _AdminDeliveryRequestsScreenState
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Text(
-                                'Requested Status: ${request['requestType'].toUpperCase()}',
-                                style: TextStyle(
-                                  color: request['requestType'] == 'accept'
-                                      ? Colors.blue
-                                      : Colors.green,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              if (shortagePh != null)
+                                InkWell(
+                                  onTap: () => UIUtils.showPharmacyInfo(
+                                    context,
+                                    shortagePh,
+                                  ),
+                                  child: Text(
+                                    'Shortage: ${shortagePh['name']}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
                                 ),
+                              if (excessPh != null)
+                                InkWell(
+                                  onTap: () => UIUtils.showPharmacyInfo(
+                                    context,
+                                    excessPh,
+                                  ),
+                                  child: Text(
+                                    'Excess: ${excessPh['name']}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                'Product: ${tx['stockShortage']?['shortage']?['product']?['name'] ?? 'Unknown'}',
+                                style: const TextStyle(fontSize: 11),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             TextButton(
                               onPressed: provider.isLoading
                                   ? null
-                                  : () => _confirmAction(
-                                      title: 'Reject Request',
-                                      message:
-                                          'Are you sure you want to reject this delivery request?',
-                                      onConfirm: () => _reviewRequest(
-                                        request['_id'],
-                                        'rejected',
-                                      ),
+                                  : () => _reviewRequest(
+                                      request['_id'],
+                                      'rejected',
                                     ),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
@@ -243,14 +268,9 @@ class _AdminDeliveryRequestsScreenState
                             ElevatedButton(
                               onPressed: provider.isLoading
                                   ? null
-                                  : () => _confirmAction(
-                                      title: 'Approve Request',
-                                      message:
-                                          'Are you sure you want to approve this delivery request?',
-                                      onConfirm: () => _reviewRequest(
-                                        request['_id'],
-                                        'approved',
-                                      ),
+                                  : () => _reviewRequest(
+                                      request['_id'],
+                                      'approved',
                                     ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
@@ -277,36 +297,6 @@ class _AdminDeliveryRequestsScreenState
             ),
           );
         },
-      ),
-    );
-  }
-
-  void _confirmAction({
-    required String title,
-    required String message,
-    required VoidCallback onConfirm,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            child: const Text(
-              'Confirm',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -8,6 +8,7 @@ import 'login_screen.dart';
 import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import '../utils/ui_utils.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -53,44 +54,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _showPharmacyInfo(BuildContext context, dynamic pharmacy) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(pharmacy['name']),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(pharmacy['address'] ?? 'No address provided'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(pharmacy['phone'] ?? 'No phone provided'),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _requestAction(
@@ -551,7 +514,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                       Icons.info_outline,
                       color: Colors.blue,
                     ),
-                    onTap: () => _showPharmacyInfo(context, shortagePh),
+                    onTap: () => UIUtils.showPharmacyInfo(context, shortagePh),
                   ),
                   const Text(
                     'Excess Pharmacy:',
@@ -590,7 +553,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                         Icons.info_outline,
                         color: Colors.blue,
                       ),
-                      onTap: () => _showPharmacyInfo(context, eph),
+                      onTap: () => UIUtils.showPharmacyInfo(context, eph),
                     );
                   }),
                   const SizedBox(height: 12),

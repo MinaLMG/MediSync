@@ -139,7 +139,7 @@ exports.createOrder = async (req, res) => {
 exports.getActiveShortages = async (req, res) => {
     try {
         const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } })
-            .populate('pharmacy', 'name')
+            .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });

@@ -124,7 +124,7 @@ if (!excess) {
 exports.getPendingExcesses = async (req, res) => {
     try {
         const excesses = await StockExcess.find({ status: 'pending' })
-            .populate('pharmacy', 'name')
+            .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });
@@ -225,7 +225,7 @@ exports.getAvailableExcesses = async (req, res) => {
         const excesses = await StockExcess.find({ 
             status: { $in: ['available', 'partially_fulfilled'] } 
         })
-            .populate('pharmacy', 'name')
+            .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });

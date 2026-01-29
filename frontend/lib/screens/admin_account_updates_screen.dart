@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../providers/app_suggestion_provider.dart';
 import '../utils/config.dart';
+import '../utils/ui_utils.dart';
 
 class AdminAccountUpdatesScreen extends StatefulWidget {
   const AdminAccountUpdatesScreen({super.key});
@@ -187,6 +188,10 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
                               'Ph. Name',
                               user['pharmacy']['name'],
                               updates['pharmacy']['name'],
+                              onTap: () => UIUtils.showPharmacyInfo(
+                                context,
+                                user['pharmacy'],
+                              ),
                             ),
                           if (updates['pharmacy']['phone'] != null &&
                               updates['pharmacy']['phone'] !=
@@ -213,35 +218,22 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
                               child: OutlinedButton(
                                 onPressed: _isLoading
                                     ? null
-                                    : () => _confirmAction(
-                                        title: 'Reject Request',
-                                        message:
-                                            'Are you sure you want to reject these profile changes?',
-                                        onConfirm: () => _reviewUpdate(
-                                          user['_id'],
-                                          'reject',
-                                        ),
-                                      ),
+                                    : () =>
+                                          _reviewUpdate(user['_id'], 'reject'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
                                 ),
-                                child: const Text('Reject'),
+                                child: const Text('Reject Update'),
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: _isLoading
                                     ? null
-                                    : () => _confirmAction(
-                                        title: 'Approve Changes',
-                                        message:
-                                            'Are you sure you want to apply these changes to the user profile?',
-                                        onConfirm: () => _reviewUpdate(
-                                          user['_id'],
-                                          'approve',
-                                        ),
-                                      ),
+                                    : () =>
+                                          _reviewUpdate(user['_id'], 'approve'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   foregroundColor: Colors.white,
@@ -255,7 +247,7 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : const Text('Approve & Apply'),
+                                    : const Text('Approve Update'),
                               ),
                             ),
                           ],
@@ -269,70 +261,48 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
     );
   }
 
-  Widget _buildDiffItem(String label, dynamic oldVal, dynamic newVal) {
+  Widget _buildDiffItem(
+    String label,
+    String oldVal,
+    String newVal, {
+    VoidCallback? onTap,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$label:',
+            label,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  oldVal?.toString() ?? 'N/A',
+                  oldVal,
                   style: const TextStyle(
+                    fontSize: 14,
                     color: Colors.red,
                     decoration: TextDecoration.lineThrough,
-                    fontSize: 13,
                   ),
                 ),
               ),
-              const Icon(Icons.arrow_right_alt, size: 16),
+              const Icon(Icons.arrow_forward, size: 16),
               Expanded(
-                child: Text(
-                  newVal?.toString() ?? 'N/A',
-                  style: const TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Text(
+                    newVal,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: onTap != null ? Colors.blue : Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmAction({
-    required String title,
-    required String message,
-    required VoidCallback onConfirm,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            child: const Text(
-              'Confirm',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
           ),
         ],
       ),
