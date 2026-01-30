@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/shortage_provider.dart';
-import '../widgets/searchable_dropdown.dart';
+import '../widgets/async_searchable_dropdown.dart';
 
 class AddShortageScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -21,26 +21,24 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   String? _selectedVolumeId;
   final TextEditingController _quantityController = TextEditingController();
 
+  // For volumes related to selected product
+  List<dynamic> _availableVolumes = [];
+
   bool get isEditMode => widget.initialData != null;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() async {
-      await Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      ).fetchProducts();
-
-      if (isEditMode) {
-        final data = widget.initialData!;
-        setState(() {
-          _selectedProductId = data['product']['_id'];
-          _selectedVolumeId = data['volume']['_id'];
-          _quantityController.text = data['quantity'].toString();
-        });
-      }
-    });
+    if (isEditMode) {
+      final data = widget.initialData!;
+      setState(() {
+        _selectedProductId = data['product']['_id'];
+        _selectedVolumeId = data['volume']['_id'];
+        _quantityController.text = data['quantity'].toString();
+        // Since it's edit mode, we might need volume names etc.
+        // But the screen already shows product/volume names in a container for edit mode.
+      });
+    }
   }
 
   @override
@@ -115,21 +113,12 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
 
-    // Logic to get current product and volumes
-    final selectedProduct = _selectedProductId != null
-        ? productProvider.products.firstWhere(
-            (p) => p['_id'] == _selectedProductId,
-            orElse: () => null,
-          )
-        : null;
-
-    final volumes = selectedProduct?['volumes'] as List<dynamic>? ?? [];
-
     // Auto-select volume if only one
-    if (volumes.length == 1 && _selectedVolumeId != volumes[0]['volumeId']) {
+    if (_availableVolumes.length == 1 &&
+        _selectedVolumeId != _availableVolumes[0]['volumeId']) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
-          _selectedVolumeId = volumes[0]['volumeId'];
+          _selectedVolumeId = _availableVolumes[0]['volumeId'];
         });
       });
     }
@@ -180,21 +169,14 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
 
                     // Product Searchable Dropdown (Creation only)
                     if (!isEditMode) ...[
-                      SearchableDropdown(
+                      AsyncSearchableDropdown(
                         value: _selectedProductId,
                         labelText: 'Product',
-                        items: productProvider.products
-                            .map<DropdownItem>(
-                              (product) => DropdownItem(
-                                id: product['_id'],
-                                displayText: product['name'],
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
+                        onChanged: (product) {
                           setState(() {
-                            _selectedProductId = value;
+                            _selectedProductId = product?['_id'];
                             _selectedVolumeId = null;
+                            _availableVolumes = product?['volumes'] ?? [];
                           });
                         },
                         validator: (v) =>
@@ -204,11 +186,13 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                     ],
 
                     // Volume Dropdown (Creation only)
-                    if (!isEditMode && volumes.isNotEmpty) ...[
+                    if (!isEditMode && _availableVolumes.isNotEmpty) ...[
                       DropdownButtonFormField<String>(
                         value: _selectedVolumeId,
                         decoration: const InputDecoration(labelText: 'Volume'),
-                        items: volumes.map<DropdownMenuItem<String>>((v) {
+                        items: _availableVolumes.map<DropdownMenuItem<String>>((
+                          v,
+                        ) {
                           return DropdownMenuItem(
                             value: v['volumeId'],
                             child: Text(v['volumeName']),

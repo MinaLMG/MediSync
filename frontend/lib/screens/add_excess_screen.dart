@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/settings_provider.dart';
-import '../widgets/searchable_dropdown.dart';
+import '../widgets/async_searchable_dropdown.dart';
 
 class AddExcessScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -32,17 +32,15 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   bool _shortageFulfillment = false;
   final TextEditingController _saleValueController = TextEditingController();
 
+  // For volumes related to selected product
+  List<dynamic> _availableVolumes = [];
+
   bool get isEditMode => widget.initialData != null;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() async {
-      await Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      ).fetchProducts();
-
       if (mounted) {
         await Provider.of<SettingsProvider>(
           context,
@@ -65,9 +63,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           _manualPriceController.text = price.toString();
 
           // Initialize _isManualPrice if the initial price is not in the list
-          // This will be refined as soon as settings/products are fetched
-          _isManualPrice =
-              true; // Default to true if editing, will be checked against list later
+          _isManualPrice = true;
 
           if (data['salePercentage'] != null) {
             _saleValueController.text = data['salePercentage'].toString();
@@ -321,25 +317,17 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
 
-    final selectedProduct = _selectedProductId != null
-        ? productProvider.products.firstWhere(
-            (p) => p['_id'] == _selectedProductId,
-            orElse: () => null,
-          )
-        : null;
-
-    final volumes = selectedProduct?['volumes'] as List<dynamic>? ?? [];
-
-    if (volumes.length == 1 && _selectedVolumeId != volumes[0]['volumeId']) {
+    if (_availableVolumes.length == 1 &&
+        _selectedVolumeId != _availableVolumes[0]['volumeId']) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
-          _selectedVolumeId = volumes[0]['volumeId'];
+          _selectedVolumeId = _availableVolumes[0]['volumeId'];
           _selectedPrice = null;
         });
       });
     }
 
-    final currentVolume = volumes.firstWhere(
+    final currentVolume = _availableVolumes.firstWhere(
       (v) => v['volumeId'] == _selectedVolumeId,
       orElse: () => null,
     );
@@ -427,46 +415,39 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     ],
 
                     if (!isEditMode) ...[
-                      SearchableDropdown(
+                      AsyncSearchableDropdown(
                         value: _selectedProductId,
                         labelText: 'Product',
-                        items: productProvider.products
-                            .map<DropdownItem>(
-                              (product) => DropdownItem(
-                                id: product['_id'],
-                                displayText: product['name'],
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
+                        onChanged: (product) {
                           setState(() {
-                            _selectedProductId = value;
+                            _selectedProductId = product?['_id'];
                             _selectedVolumeId = null;
                             _selectedPrice = null;
-                            // _isManualPrice stays as is
+                            _availableVolumes = product?['volumes'] ?? [];
                           });
                         },
                         validator: (v) =>
                             v == null || v.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
-                      if (volumes.isNotEmpty) ...[
+                      if (_availableVolumes.isNotEmpty) ...[
                         DropdownButtonFormField<String>(
                           value: _selectedVolumeId,
                           decoration: const InputDecoration(
                             labelText: 'Volume',
                           ),
-                          items: volumes.map<DropdownMenuItem<String>>((v) {
-                            return DropdownMenuItem(
-                              value: v['volumeId'],
-                              child: Text(v['volumeName']),
-                            );
-                          }).toList(),
+                          items: _availableVolumes
+                              .map<DropdownMenuItem<String>>((v) {
+                                return DropdownMenuItem(
+                                  value: v['volumeId'],
+                                  child: Text(v['volumeName']),
+                                );
+                              })
+                              .toList(),
                           onChanged: (value) {
                             setState(() {
                               _selectedVolumeId = value;
                               _selectedPrice = null;
-                              // _isManualPrice stays as is
                             });
                           },
                           validator: (v) => v == null ? 'Required' : null,

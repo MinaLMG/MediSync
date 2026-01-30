@@ -16,7 +16,7 @@ const {
     Notification,
 } = require('../models');
 
-const connectDB = require('./mongoose');
+// const connectDB = require('./mongoose');
 
 const seedData = async () => {
     try {

@@ -36,7 +36,24 @@ const sendToUser = async (userId, event, data) => {
     }
 };
 
+/**
+ * Broadcast event to a specific channel
+ * @param {string} channel - Channel name
+ * @param {string} event - Event name
+ * @param {Object} data - Event data
+ */
+const broadcast = async (channel, event, data) => {
+    const p = initPusher();
+    try {
+        console.log(`📡 [PusherManager] Broadcasting '${event}' to channel '${channel}'`);
+        await p.trigger(channel, event, data);
+    } catch (error) {
+        console.error(`❌ [PusherManager] Error broadcasting event: ${error.message}`);
+    }
+};
+
 module.exports = {
     initPusher,
-    sendToUser
+    sendToUser,
+    broadcast
 };

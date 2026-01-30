@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
-import '../utils/search_utils.dart';
 
 class AdminProductListScreen extends StatefulWidget {
   const AdminProductListScreen({super.key});
@@ -12,14 +12,46 @@ class AdminProductListScreen extends StatefulWidget {
 
 class _AdminProductListScreenState extends State<AdminProductListScreen> {
   String searchQuery = '';
+  int _currentPage = 1;
+  bool _isFetchingMore = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _fetchInitialProducts();
+  }
+
+  void _fetchInitialProducts() {
+    _currentPage = 1;
     Future.microtask(
-      () =>
-          Provider.of<ProductProvider>(context, listen: false).fetchProducts(),
+      () => Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).fetchProducts(page: _currentPage, search: searchQuery),
     );
+  }
+
+  void _fetchMoreProducts() async {
+    if (_isFetchingMore) return;
+
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final pagination = provider.pagination;
+
+    if (_currentPage < (pagination['pages'] ?? 1)) {
+      setState(() => _isFetchingMore = true);
+      _currentPage++;
+      await provider.fetchProducts(page: _currentPage, search: searchQuery);
+      if (mounted) setState(() => _isFetchingMore = false);
+    }
+  }
+
+  void _onSearchChanged(String v) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() => searchQuery = v);
+      _fetchInitialProducts();
+    });
   }
 
   void _showPriceDialog(String hasVolumeId, List<dynamic> currentPrices) {
@@ -192,9 +224,8 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ProductProvider>(context);
-    final filteredProducts = provider.products
-        .where((p) => SearchUtils.matches(p['name'], searchQuery))
-        .toList();
+    final products = provider.products;
+    final pagination = provider.pagination;
 
     return Scaffold(
       appBar: AppBar(
@@ -202,10 +233,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => Provider.of<ProductProvider>(
-              context,
-              listen: false,
-            ).fetchProducts(),
+            onPressed: _fetchInitialProducts,
           ),
         ],
       ),
@@ -219,16 +247,31 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (v) => setState(() => searchQuery = v),
+              onChanged: _onSearchChanged,
             ),
           ),
           Expanded(
-            child: provider.isLoading && provider.products.isEmpty
+            child: provider.isLoading && _currentPage == 1
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    itemCount: filteredProducts.length,
+                    itemCount: products.length + 1,
                     itemBuilder: (context, index) {
-                      final p = filteredProducts[index];
+                      if (index == products.length) {
+                        return _currentPage < (pagination['pages'] ?? 1)
+                            ? Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Center(
+                                  child: _isFetchingMore
+                                      ? const CircularProgressIndicator()
+                                      : ElevatedButton(
+                                          onPressed: _fetchMoreProducts,
+                                          child: const Text('Load More'),
+                                        ),
+                                ),
+                              )
+                            : const SizedBox(height: 32);
+                      }
+                      final p = products[index];
                       return ListTile(
                         leading: const CircleAvatar(
                           child: Icon(Icons.medication),

@@ -21,7 +21,10 @@ class ProductProvider with ChangeNotifier {
     return prefs.getString(Constants.tokenKey);
   }
 
-  Future<void> fetchProducts() async {
+  Map<String, dynamic> _pagination = {};
+  Map<String, dynamic> get pagination => _pagination;
+
+  Future<void> fetchProducts({int page = 1, String search = ''}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -31,7 +34,7 @@ class ProductProvider with ChangeNotifier {
       if (token == null) throw Exception('Auth Token Missing');
 
       final response = await http.get(
-        Uri.parse('${Constants.baseUrl}/products'),
+        Uri.parse('${Constants.baseUrl}/products?page=$page&search=$search'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -41,7 +44,12 @@ class ProductProvider with ChangeNotifier {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        _products = data['data'];
+        if (page == 1) {
+          _products = data['data'];
+        } else {
+          _products.addAll(data['data']);
+        }
+        _pagination = data['pagination'] ?? {};
       } else {
         _errorMessage = data['message'] ?? 'Failed to fetch products';
       }
@@ -50,6 +58,27 @@ class ProductProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<List<dynamic>> getProductsLite({String search = ''}) async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/products/lite?search=$search'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 

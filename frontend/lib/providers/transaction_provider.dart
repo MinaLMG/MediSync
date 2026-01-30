@@ -21,14 +21,14 @@ class TransactionProvider with ChangeNotifier {
   String get _token => authProvider.token ?? '';
 
   // Get products with potential matches
-  Future<void> fetchMatchableProducts() async {
+  Future<void> fetchMatchableProducts({String search = ''}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
       final response = await http.get(
-        Uri.parse('${Constants.baseUrl}/transaction/matchable'),
+        Uri.parse('${Constants.baseUrl}/transaction/matchable?search=$search'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',

@@ -1,2 +1,4 @@
 models.txt
 data.docx
+backend/src/db/products_full_simple.json
+backend/src/db/products.json

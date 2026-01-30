@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
-import '../utils/search_utils.dart';
 import 'matching_detail_screen.dart';
 
 class AdminMatchableProductsScreen extends StatefulWidget {
@@ -15,28 +15,42 @@ class AdminMatchableProductsScreen extends StatefulWidget {
 class _AdminMatchableProductsScreenState
     extends State<AdminMatchableProductsScreen> {
   String _searchQuery = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _fetchMatchable();
+  }
+
+  void _fetchMatchable() {
     Future.microtask(
       () => Provider.of<TransactionProvider>(
         context,
         listen: false,
-      ).fetchMatchableProducts(),
+      ).fetchMatchableProducts(search: _searchQuery),
     );
+  }
+
+  void _onSearchChanged(String v) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() => _searchQuery = v);
+      _fetchMatchable();
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final transactionProvider = Provider.of<TransactionProvider>(context);
 
-    final filteredProducts = transactionProvider.matchableProducts.where((
-      item,
-    ) {
-      final product = item['product'];
-      return SearchUtils.matches(product['name'], _searchQuery);
-    }).toList();
+    final filteredProducts = transactionProvider.matchableProducts;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,7 +72,7 @@ class _AdminMatchableProductsScreenState
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (v) => setState(() => _searchQuery = v),
+              onChanged: _onSearchChanged,
             ),
           ),
           Expanded(

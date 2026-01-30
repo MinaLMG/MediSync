@@ -9,46 +9,59 @@ const { sendToUser } = require('../utils/pusherManager');
 // @access  Admin
 exports.getMatchableProducts = async (req, res) => {
     try {
-        // Find products with active shortages
-        const shortages = await StockShortage.aggregate([
-            { $match: { remainingQuantity: { $gt: 0 } } },
-            { $group: { _id: "$product", volumes: { $addToSet: "$volume" } } }
-        ]);
-
-        // Find products with available excesses
-        const excesses = await StockExcess.aggregate([
-            { $match: { status: { $in: ['available', 'partially_fulfilled'] }, remainingQuantity: { $gt: 0 } } },
-            { $group: { 
-                _id: "$product", 
-                volumes: { $addToSet: "$volume" },
-                hasShortageFulfillment: { $max: "$shortage_fulfillment" }
-            } }
-        ]);
-
-        // Filter products that appear in both lists with matching volumes
-        const matchable = [];
-        for (const s of shortages) {
-            const e = excesses.find(ex => ex._id.toString() === s._id.toString());
-            if (e) {
-                // Check if they share at least one volume
-                const commonVolumes = s.volumes.filter(sv => 
-                    e.volumes.some(ev => ev.toString() === sv.toString())
-                );
-                
-                if (commonVolumes.length > 0) {
-                    // Get product details
-                    const product = await mongoose.model('Product').findById(s._id);
-                    // CHECK: Product must be active
-                    if (product && product.status === 'active') {
-                        matchable.push({
-                            product,
-                            volumes: commonVolumes,
-                            hasShortageFulfillment: e.hasShortageFulfillment || false
-                        });
-                    }
+        const search = req.query.search || '';
+        let matchQuery = { remainingQuantity: { $gt: 0 } };
+        // Optimization: If search is provided, we can filter earlier or later.
+        // Let's filter after grouping for simplicity or use $match after $lookup.
+        const matchable = await StockShortage.aggregate([
+            { $match: { remainingQuantity: { $gt: 0 }, order: null } },
+            { $group: { _id: "$product", shortageVolumes: { $addToSet: "$volume" } } },
+            {
+                $lookup: {
+                    from: "stockexcesses",
+                    let: { prodId: "$_id", sVolumes: "$shortageVolumes" },
+                    pipeline: [
+                        { $match: { 
+                            $expr: { 
+                                $and: [
+                                    { $eq: ["$product", "$$prodId"] },
+                                    { $in: ["$status", ["available", "partially_fulfilled"]] },
+                                    { $gt: ["$remainingQuantity", 0] },
+                                    { $in: ["$volume", "$$sVolumes"] }
+                                ]
+                            }
+                        } },
+                        { $group: { 
+                            _id: "$product", 
+                            volumes: { $addToSet: "$volume" },
+                            hasShortageFulfillment: { $max: "$shortage_fulfillment" }
+                        } }
+                    ],
+                    as: "excessInfo"
                 }
-            }
-        }
+            },
+            { $unwind: "$excessInfo" },
+            { $lookup: {
+                from: "products",
+                localField: "_id",
+                foreignField: "_id",
+                as: "product"
+            } },
+            { $unwind: "$product" },
+            { $match: { 
+                "product.status": "active",
+                "product.name": { $regex: search, $options: 'i' }
+            } },
+            {
+                $project: {
+                    _id: 0,
+                    product: 1,
+                    volumes: "$excessInfo.volumes",
+                    hasShortageFulfillment: "$excessInfo.hasShortageFulfillment"
+                }
+            },
+            { $sort: { "product.name": 1 } }
+        ]);
 
         // Sort alphabetically by product name
         matchable.sort((a, b) => a.product.name.localeCompare(b.product.name));
@@ -70,7 +83,8 @@ exports.getMatchesForProduct = async (req, res) => {
 
         const shortages = await StockShortage.find({
             product: productId,
-            remainingQuantity: { $gt: 0 }
+            remainingQuantity: { $gt: 0 },
+            order: null
         }).populate('pharmacy', 'name balance address phone').populate('volume', 'name').sort({ createdAt: -1 });
         console.log(3)
 

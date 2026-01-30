@@ -2,32 +2,131 @@ const { Product, HasVolume, Category, Manufacturer, Volume, ProductSuggestion, U
 const { addNotificationJob } = require('../utils/queueManager');
 const mongoose = require('mongoose');
 
-// Get all products with their volumes and prices
+// Get all products with their volumes and prices (Optimized with Pagination and Search)
 exports.getAllProducts = async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+        const search = req.query.search || '';
+
+        let matchQuery = {};
+        if (req.user.role !== 'admin') {
+            matchQuery.status = 'active';
+        }
+
+        if (search) {
+            matchQuery.name = { $regex: search, $options: 'i' };
+        }
+
+        // Use aggregation for efficiency
+        const productsCount = await Product.countDocuments(matchQuery);
+        
+        const products = await Product.aggregate([
+            { $match: matchQuery },
+            { $sort: { name: 1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $lookup: {
+                    from: 'hasvolumes',
+                    localField: '_id',
+                    foreignField: 'product',
+                    as: 'hasVolumes'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'volumes',
+                    localField: 'hasVolumes.volume',
+                    foreignField: '_id',
+                    as: 'volumeDetails'
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    status: 1,
+                    conversions: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    volumes: {
+                        $map: {
+                            input: '$hasVolumes',
+                            as: 'hv',
+                            in: {
+                                hasVolumeId: '$$hv._id',
+                                volumeId: '$$hv.volume',
+                                value: '$$hv.value',
+                                prices: '$$hv.prices',
+                                volumeName: {
+                                    $arrayElemAt: [
+                                        {
+                                            $filter: {
+                                                input: '$volumeDetails',
+                                                as: 'v',
+                                                cond: { $eq: ['$$v._id', '$$hv.volume'] }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    volumes: {
+                        $map: {
+                            input: '$volumes',
+                            as: 'v',
+                            in: {
+                                $mergeObjects: [
+                                    '$$v',
+                                    { volumeName: '$$v.volumeName.name' }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        res.status(200).json({ 
+            success: true, 
+            data: products,
+            pagination: {
+                total: productsCount,
+                page,
+                limit,
+                pages: Math.ceil(productsCount / limit)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get products lite (id and name only) for dropdowns
+exports.getProductsLite = async (req, res) => {
+    try {
+        const search = req.query.search || '';
         let query = {};
         if (req.user.role !== 'admin') {
             query.status = 'active';
         }
-        const products = await Product.find(query).sort({ name: 1 });
+        if (search) {
+            query.name = { $regex: search, $options: 'i' };
+        }
 
-        const productsWithVolumes = await Promise.all(products.map(async (product) => {
-            const hasVolumes = await HasVolume.find({ product: product._id })
-                .populate('volume', 'name');
-            
-            return {
-                ...product.toObject(),
-                volumes: hasVolumes.map(hv => ({
-                    hasVolumeId: hv._id,
-                    volumeId: hv.volume._id,
-                    volumeName: hv.volume.name,
-                    prices: hv.prices,
-                    value: hv.value
-                }))
-            };
-        }));
+        const products = await Product.find(query)
+            .select('name')
+            .sort({ name: 1 })
+            .limit(100); // Limit to top 100 for performance
 
-        res.status(200).json({ success: true, data: productsWithVolumes });
+        res.status(200).json({ success: true, data: products });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

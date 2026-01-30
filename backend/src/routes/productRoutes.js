@@ -9,6 +9,7 @@ router.use(protect);
 
 // Basic product listing
 router.get('/', getLimiter, productController.getAllProducts);
+router.get('/lite', getLimiter, productController.getProductsLite);
 
 // Suggestions
 router.post('/suggest', authorize('pharmacy_owner', 'pharmacy_staff'), strictLimiter, productController.suggestProduct);
