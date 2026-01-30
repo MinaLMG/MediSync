@@ -77,74 +77,77 @@ exports.getPendingRequests = async (req, res) => {
 // @route   PUT /api/delivery/requests/:id/review
 // @access  Admin
 exports.reviewRequest = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { status } = req.body; // 'approved' or 'rejected'
         if (!['approved', 'rejected'].includes(status)) {
-            return res.status(400).json({ success: false, message: 'Invalid status' });
+            throw new Error('Invalid status');
         }
 
-        const request = await DeliveryRequest.findById(req.params.id);
+        const request = await DeliveryRequest.findById(req.params.id).session(session);
         if (!request) {
-            return res.status(404).json({ success: false, message: 'Request not found' });
+            throw new Error('Request not found');
         }
         request.status = status;
-        await request.save();
+        await request.save({ session });
 
-        const transaction = await Transaction.findById(request.transaction);
+        const transaction = await Transaction.findById(request.transaction).session(session);
 
         if (status === 'approved') {
             if (transaction) {
                 if (request.requestType === 'accept') {
                     transaction.status = 'accepted';
+                    transaction.delivery = request.delivery; // FIX: Assign the delivery user
                 } else if (request.requestType === 'complete') {
                     transaction.status = 'completed';
+                    // FIX: Trigger full financial settlement
+                    const transactionService = require('./transactionService');
+                    await transactionService.settleTransaction(transaction, session);
                 }
-                await transaction.save();
+                await transaction.save({ session });
 
                 // To remove conflicts, remove any other related delivery_requests for this transaction
                 await DeliveryRequest.deleteMany({
                     transaction: transaction._id,
                     _id: { $ne: request._id }
-                });
+                }, { session });
             }
         }
 
-        // Notify Delivery User of the review outcome
+        await session.commitTransaction();
+
+        // Notify Stakeholders
+        if (transaction) {
+            const transactionService = require('./transactionService');
+            await transactionService.notifyParties(transaction);
+        }
+
+        // Notify Delivery User specifically about their REQUEST review outcome
         try {
             const { addNotificationJob } = require('../utils/queueManager');
-            const outcome = status === 'approved' ? 'approved' : 'rejected';
             const action = request.requestType === 'accept' ? 'Acceptance' : 'Completion';
-            const txIdMsg = transaction ? ` for Transaction #${transaction._id.toString().slice(-6)}` : '';
             
             await addNotificationJob(
                 request.delivery.toString(),
                 'transaction',
-                `Your request for ${action}${txIdMsg} has been ${outcome}.`,
+                `Your request for ${action} has been ${status}.`,
                 {
                     relatedEntity: request.transaction,
                     relatedEntityType: 'Transaction'
                 }
             );
-
-            // If approved, notify about the specific new status too
-            if (status === 'approved' && transaction) {
-                await addNotificationJob(
-                    request.delivery.toString(),
-                    'transaction',
-                    `Transaction #${transaction._id.toString().slice(-6)} is now ${transaction.status}.`,
-                    {
-                        relatedEntity: transaction._id,
-                        relatedEntityType: 'Transaction'
-                    }
-                );
-            }
         } catch (notifErr) {
             console.error('Notification error in reviewRequest:', notifErr);
         }
 
         res.status(200).json({ success: true, data: request });
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 

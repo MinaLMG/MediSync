@@ -43,3 +43,40 @@ exports.getMyOrders = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+// Get pharmacy orders history for admin
+// @route   GET /api/orders/pharmacy/:pharmacyId
+// @access  Admin
+exports.getPharmacyOrders = async (req, res) => {
+    try {
+        const { pharmacyId } = req.params;
+        
+        const excesses = await StockExcess.find({ pharmacy: pharmacyId })
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .lean();
+
+        const formattedExcesses = excesses.map(item => ({
+            ...item,
+            type: 'excess',
+            displayStatus: item.status
+        }));
+
+        const shortages = await StockShortage.find({ pharmacy: pharmacyId })
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .lean();
+
+        const formattedShortages = shortages.map(item => ({
+            ...item,
+            type: 'shortage',
+            displayStatus: item.status
+        }));
+
+        const allOrders = [...formattedExcesses, ...formattedShortages];
+        allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.status(200).json({ success: true, data: allOrders });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

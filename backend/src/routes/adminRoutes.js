@@ -10,8 +10,11 @@ const {
     suspendUser,
     resetUserPassword,
     getUsersWithPendingUpdates,
-    reviewUpdateData
+    reviewUpdateData,
+    getPharmacyDetail
 } = require('../controllers/adminController');
+const { getPharmacyOrders } = require('../controllers/orderController');
+const { getPharmacyBalanceHistory } = require('../controllers/balanceHistoryController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middleware/rateLimiter');
 
@@ -28,5 +31,8 @@ router.put('/suspend-user/:id', strictLimiter, suspendUser);
 router.put('/reset-password/:id', sensitiveLimiter, resetUserPassword);
 router.get('/pending-updates', getLimiter, getUsersWithPendingUpdates);
 router.put('/review-update/:id', strictLimiter, reviewUpdateData);
+router.get('/pharmacies/:id', getLimiter, getPharmacyDetail);
+router.get('/pharmacies/:pharmacyId/orders', getLimiter, getPharmacyOrders);
+router.get('/pharmacies/:pharmacyId/balance-history', getLimiter, getPharmacyBalanceHistory);
 
 module.exports = router;

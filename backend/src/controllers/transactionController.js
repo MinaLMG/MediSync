@@ -4,6 +4,7 @@ const { addNotificationJob } = require('../utils/queueManager');
 const { syncExcessStatus } = require('./excessController');
 const { syncShortageStatus } = require('./shortageController');
 const { sendToUser } = require('../utils/pusherManager');
+const transactionService = require('./transactionService');
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
 // @access  Admin
@@ -470,212 +471,14 @@ exports.updateTransactionStatus = async (req, res) => {
                 await shortage.save({ session });
             }
         } else if (status === 'completed') {
-            const Settings = require('../models/Settings');
-            const BalanceHistory = require('../models/BalanceHistory');
-            const settings = await Settings.getSettings();
-            const systemMinCommRatio = settings.minimumCommission / 100;
-
-            const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
-            const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
-
-            let totalBuyerEffect = 0;
-            let buyerDetailsList = [];
-
-            // Iterate through sources to calculate both buyer and seller effects
-            for (let i = 0; i < transaction.stockExcessSources.length; i++) {
-                const source = transaction.stockExcessSources[i];
-                const excess = await StockExcess.findById(source.stockExcess).session(session);
-                const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
-
-                if (sellerPh) {
-                    let sellerEffect = 0;
-                    let sellerDetails = {};
-                    let sourceBuyerEffect = 0;
-                    let sourceBuyerDetails = {};
-
-                    // Use the excess's own shortage_fulfillment status for per-source logic
-                    if (excess.shortage_fulfillment) {
-                        const bonusRatio = transaction.sellerBonusRatio !== undefined
-                            ? transaction.sellerBonusRatio
-                            : (settings.shortageSellerReward / 100);
-                        
-                        const commRatio = transaction.buyerCommissionRatio !== undefined
-                            ? transaction.buyerCommissionRatio
-                            : (settings.shortageCommission / 100);
-
-                        sellerEffect = (1 + bonusRatio) * source.totalAmount;
-                        sellerDetails = {
-                            type: 'shortage_fulfillment',
-                            baseAmount: source.totalAmount,
-                            bonusRatio: bonusRatio
-                        };
-
-                        sourceBuyerEffect = -(1 + commRatio) * source.totalAmount;
-                        sourceBuyerDetails = {
-                            type: 'shortage_fulfillment',
-                            baseAmount: source.totalAmount,
-                            commissionRatio: commRatio,
-                            excessId: excess._id
-                        };
-                    } else {
-                        // Real Excess logic
-                        const excessComm = (excess.salePercentage !== undefined && excess.salePercentage !== null)
-                            ? (excess.salePercentage / 100)
-                            : systemMinCommRatio;
-
-                        const finalCommRatio = Math.max(systemMinCommRatio, excessComm);
-                        sellerEffect = (1 - finalCommRatio) * source.totalAmount;
-                        sellerDetails = {
-                            type: 'excess_rebalance',
-                            baseAmount: source.totalAmount,
-                            commissionRatio: finalCommRatio,
-                            systemMinRatio: systemMinCommRatio,
-                            offeredRatio: excessComm
-                        };
-
-                        sourceBuyerEffect = -source.totalAmount;
-                        sourceBuyerDetails = {
-                            type: 'excess_rebalance',
-                            baseAmount: source.totalAmount,
-                            commissionRatio: 0,
-                            excessId: excess._id
-                        };
-                    }
-
-                    // Update Seller Balance
-                    const sellerPrevBalance = sellerPh.balance;
-                    sellerPh.balance += sellerEffect;
-                    const sellerNewBalance = sellerPh.balance;
-
-                    transaction.stockExcessSources[i].balanceEffect = sellerEffect;
-                    await sellerPh.save({ session });
-
-                    await BalanceHistory.create([{
-                        pharmacy: sellerPh._id,
-                        type: 'transaction_revenue',
-                        amount: sellerEffect,
-                        previousBalance: sellerPrevBalance,
-                        newBalance: sellerNewBalance,
-                        relatedEntity: transaction._id,
-                        relatedEntityType: 'Transaction',
-                        description: `Revenue for transaction #${transaction.serial}`,
-                        details: sellerDetails
-                    }], { session });
-
-                    try {
-                        const sellerUsers = await mongoose.model('User').find({ pharmacy: sellerPh._id });
-                        for (const user of sellerUsers) {
-                            sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
-                        }
-                    } catch (err) {}
-
-                    // Accumulate Buyer Effect
-                    totalBuyerEffect += sourceBuyerEffect;
-                    buyerDetailsList.push(sourceBuyerDetails);
-                }
-            }
-
-            // Update Buyer Balance (once after all sources processed)
-            if (buyerPh) {
-                const buyerPrevBalance = buyerPh.balance;
-                buyerPh.balance += totalBuyerEffect;
-                const buyerNewBalance = buyerPh.balance;
-
-                transaction.stockShortage.balanceEffect = totalBuyerEffect;
-                await buyerPh.save({ session });
-
-                await BalanceHistory.create([{
-                    pharmacy: buyerPh._id,
-                    type: 'transaction_payment',
-                    amount: totalBuyerEffect,
-                    previousBalance: buyerPrevBalance,
-                    newBalance: buyerNewBalance,
-                    relatedEntity: transaction._id,
-                    relatedEntityType: 'Transaction',
-                    description: `Payment for transaction #${transaction.serial}`,
-                    details: {
-                        sources: buyerDetailsList,
-                        totalBuyerEffect
-                    }
-                }], { session });
-
-                try {
-                    const buyerUsers = await mongoose.model('User').find({ pharmacy: buyerPh._id });
-                    for (const user of buyerUsers) {
-                        sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
-                    }
-                } catch (err) {}
-            }
-        }
-        
-        // Final sync for completions too (to move from partially_fulfilled to fulfilled)
-        if (status === 'completed') {
-            for (const source of transaction.stockExcessSources) {
-                const excess = await StockExcess.findById(source.stockExcess).session(session);
-                if (excess) {
-                    await syncExcessStatus(excess, session);
-                    await excess.save({ session });
-                }
-            }
+            await transactionService.settleTransaction(transaction, session);
         }
 
         await transaction.save({ session });
         await session.commitTransaction();
 
-        // Notify relevant parties about status change
-        try {
-            const shortageData = await StockShortage.findById(transaction.stockShortage.shortage);
-            if (shortageData) {
-                const product = await mongoose.model('Product').findById(shortageData.product);
-                
-                // 1. Notify Buyer
-                const buyerUsers = await User.find({ pharmacy: shortageData.pharmacy });
-                for (const buyer of buyerUsers) {
-                    await addNotificationJob(
-                        buyer._id.toString(),
-                        'transaction',
-                        `Transaction for "${product?.name || 'medicine'}" has been ${status}.`,
-                        {
-                            relatedEntity: transaction._id,
-                            relatedEntityType: 'Transaction'
-                        }
-                    );
-                }
-
-                // 2. Notify Sellers
-                for (const source of transaction.stockExcessSources) {
-                    const excess = await StockExcess.findById(source.stockExcess);
-                    if (excess) {
-                        const sellerUsers = await User.find({ pharmacy: excess.pharmacy });
-                        for (const seller of sellerUsers) {
-                            await addNotificationJob(
-                                seller._id.toString(),
-                                'transaction',
-                                `Your transaction for "${product?.name || 'medicine'}" has been ${status}.`,
-                                {
-                                    relatedEntity: transaction._id,
-                                    relatedEntityType: 'Transaction'
-                                }
-                            );
-                        }
-                    }
-                }
-                // 3. Notify Delivery User (if assigned)
-                if (transaction.delivery) {
-                    await addNotificationJob(
-                        transaction.delivery.toString(),
-                        'transaction',
-                        `Transaction #${transaction._id.toString().slice(-6)} has been ${status}.`,
-                        {
-                            relatedEntity: transaction._id,
-                            relatedEntityType: 'Transaction'
-                        }
-                    );
-                }
-            }
-        } catch (notifErr) {
-            console.error('Notification error in updateTransactionStatus:', notifErr);
-        }
+        // Centralized Notifications
+        await transactionService.notifyParties(transaction);
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
@@ -1012,6 +815,10 @@ exports.revertTransaction = async (req, res) => {
         await transaction.save({ session });
 
         await session.commitTransaction();
+
+        // Notify stakeholders about reversal
+        await transactionService.notifyParties(transaction);
+
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();

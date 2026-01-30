@@ -238,32 +238,39 @@ exports.getAvailableExcesses = async (req, res) => {
 
 // Approve excess (Admin)
 exports.approveExcess = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const excess = await StockExcess.findByIdAndUpdate(
             req.params.id,
             { status: 'available' },
-            { new: true }
+            { new: true, session }
         );
 
         if (!excess) {
-            return res.status(404).json({ success: false, message: 'Excess not found' });
+            throw new Error('Excess not found');
         }
 
         // If it was a new price, add it to the product's HasVolume prices list
         if (excess.isNewPrice) {
-            const hasVol = await HasVolume.findOne({ product: excess.product, volume: excess.volume });
+            const hasVol = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
             if (hasVol) {
                 if (!hasVol.prices.includes(excess.selectedPrice)) {
                     hasVol.prices.push(excess.selectedPrice);
                     hasVol.prices.sort((a, b) => a - b);
-                    await hasVol.save();
+                    await hasVol.save({ session });
                 }
             }
         }
 
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 

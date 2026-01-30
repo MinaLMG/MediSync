@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../providers/auth_provider.dart';
 import '../utils/config.dart';
 import '../utils/search_utils.dart';
+import 'admin_simulation_screen.dart';
 
 class AdminPharmaciesScreen extends StatefulWidget {
   const AdminPharmaciesScreen({super.key});
@@ -125,6 +126,32 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                   _detailRow(
                                     'Account Status',
                                     ph['status']?.toUpperCase() ?? 'UNKNOWN',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AdminSimulationScreen(
+                                                  pharmacyId: ph['_id'],
+                                                  pharmacyName: ph['name'],
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.visibility),
+                                      label: const Text(
+                                        'Simulate This Account',
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue[800],
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

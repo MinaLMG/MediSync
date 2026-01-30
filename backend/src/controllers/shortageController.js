@@ -166,30 +166,33 @@ exports.getMyShortages = async (req, res) => {
 
 // Update shortage (Manager/Owner)
 exports.updateShortage = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { quantity, notes } = req.body;
 
-        const shortage = await StockShortage.findById(req.params.id);
+        const shortage = await StockShortage.findById(req.params.id).session(session);
 
         if (!shortage) {
-            return res.status(404).json({ success: false, message: 'Shortage not found' });
+            throw new Error('Shortage not found');
         }
 
         if (shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
-            return res.status(403).json({ success: false, message: 'Not authorized to update this shortage' });
+            throw new Error('Not authorized to update this shortage');
         }
 
         if (shortage.status !== 'active' && shortage.status !== 'partially_fulfilled') {
-             return res.status(400).json({ success: false, message: 'Cannot update non-active shortage' });
+             throw new Error('Cannot update non-active shortage');
         }
 
         // Immutability Check
         const { product, volume } = req.body;
         if (product && product !== shortage.product.toString()) {
-            return res.status(400).json({ success: false, message: 'Product cannot be modified' });
+            throw new Error('Product cannot be modified');
         }
         if (volume && volume !== shortage.volume.toString()) {
-            return res.status(400).json({ success: false, message: 'Volume cannot be modified' });
+            throw new Error('Volume cannot be modified');
         }
 
         const fulfilled = shortage.quantity - shortage.remainingQuantity;
@@ -197,16 +200,10 @@ exports.updateShortage = async (req, res) => {
         if (quantity !== undefined) {
             // Rule: Quantity can only be DECREASED
             if (quantity > shortage.quantity) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Quantity can only be decreased to prevent exploitation.' 
-                });
+                throw new Error('Quantity can only be decreased to prevent exploitation.');
             }
             if (quantity < fulfilled) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `New quantity (${quantity}) cannot be less than already fulfilled quantity (${fulfilled}).` 
-                });
+                throw new Error(`New quantity (${quantity}) cannot be less than already fulfilled quantity (${fulfilled}).`);
             }
             shortage.quantity = quantity;
             shortage.remainingQuantity = quantity - fulfilled;
@@ -214,12 +211,16 @@ exports.updateShortage = async (req, res) => {
 
         shortage.notes = notes || shortage.notes;
 
-        await exports.syncShortageStatus(shortage);
-        await shortage.save();
+        await exports.syncShortageStatus(shortage, session);
+        await shortage.save({ session });
 
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: shortage });
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 

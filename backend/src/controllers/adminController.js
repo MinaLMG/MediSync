@@ -30,20 +30,23 @@ const getActiveUsers = async (req, res) => {
 // @route   PUT /api/admin/review-user/:id
 // @access  Admin
 const reviewUser = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { status } = req.body; 
         if (!['active', 'rejected'].includes(status)) {
-            return res.status(400).json({ success: false, message: 'Invalid status' });
+            throw new Error('Invalid status');
         }
 
-        const user = await User.findById(req.params.id);
+        const user = await User.findById(req.params.id).session(session);
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+            throw new Error('User not found');
         }
 
         if (status === 'rejected') {
             if (user.pharmacy) {
-                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                const pharmacy = await Pharmacy.findById(user.pharmacy).session(session);
                 if (pharmacy) {
                     const filesToDelete = [
                         pharmacy.pharmacistCard,
@@ -54,7 +57,7 @@ const reviewUser = async (req, res) => {
                     ].filter(Boolean);
 
                     deleteFiles(filesToDelete);
-                    await pharmacy.deleteOne();
+                    await pharmacy.deleteOne({ session });
                 }
 
                 await addNotificationJob(
@@ -70,11 +73,11 @@ const reviewUser = async (req, res) => {
         } else {
             user.status = status;
             if (user.pharmacy) {
-                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                const pharmacy = await Pharmacy.findById(user.pharmacy).session(session);
                 if (pharmacy) {
                     pharmacy.status = status;
                     pharmacy.verified = true;
-                    await pharmacy.save();
+                    await pharmacy.save({ session });
 
                     await addNotificationJob(
                         user._id.toString(),
@@ -89,10 +92,14 @@ const reviewUser = async (req, res) => {
                 }
             }
         }
-        await user.save();
+        await user.save({ session });
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: user });
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -202,12 +209,15 @@ const getUsersWithPendingUpdates = async (req, res) => {
 // @route   PUT /api/admin/review-update/:id
 // @access  Admin
 const reviewUpdateData = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { action } = req.body; // 'approve' or 'reject'
-        const user = await User.findById(req.params.id).populate('pharmacy');
+        const user = await User.findById(req.params.id).populate('pharmacy').session(session);
 
         if (!user || !user.pendingUpdate) {
-            return res.status(404).json({ success: false, message: 'Pending update not found' });
+            throw new Error('Pending update not found');
         }
 
         if (action === 'approve') {
@@ -220,12 +230,12 @@ const reviewUpdateData = async (req, res) => {
 
             // Apply updates to pharmacy if applicable
             if (updates.pharmacy && user.pharmacy) {
-                const pharmacy = await Pharmacy.findById(user.pharmacy);
+                const pharmacy = await Pharmacy.findById(user.pharmacy).session(session);
                 if (pharmacy) {
                     if (updates.pharmacy.name) pharmacy.name = updates.pharmacy.name;
                     if (updates.pharmacy.phone) pharmacy.phone = updates.pharmacy.phone;
                     if (updates.pharmacy.address) pharmacy.address = updates.pharmacy.address;
-                    await pharmacy.save();
+                    await pharmacy.save({ session });
                 }
             }
             
@@ -244,11 +254,15 @@ const reviewUpdateData = async (req, res) => {
 
         // Always clear the pendingUpdate
         user.pendingUpdate = null;
-        await user.save();
+        await user.save({ session });
 
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: user });
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -285,11 +299,34 @@ const createDeliveryUser = async (req, res) => {
     }
 };
 
+// @desc    Get single pharmacy detail (for admin simulation)
+// @route   GET /api/admin/pharmacies/:id
+// @access  Admin
+const getPharmacyDetail = async (req, res) => {
+    try {
+        const ph = await Pharmacy.findById(req.params.id);
+        if (!ph) {
+            return res.status(404).json({ success: false, message: 'Pharmacy not found' });
+        }
+        const owner = await User.findOne({ pharmacy: ph._id });
+        res.status(200).json({
+            success: true,
+            data: {
+                ...ph.toObject(),
+                owner: owner ? { _id: owner._id, name: owner.name, email: owner.email, phone: owner.phone } : null
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getWaitingUsers,
     getActiveUsers,
     reviewUser,
     getAllPharmacies,
+    getPharmacyDetail,
     getPendingCounts,
     createDeliveryUser,
     suspendUser,

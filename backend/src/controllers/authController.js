@@ -130,6 +130,9 @@ const getProfile = async (req, res) => {
 // @route   POST /api/auth/link-pharmacy
 // @access  Private (Pending/Waiting)
 const linkPharmacy = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         console.log("received")
         const { 
@@ -151,28 +154,28 @@ const linkPharmacy = async (req, res) => {
             }
         };
 
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).session(session);
 
         if (!user) {
             cleanup();
-            return res.status(404).json({ success: false, message: 'User not found' });
+            throw new Error('User not found');
         }
 
         if (nationalId && !/^\d{14}$/.test(nationalId)) {
             cleanup();
-            return res.status(400).json({ success: false, message: 'National ID must be exactly 14 digits' });
+            throw new Error('National ID must be exactly 14 digits');
         }
 
         if (user.status === 'active') {
             cleanup();
-            return res.status(400).json({ success: false, message: 'Account already active' });
+            throw new Error('Account already active');
         }
 
         // Extract file paths from Multer (Required)
         // Check if files exist
         if (!req.files || !req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
             cleanup();
-            return res.status(400).json({ success: false, message: 'All 4 documents are required' });
+            throw new Error('All 4 documents are required');
         }
 
         // --- All Validation Passed ---
@@ -201,7 +204,7 @@ const linkPharmacy = async (req, res) => {
             } catch (uploadError) {
                 cleanup(); // Try to delete remaining local files
                 console.error('Cloudinary Upload Error:', uploadError);
-                return res.status(500).json({ success: false, message: 'Image upload failed' });
+                throw new Error('Image upload failed');
             }
         } else {
             console.log("📂 [Local] Using local file paths...");
@@ -211,7 +214,7 @@ const linkPharmacy = async (req, res) => {
         }
 
         // Create new pharmacy record
-        const pharmacy = await Pharmacy.create({
+        const pharmacy = new Pharmacy({
             name,
             ownerName,
             nationalId,
@@ -225,11 +228,14 @@ const linkPharmacy = async (req, res) => {
             location: parsedLocation,
             status: 'pending'
         });
+        await pharmacy.save({ session });
 
         // Update user
         user.pharmacy = pharmacy._id;
         user.status = 'waiting';
-        await user.save();
+        await user.save({ session });
+
+        await session.commitTransaction();
 
         res.status(200).json({ 
             success: true, 
@@ -238,6 +244,7 @@ const linkPharmacy = async (req, res) => {
         });
     } catch (error) {
         console.error('Registration/Store Update Error:', error);
+        await session.abortTransaction();
         const cleanup = () => {
              if (req.files) {
                  const files = Object.values(req.files).flat().map(f => f.path);
@@ -246,6 +253,8 @@ const linkPharmacy = async (req, res) => {
         };
         cleanup();
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
