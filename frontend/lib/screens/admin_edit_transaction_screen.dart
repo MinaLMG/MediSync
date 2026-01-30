@@ -66,7 +66,6 @@ class _AdminEditTransactionScreenState
         _matches = filtered;
       });
     } catch (e) {
-      debugPrint('Error fetching matches: $e');
     } finally {
       setState(() => _isLoading = false);
     }

@@ -237,7 +237,7 @@ const linkPharmacy = async (req, res) => {
             data: { user, pharmacy }
         });
     } catch (error) {
-        console.log(error);
+        console.error('Registration/Store Update Error:', error);
         const cleanup = () => {
              if (req.files) {
                  const files = Object.values(req.files).flat().map(f => f.path);

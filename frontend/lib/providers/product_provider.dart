@@ -82,6 +82,27 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchProductDetails(String id) async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/products/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<bool> suggestProduct(Map<String, dynamic> suggestionData) async {
     _isLoading = true;
     _errorMessage = null;

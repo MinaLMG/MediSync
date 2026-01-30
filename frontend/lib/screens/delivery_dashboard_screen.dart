@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/delivery_request_provider.dart';
-import 'login_screen.dart';
 
 import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
@@ -103,8 +102,6 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
       listen: false,
     );
 
-    print('[DEBUG] _assignAction triggered for $transactionId');
-
     // 1. Show persistent indicator
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -130,18 +127,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
     try {
       // 2. Perform assignment
       final success = await transProvider.assignTransaction(transactionId);
-      print('[DEBUG] assignTransaction result: $success');
-
-      if (!mounted) {
-        print('[DEBUG] State no longer mounted');
-        return;
-      }
 
       // Important: hide loading before showing next message
       messenger.hideCurrentSnackBar();
 
       if (success) {
-        print('[DEBUG] Hiding loading snackbar and showing success');
         messenger.showSnackBar(
           SnackBar(
             content: Text(
@@ -152,12 +142,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
           ),
         );
 
-        print('[DEBUG] Animating to My Tasks tab');
         _tabController.animateTo(1);
         transProvider.fetchTransactions();
       } else {
-        print('[DEBUG] Assignment failed, showing error and reloading');
-
         // Await refresh so the list is updated while the snackbar shows
         await transProvider.fetchTransactions();
 
@@ -175,16 +162,13 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
         );
       }
     } catch (e) {
-      print('[DEBUG] _assignAction error: $e');
       if (mounted) {
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
-    } finally {
-      print('[DEBUG] _assignAction finally block');
-    }
+    } finally {}
   }
 
   @override

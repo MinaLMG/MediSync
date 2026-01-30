@@ -718,9 +718,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           return DateTime(year, month, day);
         }
       }
-    } catch (e) {
-      debugPrint('Error parsing date: $dateStr');
-    }
+    } catch (e) {}
     return DateTime(2099, 12, 31);
   }
 

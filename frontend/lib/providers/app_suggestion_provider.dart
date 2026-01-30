@@ -61,9 +61,7 @@ class AppSuggestionProvider with ChangeNotifier {
         _pendingOrdersCount = data['data']['pendingOrders'] ?? 0;
         notifyListeners();
       }
-    } catch (e) {
-      debugPrint('Error fetching pending counts: $e');
-    }
+    } catch (e) {}
   }
 
   Future<bool> submitSuggestion(String content) async {
@@ -149,8 +147,6 @@ class AppSuggestionProvider with ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {
-      debugPrint('Error marking suggestion as seen: $e');
-    }
+    } catch (e) {}
   }
 }

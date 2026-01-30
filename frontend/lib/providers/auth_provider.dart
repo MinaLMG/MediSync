@@ -203,9 +203,7 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
         notifyListeners();
       }
-    } catch (e) {
-      debugPrint('Error refreshing profile: $e');
-    }
+    } catch (e) {}
   }
 
   Future<bool> requestProfileUpdate(Map<String, dynamic> updateData) async {

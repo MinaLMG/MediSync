@@ -157,10 +157,6 @@ class _AdminOrderFulfillmentScreenState
           'excessSources': excessSources,
         };
 
-        debugPrint('=== Fulfilling Item: ${item['product']['name']} ===');
-        debugPrint('Shortage ID: $itemId');
-        debugPrint('Quantity: $totalSelected');
-
         final success = await Provider.of<OrderProvider>(
           context,
           listen: false,
@@ -210,7 +206,6 @@ class _AdminOrderFulfillmentScreenState
         }
       }
     } catch (e) {
-      debugPrint('Exception during fulfillment: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

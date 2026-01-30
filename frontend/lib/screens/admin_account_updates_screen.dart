@@ -38,7 +38,6 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen> {
         setState(() => _users = data['data']);
       }
     } catch (e) {
-      debugPrint('Error fetching updates: $e');
     } finally {
       setState(() => _isLoading = false);
     }

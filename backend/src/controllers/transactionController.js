@@ -77,16 +77,13 @@ exports.getMatchableProducts = async (req, res) => {
 // @access  Admin
 exports.getMatchesForProduct = async (req, res) => {
     try {
-        console.log(1)
         const { productId } = req.params;
-        console.log(2)
 
         const shortages = await StockShortage.find({
             product: productId,
             remainingQuantity: { $gt: 0 },
             order: null
         }).populate('pharmacy', 'name balance address phone').populate('volume', 'name').sort({ createdAt: -1 });
-        console.log(3)
 
 
         const excessQuery = {
@@ -94,27 +91,21 @@ exports.getMatchesForProduct = async (req, res) => {
             status: { $in: ['available', 'partially_fulfilled'] },
             remainingQuantity: { $gt: 0 }
         };
-        console.log(4)
 
         // If explicitly requested to exclude shortage fulfillment excesses (e.g. for market orders)
         if (req.query.excludeShortageFulfillment === 'true') {
-            console.log(5)
             excessQuery.shortage_fulfillment = { $ne: true };
         }
-        console.log(6)
 
         if (req.query.price) {
-            console.log(7)
             // Convert to number for proper comparison
             excessQuery.selectedPrice = parseFloat(req.query.price);
         }
-        console.log(excessQuery )
         const excesses = await StockExcess.find(excessQuery)
             .populate('pharmacy', 'name balance address phone')
             .populate('volume', 'name')
             .populate('product', 'name')
             .sort({ createdAt: -1 });
-        console.log(8)
 
         res.status(200).json({
             success: true,
@@ -302,11 +293,6 @@ exports.createTransaction = async (req, res) => {
 // @route   POST /api/transaction/buy
 // @access  Pharmacy Owner / Manager
 exports.buyFromMarket = async (req, res) => {
-    console.log(1)
-    const session = await mongoose.startSession();
-    console.log(2)
-    session.startTransaction();
-    console.log(3)
     try {
         const { excessId, quantity } = req.body;
         
@@ -693,7 +679,6 @@ exports.updateTransactionStatus = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        console.log('error',error)
         if (session.inTransaction()) {
             await session.abortTransaction();
         }

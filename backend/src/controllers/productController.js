@@ -55,8 +55,8 @@ exports.getAllProducts = async (req, res) => {
                             input: '$hasVolumes',
                             as: 'hv',
                             in: {
-                                hasVolumeId: '$$hv._id',
-                                volumeId: '$$hv.volume',
+                                hasVolumeId: { $toString: '$$hv._id' },
+                                volumeId: { $toString: '$$hv.volume' },
                                 value: '$$hv.value',
                                 prices: '$$hv.prices',
                                 volumeName: {
@@ -109,22 +109,104 @@ exports.getAllProducts = async (req, res) => {
     }
 };
 
-// Get products lite (id and name only) for dropdowns
+// @desc    Get product by ID with volumes
+// @route   GET /api/products/:id
+// @access  Protected
+exports.getProductById = async (req, res) => {
+    try {
+        const product = await Product.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
+            {
+                $lookup: {
+                    from: 'hasvolumes',
+                    localField: '_id',
+                    foreignField: 'product',
+                    as: 'hasVolumes'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'volumes',
+                    localField: 'hasVolumes.volume',
+                    foreignField: '_id',
+                    as: 'volumeDetails'
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    status: 1,
+                    conversions: 1,
+                    volumes: {
+                        $map: {
+                            input: '$hasVolumes',
+                            as: 'hv',
+                            in: {
+                                hasVolumeId: { $toString: '$$hv._id' },
+                                volumeId: { $toString: '$$hv.volume' },
+                                value: '$$hv.value',
+                                prices: '$$hv.prices',
+                                volumeName: {
+                                    $arrayElemAt: [
+                                        {
+                                            $filter: {
+                                                input: '$volumeDetails',
+                                                as: 'v',
+                                                cond: { $eq: ['$$v._id', '$$hv.volume'] }
+                                            }
+                                        },
+                                        0
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    volumes: {
+                        $map: {
+                            input: '$volumes',
+                            as: 'v',
+                            in: {
+                                $mergeObjects: [
+                                    '$$v',
+                                    { volumeName: '$$v.volumeName.name' }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        if (!product || product.length === 0) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+
+        res.status(200).json({ success: true, data: product[0] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get products lite (id, name) for dropdowns
 exports.getProductsLite = async (req, res) => {
     try {
         const search = req.query.search || '';
-        let query = {};
+        let matchQuery = {};
         if (req.user.role !== 'admin') {
-            query.status = 'active';
+            matchQuery.status = 'active';
         }
         if (search) {
-            query.name = { $regex: search, $options: 'i' };
+            matchQuery.name = { $regex: search, $options: 'i' };
         }
 
-        const products = await Product.find(query)
+        const products = await Product.find(matchQuery)
             .select('name')
             .sort({ name: 1 })
-            .limit(100); // Limit to top 100 for performance
+            .limit(100);
 
         res.status(200).json({ success: true, data: products });
     } catch (error) {

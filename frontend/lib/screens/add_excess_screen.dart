@@ -25,15 +25,15 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   bool _isManualPrice = false;
   final TextEditingController _manualPriceController = TextEditingController();
 
-  String? _expiryDate; // Stored as "MM/YY"
+  String? _expiryDate;
   final TextEditingController _expiryController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
 
   bool _shortageFulfillment = false;
   final TextEditingController _saleValueController = TextEditingController();
 
-  // For volumes related to selected product
   List<dynamic> _availableVolumes = [];
+  bool _isFetchingVolumes = false;
 
   bool get isEditMode => widget.initialData != null;
 
@@ -52,19 +52,14 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         final data = widget.initialData!;
         setState(() {
           _selectedProductId = data['product']['_id'];
+          _selectedVolumeId = data['volume']['_id'];
           _expiryDate = data['expiryDate'];
           _expiryController.text = _expiryDate ?? '';
           _quantityController.text = data['originalQuantity'].toString();
           _shortageFulfillment = data['shortage_fulfillment'] ?? true;
-
-          // Price logic
-          final price = data['selectedPrice'].toDouble();
-          _selectedPrice = price;
-          _manualPriceController.text = price.toString();
-
-          // Initialize _isManualPrice if the initial price is not in the list
+          _selectedPrice = data['selectedPrice'].toDouble();
+          _manualPriceController.text = _selectedPrice.toString();
           _isManualPrice = true;
-
           if (data['salePercentage'] != null) {
             _saleValueController.text = data['salePercentage'].toString();
           }
@@ -84,7 +79,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
   Future<void> _selectExpiryDate() async {
     if (isEditMode) return;
-
     int selectedYear = _expiryDate != null
         ? 2000 + int.parse(_expiryDate!.split('/')[1])
         : DateTime.now().year;
@@ -94,78 +88,69 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
     final DateTime? picked = await showDialog<DateTime>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Select Expiry (Month/Year)'),
-              content: SizedBox(
-                height: 300,
-                width: 300,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: YearPicker(
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(
-                          const Duration(days: 365 * 10),
-                        ),
-                        selectedDate: DateTime(selectedYear, selectedMonth),
-                        onChanged: (DateTime dateTime) {
-                          setDialogState(() {
-                            selectedYear = dateTime.year;
-                          });
-                        },
-                      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Select Expiry (Month/Year)'),
+          content: SizedBox(
+            height: 300,
+            width: 300,
+            child: Column(
+              children: [
+                Expanded(
+                  child: YearPicker(
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(
+                      const Duration(days: 365 * 10),
                     ),
-                    const Divider(),
-                    Expanded(
-                      child: GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              childAspectRatio: 2,
-                            ),
-                        itemCount: 12,
-                        itemBuilder: (context, index) {
-                          final month = index + 1;
-                          return InkWell(
-                            onTap: () {
-                              Navigator.pop(
-                                context,
-                                DateTime(selectedYear, month),
-                              );
-                            },
-                            child: Center(
-                              child: Text(
-                                DateFormat('MMM').format(DateTime(0, month)),
-                                style: TextStyle(
-                                  fontWeight: selectedMonth == month
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: selectedMonth == month
-                                      ? Colors.blue
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                    selectedDate: DateTime(selectedYear, selectedMonth),
+                    onChanged: (DateTime dateTime) =>
+                        setDialogState(() => selectedYear = dateTime.year),
+                  ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                const Divider(),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 2,
+                        ),
+                    itemCount: 12,
+                    itemBuilder: (context, index) {
+                      final month = index + 1;
+                      return InkWell(
+                        onTap: () => Navigator.pop(
+                          context,
+                          DateTime(selectedYear, month),
+                        ),
+                        child: Center(
+                          child: Text(
+                            DateFormat('MMM').format(DateTime(0, month)),
+                            style: TextStyle(
+                              fontWeight: selectedMonth == month
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: selectedMonth == month
+                                  ? Colors.blue
+                                  : Colors.black,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
-            );
-          },
-        );
-      },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
     );
 
     if (picked != null) {
@@ -173,18 +158,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         _expiryDate = DateFormat('MM/yy').format(picked);
         _expiryController.text = _expiryDate!;
       });
-    }
-  }
-
-  DateTime _parseMMYY(String mmyy) {
-    try {
-      final parts = mmyy.split('/');
-      final month = int.parse(parts[0]);
-      final year = 2000 + int.parse(parts[1]);
-      // Return the LAST day of that month for correctness
-      return DateTime(year, month + 1, 0);
-    } catch (e) {
-      return DateTime.now().add(const Duration(days: 30));
     }
   }
 
@@ -196,7 +169,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         );
         return;
       }
-
       if (_selectedProductId == null || _selectedVolumeId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select product and volume')),
@@ -207,18 +179,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       double? price = _isManualPrice
           ? double.tryParse(_manualPriceController.text)
           : _selectedPrice;
-
-      final int originalQuantity = widget.initialData?['originalQuantity'] ?? 0;
-      final int remainingQuantity =
-          widget.initialData?['remainingQuantity'] ?? 0;
-      final int taken = isEditMode ? (originalQuantity - remainingQuantity) : 0;
-      final bool isStockTaken = taken > 0;
-
-      // If stock is taken, we must use the original price if something went wrong with current selection
-      if (isEditMode && isStockTaken) {
-        price ??= widget.initialData!['selectedPrice'].toDouble();
-      }
-
       if (price == null || price <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter a valid price')),
@@ -231,19 +191,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         final saleValText = _saleValueController.text;
         if (saleValText.isNotEmpty) {
           saleVal = double.tryParse(saleValText);
-          if (saleVal == null) {
+          if (saleVal == null || saleVal < 0 || saleVal > 100) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter a valid sale percentage'),
-              ),
-            );
-            return;
-          }
-          if (saleVal < 0 || saleVal > 100) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Sale value must be between 0% and 100%'),
-              ),
+              const SnackBar(content: Text('Invalid sale percentage')),
             );
             return;
           }
@@ -267,7 +217,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         'shortage_fulfillment': _shortageFulfillment,
       };
 
-      // IMMUTABLE FIELDS: ONLY FOR CREATION
       if (!isEditMode) {
         excessData['product'] = _selectedProductId!;
         excessData['volume'] = _selectedVolumeId!;
@@ -287,15 +236,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       if (mounted) {
         if (success) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isEditMode
-                    ? 'Excess updated successfully'
-                    : 'Excess added successfully',
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Success')));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -304,7 +247,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error processing request',
+                    'Error',
               ),
             ),
           );
@@ -316,28 +259,18 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   @override
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
-
-    if (_availableVolumes.length == 1 &&
-        _selectedVolumeId != _availableVolumes[0]['volumeId']) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _selectedVolumeId = _availableVolumes[0]['volumeId'];
-          _selectedPrice = null;
-        });
-      });
-    }
-
-    final currentVolume = _availableVolumes.firstWhere(
-      (v) => v['volumeId'] == _selectedVolumeId,
-      orElse: () => null,
-    );
+    final currentVolume =
+        _availableVolumes.isNotEmpty && _selectedVolumeId != null
+        ? _availableVolumes.firstWhere(
+            (v) => v['volumeId'].toString() == _selectedVolumeId.toString(),
+            orElse: () => null,
+          )
+        : null;
     final List<String> prices =
         (currentVolume?['prices'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
         [];
-
-    // Removed auto-activation logic from build to respect user's manual toggle
 
     final int originalQuantity = widget.initialData?['originalQuantity'] ?? 0;
     final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
@@ -369,26 +302,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             border: Border.all(color: Colors.red[200]!),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'REJECTION REASON:',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.initialData!['rejectionReason'],
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            'REJECTION REASON: ${widget.initialData!['rejectionReason']}',
+                            style: const TextStyle(color: Colors.red),
                           ),
                         ),
                       Container(
@@ -400,16 +316,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey[300]!),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Product: ${widget.initialData!['product']['name']}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          'Product: ${widget.initialData!['product']['name']}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -418,42 +327,101 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       AsyncSearchableDropdown(
                         value: _selectedProductId,
                         labelText: 'Product',
-                        onChanged: (product) {
+                        onChanged: (product) async {
+                          if (product == null) {
+                            setState(() {
+                              _selectedProductId = null;
+                              _selectedPrice = null;
+                              _availableVolumes = [];
+                              _selectedVolumeId = null;
+                            });
+                            return;
+                          }
                           setState(() {
-                            _selectedProductId = product?['_id'];
-                            _selectedVolumeId = null;
+                            _selectedProductId = product['_id'];
                             _selectedPrice = null;
-                            _availableVolumes = product?['volumes'] ?? [];
+                            _availableVolumes = [];
+                            _selectedVolumeId = null;
+                            _isFetchingVolumes = true;
                           });
+                          try {
+                            final fullProduct =
+                                await Provider.of<ProductProvider>(
+                                  context,
+                                  listen: false,
+                                ).fetchProductDetails(product['_id']);
+                            if (mounted) {
+                              setState(() {
+                                if (fullProduct != null) {
+                                  _availableVolumes =
+                                      fullProduct['volumes'] ?? [];
+                                  if (_availableVolumes.isNotEmpty)
+                                    _selectedVolumeId =
+                                        _availableVolumes[0]['volumeId']
+                                            .toString();
+                                }
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Error loading volumes'),
+                                ),
+                              );
+                          } finally {
+                            if (mounted)
+                              setState(() => _isFetchingVolumes = false);
+                          }
                         },
                         validator: (v) =>
                             v == null || v.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
-                      if (_availableVolumes.isNotEmpty) ...[
-                        DropdownButtonFormField<String>(
-                          value: _selectedVolumeId,
-                          decoration: const InputDecoration(
-                            labelText: 'Volume',
-                          ),
-                          items: _availableVolumes
-                              .map<DropdownMenuItem<String>>((v) {
-                                return DropdownMenuItem(
-                                  value: v['volumeId'],
-                                  child: Text(v['volumeName']),
-                                );
-                              })
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedVolumeId = value;
-                              _selectedPrice = null;
-                            });
-                          },
-                          validator: (v) => v == null ? 'Required' : null,
+
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(
+                          'volume_dropdown_excess_${_selectedProductId ?? "none"}',
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                        value: _selectedVolumeId,
+                        decoration: InputDecoration(
+                          labelText: 'Volume',
+                          hintText: _isFetchingVolumes
+                              ? 'Loading...'
+                              : 'Select volume',
+                          suffixIcon: _isFetchingVolumes
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12.0),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        items: _isFetchingVolumes || _selectedProductId == null
+                            ? []
+                            : _availableVolumes
+                                  .map<DropdownMenuItem<String>>(
+                                    (v) => DropdownMenuItem(
+                                      value: v['volumeId'].toString(),
+                                      child: Text(v['volumeName']),
+                                    ),
+                                  )
+                                  .toList(),
+                        onChanged:
+                            _isFetchingVolumes || _selectedProductId == null
+                            ? null
+                            : (value) => setState(() {
+                                _selectedVolumeId = value;
+                                _selectedPrice = null;
+                              }),
+                        validator: (v) => v == null ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
                     ],
 
                     if (_selectedVolumeId != null && !isStockTaken) ...[
@@ -463,32 +431,32 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       ),
                       if (!_isManualPrice)
                         DropdownButtonFormField<double>(
+                          key: ValueKey(
+                            'price_dropdown_${_selectedVolumeId ?? "none"}',
+                          ),
                           value: _selectedPrice,
                           decoration: const InputDecoration(
                             labelText: 'Select Price',
                           ),
-                          items: prices.map((p) {
-                            return DropdownMenuItem(
-                              value: double.parse(p),
-                              child: Text(p),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedPrice = value;
-                            });
-                          },
+                          items: prices
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: double.parse(p),
+                                  child: Text(p),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedPrice = value),
                         ),
                       Row(
                         children: [
                           Checkbox(
                             value: _isManualPrice,
-                            onChanged: (val) {
-                              setState(() {
-                                _isManualPrice = val!;
-                                if (_isManualPrice) _selectedPrice = null;
-                              });
-                            },
+                            onChanged: (val) => setState(() {
+                              _isManualPrice = val!;
+                              if (_isManualPrice) _selectedPrice = null;
+                            }),
                           ),
                           const Text('Enter Manual Price'),
                         ],
@@ -519,12 +487,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         final qty = int.tryParse(v);
                         if (qty == null || qty <= 0) return 'Invalid quantity';
                         if (isEditMode) {
-                          if (qty > originalQuantity) {
-                            return 'Quantity can only be decreased';
-                          }
-                          if (qty < taken) {
-                            return 'Cannot be less than $taken (already taken)';
-                          }
+                          if (qty > originalQuantity) return 'Too high';
+                          if (qty < taken) return 'Too low';
                         }
                         return null;
                       },
@@ -566,11 +530,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             child: Text('Real Excess'),
                           ),
                         ],
-                        onChanged: (val) {
-                          setState(() {
-                            _shortageFulfillment = val!;
-                          });
-                        },
+                        onChanged: (val) =>
+                            setState(() => _shortageFulfillment = val!),
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -578,53 +539,20 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       ),
                       const SizedBox(height: 24),
                       if (!_shortageFulfillment)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.blue[200]!),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.blue[50],
+                        TextFormField(
+                          controller: _saleValueController,
+                          decoration: const InputDecoration(
+                            labelText: 'Percentage Value (%)',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Sale Offer',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'The current system sale is ${context.read<SettingsProvider>().minCommission}% if you would like to provide a higher sale enter its value.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.blue[800],
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _saleValueController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Percentage Value (%)',
-                                  border: OutlineInputBorder(),
-                                  suffixText: '%',
-                                  fillColor: Colors.white,
-                                  filled: true,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d*\.?\d*'),
-                                  ),
-                                ],
-                                validator: (v) => null,
-                              ),
-                            ],
-                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d*'),
+                            ),
+                          ],
+                          validator: (v) => null,
                         ),
                     ],
 

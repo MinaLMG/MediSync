@@ -21,8 +21,8 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   String? _selectedVolumeId;
   final TextEditingController _quantityController = TextEditingController();
 
-  // For volumes related to selected product
   List<dynamic> _availableVolumes = [];
+  bool _isFetchingVolumes = false;
 
   bool get isEditMode => widget.initialData != null;
 
@@ -35,8 +35,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
         _selectedProductId = data['product']['_id'];
         _selectedVolumeId = data['volume']['_id'];
         _quantityController.text = data['quantity'].toString();
-        // Since it's edit mode, we might need volume names etc.
-        // But the screen already shows product/volume names in a container for edit mode.
       });
     }
   }
@@ -113,16 +111,6 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
 
-    // Auto-select volume if only one
-    if (_availableVolumes.length == 1 &&
-        _selectedVolumeId != _availableVolumes[0]['volumeId']) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _selectedVolumeId = _availableVolumes[0]['volumeId'];
-        });
-      });
-    }
-
     final int quantity = widget.initialData?['quantity'] ?? 0;
     final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
     final int fulfilled = isEditMode ? (quantity - remainingQuantity) : 0;
@@ -167,48 +155,111 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                       ),
                     ],
 
-                    // Product Searchable Dropdown (Creation only)
                     if (!isEditMode) ...[
                       AsyncSearchableDropdown(
                         value: _selectedProductId,
                         labelText: 'Product',
-                        onChanged: (product) {
+                        onChanged: (product) async {
+                          if (product == null) {
+                            setState(() {
+                              _selectedProductId = null;
+                              _availableVolumes = [];
+                              _selectedVolumeId = null;
+                            });
+                            return;
+                          }
+
                           setState(() {
-                            _selectedProductId = product?['_id'];
+                            _selectedProductId = product['_id'];
+                            _availableVolumes = [];
                             _selectedVolumeId = null;
-                            _availableVolumes = product?['volumes'] ?? [];
+                            _isFetchingVolumes = true;
                           });
+
+                          try {
+                            final fullProduct =
+                                await Provider.of<ProductProvider>(
+                                  context,
+                                  listen: false,
+                                ).fetchProductDetails(product['_id']);
+
+                            if (mounted) {
+                              setState(() {
+                                if (fullProduct != null) {
+                                  _availableVolumes =
+                                      fullProduct['volumes'] ?? [];
+                                  if (_availableVolumes.isNotEmpty) {
+                                    _selectedVolumeId =
+                                        _availableVolumes[0]['volumeId']
+                                            .toString();
+                                  }
+                                }
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Error loading volumes'),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isFetchingVolumes = false;
+                              });
+                            }
+                          }
                         },
                         validator: (v) =>
                             v == null || v.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
-                    ],
 
-                    // Volume Dropdown (Creation only)
-                    if (!isEditMode && _availableVolumes.isNotEmpty) ...[
                       DropdownButtonFormField<String>(
+                        key: ValueKey(
+                          'volume_dropdown_${_selectedProductId ?? "none"}',
+                        ),
                         value: _selectedVolumeId,
-                        decoration: const InputDecoration(labelText: 'Volume'),
-                        items: _availableVolumes.map<DropdownMenuItem<String>>((
-                          v,
-                        ) {
-                          return DropdownMenuItem(
-                            value: v['volumeId'],
-                            child: Text(v['volumeName']),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedVolumeId = value;
-                          });
-                        },
+                        decoration: InputDecoration(
+                          labelText: 'Volume',
+                          hintText: _isFetchingVolumes
+                              ? 'Loading...'
+                              : 'Select volume',
+                          suffixIcon: _isFetchingVolumes
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12.0),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        items: _isFetchingVolumes || _selectedProductId == null
+                            ? []
+                            : _availableVolumes.map<DropdownMenuItem<String>>((
+                                v,
+                              ) {
+                                return DropdownMenuItem(
+                                  value: v['volumeId'].toString(),
+                                  child: Text(v['volumeName']),
+                                );
+                              }).toList(),
+                        onChanged:
+                            _isFetchingVolumes || _selectedProductId == null
+                            ? null
+                            : (value) =>
+                                  setState(() => _selectedVolumeId = value),
                         validator: (v) => v == null ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                     ],
 
-                    // Quantity
                     TextFormField(
                       controller: _quantityController,
                       decoration: const InputDecoration(
@@ -221,12 +272,10 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                         final qty = int.tryParse(v);
                         if (qty == null || qty < 1) return 'Invalid quantity';
                         if (isEditMode) {
-                          if (qty > quantity) {
+                          if (qty > quantity)
                             return 'Quantity can only be decreased';
-                          }
-                          if (qty < fulfilled) {
-                            return 'Cannot be less than $fulfilled (already fulfilled)';
-                          }
+                          if (qty < fulfilled)
+                            return 'Cannot be less than $fulfilled';
                         }
                         return null;
                       },

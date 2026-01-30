@@ -52,7 +52,7 @@ class NotificationProvider with ChangeNotifier {
     if (_pusher != null) return;
 
     try {
-      print('Initializing Dart Pusher for user: $userId');
+      debugPrint('Initializing Dart Pusher for user: $userId');
 
       final options = PusherChannelsOptions.fromCluster(
         scheme: 'wss',
@@ -64,7 +64,7 @@ class NotificationProvider with ChangeNotifier {
       _pusher = PusherChannelsClient.websocket(
         options: options,
         connectionErrorHandler: (error, trace, refresh) {
-          print("Pusher Connection Error: $error");
+          debugPrint("Pusher Connection Error: $error");
           refresh();
         },
       );
@@ -72,15 +72,15 @@ class NotificationProvider with ChangeNotifier {
       // Listen to connection changes via event stream
       _connectionSubscription = _pusher!.eventStream.listen((event) {
         if (event.name == 'pusher:connection_established') {
-          print("Pusher Connected");
+          debugPrint("Pusher Connected");
           _subscribeToPrivateChannel(userId);
         }
       });
 
       await _pusher?.connect();
-      print("Pusher Connecting...");
+      debugPrint("Pusher Connecting...");
     } catch (e) {
-      print("Error initializing Pusher: $e");
+      debugPrint("Error initializing Pusher: $e");
     }
   }
 
@@ -105,34 +105,34 @@ class NotificationProvider with ChangeNotifier {
           ),
     );
 
-    print("Subscribing to $channelName");
+    debugPrint("Subscribing to $channelName");
     privateChannel.subscribe();
 
     _eventSubscription = privateChannel.bind('notification').listen((event) {
-      print('📢 [Pusher] RAW EVENT: ${event.name} | Data: ${event.data}');
+      debugPrint('📢 [Pusher] Event: ${event.name} | Data: [MASKED]');
       if (event.data != null) {
         try {
           final data = json.decode(event.data!);
-          print('🔔 [Pusher] ✅ Notification MATCHED! Value: $data');
+          debugPrint('🔔 [Pusher] ✅ Notification Received');
           _notifications.insert(0, data);
           _unreadCount++;
           notifyListeners();
         } catch (e) {
-          print("Error parsing notification data: $e");
+          debugPrint("Error parsing notification data: $e");
         }
       }
     });
 
     // Also log balance updates
     privateChannel.bind('balanceUpdate').listen((event) {
-      print('💰 [Pusher] Balance Update: ${event.data}');
+      debugPrint('💰 [Pusher] Balance Update received');
       if (event.data != null) {
         try {
           final data = json.decode(event.data!);
           final newBalance = (data['balance'] as num).toDouble();
           authProvider.updateBalance(newBalance);
         } catch (e) {
-          print("Error parsing balance data: $e");
+          debugPrint("Error parsing balance data: $e");
         }
       }
     });
@@ -144,7 +144,7 @@ class NotificationProvider with ChangeNotifier {
     _pusher?.disconnect();
     _pusher?.dispose();
     _pusher = null;
-    print("Pusher Disconnected");
+    debugPrint("Pusher Disconnected");
   }
 
   Future<void> fetchNotifications() async {
@@ -155,8 +155,8 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      print(
-        '🌐 [NotificationProvider] Fetching from: ${Constants.baseUrl}/notifications',
+      debugPrint(
+        '🌐 [NotificationProvider] Fetching notifications from server...',
       );
       final response = await http
           .get(
@@ -173,7 +173,7 @@ class NotificationProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         _notifications = data['data'];
         _unreadCount = _notifications.where((n) => n['seen'] == false).length;
-        print(
+        debugPrint(
           '✅ [NotificationProvider] Fetched ${_notifications.length} notifications',
         );
       } else {
@@ -207,7 +207,7 @@ class NotificationProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error marking notification as seen: $e');
+      debugPrint('Error marking notification as seen: $e');
     }
   }
 
@@ -229,7 +229,7 @@ class NotificationProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error marking all notifications as seen: $e');
+      debugPrint('Error marking all notifications as seen: $e');
     }
   }
 

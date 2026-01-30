@@ -33,9 +33,7 @@ class SearchUtils {
       return regExp.hasMatch(target);
     } catch (e) {
       // Fallback to simple case-insensitive contains if regex fails
-      if (kDebugMode) {
-        print('SearchUtils: Regex error: $e');
-      }
+      if (kDebugMode) {}
       return target.toLowerCase().contains(query.toLowerCase());
     }
   }
