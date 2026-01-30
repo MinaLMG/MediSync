@@ -47,8 +47,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset('assets/images/medisync.png'),
+          padding: const EdgeInsets.all(6.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(0),
+            ),
+            child: Image.asset('assets/images/medisync_full.png'),
+          ),
         ),
         actions: [
           Consumer<NotificationProvider>(

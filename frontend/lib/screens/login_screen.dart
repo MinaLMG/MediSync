@@ -97,17 +97,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 48),
                   Center(
                     child: Image.asset(
-                      'assets/images/medisync.png',
-                      height: 100,
+                      'assets/images/medisync_full.png',
+                      height:
+                          150, // Increased height for better visibility of name
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                   const Text(
                     'Welcome to MediSync',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -139,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(

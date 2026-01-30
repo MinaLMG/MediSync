@@ -60,7 +60,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset('assets/images/medisync.png'),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(0),
+            ),
+            child: Image.asset('assets/images/medisync_full.png'),
+          ),
         ),
         title: widget.userType != 'admin'
             ? Consumer<AuthProvider>(

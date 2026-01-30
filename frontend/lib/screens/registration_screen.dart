@@ -72,7 +72,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                  child: Image.asset('assets/images/medisync.png', height: 80),
+                  child: Image.asset(
+                    'assets/images/medisync_full.png',
+                    height:
+                        130, // Increased height for better visibility of name
+                  ),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(

@@ -55,6 +55,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/medisync_full.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
