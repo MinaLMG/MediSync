@@ -16,7 +16,11 @@ exports.getAllProducts = async (req, res) => {
         }
 
         if (search) {
-            matchQuery.name = { $regex: search, $options: 'i' };
+            // Escape special regex characters except *
+            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+            // Convert * to .*
+            const regexSearch = escapedSearch.replace(/\*/g, '.*');
+            matchQuery.name = { $regex: regexSearch, $options: 'i' };
         }
 
         // Use aggregation for efficiency
@@ -65,7 +69,7 @@ exports.getAllProducts = async (req, res) => {
                                             $filter: {
                                                 input: '$volumeDetails',
                                                 as: 'v',
-                                                cond: { $eq: ['$$v._id', '$$hv.volume'] }
+                                                cond: { $eq: [{ $toString: '$$v._id' }, { $toString: '$$hv.volume' }] }
                                             }
                                         },
                                         0
@@ -85,7 +89,7 @@ exports.getAllProducts = async (req, res) => {
                             in: {
                                 $mergeObjects: [
                                     '$$v',
-                                    { volumeName: '$$v.volumeName.name' }
+                                    { volumeName: { $ifNull: ['$$v.volumeName.name', 'Unknown Volume'] } }
                                 ]
                             }
                         }
@@ -152,7 +156,7 @@ exports.getProductById = async (req, res) => {
                                             $filter: {
                                                 input: '$volumeDetails',
                                                 as: 'v',
-                                                cond: { $eq: ['$$v._id', '$$hv.volume'] }
+                                                cond: { $eq: [{ $toString: '$$v._id' }, { $toString: '$$hv.volume' }] }
                                             }
                                         },
                                         0
@@ -172,7 +176,7 @@ exports.getProductById = async (req, res) => {
                             in: {
                                 $mergeObjects: [
                                     '$$v',
-                                    { volumeName: '$$v.volumeName.name' }
+                                    { volumeName: { $ifNull: ['$$v.volumeName.name', 'Unknown Volume'] } }
                                 ]
                             }
                         }
@@ -200,7 +204,11 @@ exports.getProductsLite = async (req, res) => {
             matchQuery.status = 'active';
         }
         if (search) {
-            matchQuery.name = { $regex: search, $options: 'i' };
+            // Escape special regex characters except *
+            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+            // Convert * to .*
+            const regexSearch = escapedSearch.replace(/\*/g, '.*');
+            matchQuery.name = { $regex: regexSearch, $options: 'i' };
         }
 
         const products = await Product.find(matchQuery)
