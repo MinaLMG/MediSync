@@ -13,6 +13,7 @@ import 'providers/delivery_request_provider.dart';
 import 'providers/balance_history_provider.dart';
 import 'providers/requests_history_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() {
   runApp(
@@ -73,7 +74,55 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      home: const LoginScreen(),
+      home: const AuthWrapper(),
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  late Future<void> _autoLoginFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoLoginFuture = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).tryAutoLogin();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _autoLoginFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Consumer<AuthProvider>(
+          builder: (context, auth, _) {
+            if (auth.isAuthenticated) {
+              if (auth.userRole == 'admin') {
+                return DashboardScreen(userType: auth.userRole ?? 'admin');
+              } else if (auth.userRole == 'delivery') {
+                return DashboardScreen(userType: auth.userRole ?? 'delivery');
+              }
+              return DashboardScreen(userType: auth.userRole ?? 'pharmacy');
+            }
+            return const LoginScreen();
+          },
+        );
+      },
     );
   }
 }

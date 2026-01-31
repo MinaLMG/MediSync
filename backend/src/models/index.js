@@ -17,5 +17,6 @@ module.exports = {
     DeliveryRequest: require('./DeliveryRequest'),
     ReversalTicket: require('./ReversalTicket'),
     BalanceHistory: require('./BalanceHistory'),
-    Counter: require('./Counter')
+    Counter: require('./Counter'),
+    Compensation: require('./Compensation')
 };

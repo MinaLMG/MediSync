@@ -763,7 +763,7 @@ exports.revertTransaction = async (req, res) => {
                     // Notify users
                     const pharmUsers = await User.find({ pharmacy: pharmacy._id });
                     for (const u of pharmUsers) {
-                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                        sendToUser(u._id.toString(), 'balance-update', { balance: pharmacy.balance });
                     }
 
                     resolvedExpenses.push({
@@ -842,7 +842,7 @@ exports.updateReversalTicket = async (req, res) => {
                     // Notify users
                     const users = await User.find({ pharmacy: pharmacy._id });
                     for (const u of users) {
-                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                        sendToUser(u._id.toString(), 'balance-update', { balance: pharmacy.balance });
                     }
                 }
             }
@@ -890,7 +890,7 @@ exports.updateReversalTicket = async (req, res) => {
 
                     const users = await User.find({ pharmacy: pharmacy._id });
                     for (const u of users) {
-                        sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+                        sendToUser(u._id.toString(), 'balance-update', { balance: pharmacy.balance });
                     }
 
                     resolvedExpenses.push({

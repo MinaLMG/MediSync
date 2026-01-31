@@ -153,6 +153,42 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () =>
+                                              _showCompensationDialog(
+                                                context,
+                                                ph['_id'],
+                                                ph['name'],
+                                              ),
+                                          icon: const Icon(
+                                            Icons.monetization_on,
+                                          ),
+                                          label: const Text('Add'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green[700],
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _showCompensationHistory(
+                                                context,
+                                                ph['_id'],
+                                                ph['name'],
+                                              ),
+                                          icon: const Icon(Icons.history),
+                                          label: const Text('History'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -178,5 +214,342 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
         ],
       ),
     );
+  }
+
+  void _showCompensationDialog(
+    BuildContext context,
+    String pharmacyId,
+    String pharmacyName, {
+    Map<String, dynamic>? compensation,
+  }) {
+    final amountController = TextEditingController(
+      text: compensation != null ? compensation['amount'].toString() : '',
+    );
+    final descriptionController = TextEditingController(
+      text: compensation != null ? compensation['description'] : '',
+    );
+    bool isSubmitting = false;
+    final isEdit = compensation != null;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit
+                  ? 'Edit Compensation'
+                  : 'Add Compensation to $pharmacyName',
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount (Coins)',
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description / Reason',
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final amount = double.tryParse(amountController.text);
+                        final description = descriptionController.text.trim();
+
+                        if (amount == null ||
+                            amount <= 0 ||
+                            description.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter valid amount and description',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isSubmitting = true);
+
+                        try {
+                          final token = Provider.of<AuthProvider>(
+                            context,
+                            listen: false,
+                          ).token;
+
+                          final url = isEdit
+                              ? '${Constants.baseUrl}/compensation/${compensation!['_id']}'
+                              : '${Constants.baseUrl}/compensation';
+
+                          final method = isEdit ? http.put : http.post;
+
+                          final response = await method(
+                            Uri.parse(url),
+                            headers: {
+                              'Authorization': 'Bearer $token',
+                              'Content-Type': 'application/json',
+                            },
+                            body: json.encode({
+                              if (!isEdit) 'pharmacyId': pharmacyId,
+                              'amount': amount,
+                              'description': description,
+                            }),
+                          );
+
+                          final data = json.decode(response.body);
+
+                          if ((response.statusCode == 200 ||
+                                  response.statusCode == 201) &&
+                              data['success']) {
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isEdit
+                                        ? 'Compensation updated successfully'
+                                        : 'Compensation added successfully',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              _fetchPharmacies(); // Refresh list to show new balance
+                            }
+                          } else {
+                            throw Exception(
+                              data['message'] ??
+                                  'Failed to ${isEdit ? 'update' : 'add'} compensation',
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setDialogState(() => isSubmitting = false);
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isEdit ? 'Update' : 'Add Amount'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCompensationHistory(
+    BuildContext context,
+    String pharmacyId,
+    String pharmacyName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => FutureBuilder(
+          future: _fetchCompensations(context, pharmacyId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final compensations = snapshot.data as List<dynamic>? ?? [];
+
+            return Column(
+              children: [
+                AppBar(
+                  title: Text('$pharmacyName History'),
+                  automaticallyImplyLeading: false,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                if (compensations.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text('No compensation history found.'),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: compensations.length,
+                      itemBuilder: (context, index) {
+                        final comp = compensations[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green[100],
+                            child: const Icon(
+                              Icons.attach_money,
+                              color: Colors.green,
+                            ),
+                          ),
+                          title: Text('${comp['amount']} Coin(s)'),
+                          subtitle: Text(comp['description'] ?? ''),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context); // Close sheet
+                                  _showCompensationDialog(
+                                    context,
+                                    pharmacyId,
+                                    pharmacyName,
+                                    compensation: comp,
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  _confirmDelete(
+                                    context,
+                                    comp['_id'],
+                                    pharmacyId,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<List<dynamic>> _fetchCompensations(
+    BuildContext context,
+    String pharmacyId,
+  ) async {
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/compensation/$pharmacyId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = json.decode(response.body);
+      if (data['success']) {
+        return data['data'];
+      }
+    } catch (e) {
+      print('Error fetching compensations: $e');
+    }
+    return [];
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    String compensationId,
+    String pharmacyId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text(
+          'Are you sure? This will REVERT the balance amount from the pharmacy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(context); // Close sheet
+              await _deleteCompensation(context, compensationId);
+              _fetchPharmacies(); // Refresh balance
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete & Revert'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteCompensation(
+    BuildContext context,
+    String compensationId,
+  ) async {
+    try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      final response = await http.delete(
+        Uri.parse('${Constants.baseUrl}/compensation/$compensationId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = json.decode(response.body);
+      if (data['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Variable deleted and balance reverted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception(data['message']);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 }

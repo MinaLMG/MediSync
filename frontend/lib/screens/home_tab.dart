@@ -78,12 +78,14 @@ class _HomeTabState extends State<HomeTab> {
       context,
       listen: false,
     );
+    final auth = Provider.of<AuthProvider>(context, listen: false);
 
     await Future.wait([
       shortages.fetchGlobalActiveShortages(),
       products.fetchProducts(),
       suggestions.fetchPendingCounts(),
       notifications.fetchNotifications(),
+      if (auth.userRole != 'admin') auth.refreshProfile(),
     ]);
   }
 

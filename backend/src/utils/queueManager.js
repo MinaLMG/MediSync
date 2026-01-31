@@ -3,7 +3,17 @@ const Redis = require('ioredis');
 
 // Redis connection configuration
 const redisConnection = new Redis("rediss://default:" + process.env.REDIS_TOKEN + "@exciting-ewe-18750.upstash.io:6379", {
-    maxRetriesPerRequest: null
+    maxRetriesPerRequest: null,
+    retryStrategy(times) {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+    }
+});
+
+redisConnection.on('error', (err) => {
+    console.error('[QueueManager] ❌ Redis Connection Error:', err.message);
+    // Prevent usage if connection failed to avoid further errors? 
+    // ioredis handles reconnection automatically.
 });
 
 // Create the notification queue
