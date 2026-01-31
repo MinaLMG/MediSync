@@ -154,7 +154,7 @@ exports.updateCompensation = async (req, res) => {
         }
 
         // Trigger Real-time Balance Update
-        await sendToUser(compensation.pharmacy, 'balance-update', {
+        await sendToUser(compensation.pharmacy, 'balanceUpdatete', {
             balance: pharmacy.balance
         });
 
@@ -206,7 +206,7 @@ exports.deleteCompensation = async (req, res) => {
         await compensation.deleteOne({ session });
 
         // Trigger Real-time Balance Update
-        await sendToUser(compensation.pharmacy, 'balance-update', {
+        await sendToUser(compensation.pharmacy, 'balanceUpdatete', {
             balance: pharmacy.balance
         });
 
