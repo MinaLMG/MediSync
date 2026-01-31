@@ -1,9 +1,13 @@
-const validate = require('../middlewares/validationMiddleware');
-const { createExcessSchema, updateExcessSchema } = require('../validations/stockValidations');
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../middlewares/authMiddleware');
+const excessController = require('../controllers/excessController');
 
+const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+const validate = require('../middlewares/validationMiddleware');
 // Routes
-router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, validate(createExcessSchema), excessController.createExcess);
-router.put('/:id', protect, authorize('admin', 'pharmacy_owner', 'manager'), strictLimiter, validate(updateExcessSchema), excessController.updateExcess);
+router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, excessController.createExcess);
+router.put('/:id', protect, authorize('admin', 'pharmacy_owner', 'manager'), strictLimiter, excessController.updateExcess);
 router.get('/my', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMyExcesses);
 router.get('/market', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMarketExcesses);
 router.get('/pending', protect, authorize('admin'), getLimiter, excessController.getPendingExcesses);

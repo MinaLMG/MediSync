@@ -115,6 +115,22 @@ exports.getMarketExcesses = async (req, res) => {
     }
 };
 
+exports.getAvailableExcesses = async (req, res) => {
+    try {
+        const excesses = await StockExcess.find({ 
+            status: { $in: ['available', 'partially_fulfilled'] } 
+        })
+            .populate('pharmacy', 'name address phone')
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, data: excesses });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 exports.syncExcessStatus = async (excess, session = null) => {
     return excessService.syncExcessStatus(excess, session);
 };

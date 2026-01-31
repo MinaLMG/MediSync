@@ -14,19 +14,16 @@ const {
 
 const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
 
-const validate = require('../middlewares/validationMiddleware');
-const { createShortageSchema, createOrderSchema } = require('../validations/stockValidations');
-
 // Pharmacy Owner Routes
-router.post('/', authorize('pharmacy_owner', 'manager'), strictLimiter, validate(createShortageSchema), createShortage);
-router.post('/order', authorize('pharmacy_owner', 'manager'), strictLimiter, validate(createOrderSchema), createOrder);
-router.put('/:id', authorize('pharmacy_owner', 'manager'), strictLimiter, updateShortage); // Add Update
-router.get('/my', authorize('pharmacy_owner', 'manager'), getLimiter, getMyShortages);
+router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, createShortage);
+router.post('/order', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, createOrder);
+router.put('/:id', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, updateShortage);
+router.get('/my', protect, authorize('pharmacy_owner', 'manager'), getLimiter, getMyShortages);
 
 // Admin Routes
-router.get('/orders', authorize('admin'), getLimiter, getOrders);
-router.get('/active', authorize('admin'), getLimiter, getActiveShortages);
-router.get('/global-active', getLimiter, getGlobalActiveShortages);
-router.delete('/:id', authorize('admin', 'pharmacy_owner'), strictLimiter, deleteShortage);
+router.get('/orders', protect, authorize('admin'), getLimiter, getOrders);
+router.get('/active', protect, authorize('admin'), getLimiter, getActiveShortages);
+router.get('/global-active', protect, getLimiter, getGlobalActiveShortages);
+router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, deleteShortage);
 
 module.exports = router;

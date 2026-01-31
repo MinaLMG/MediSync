@@ -104,7 +104,6 @@ exports.reviewRequest = async (req, res) => {
                 } else if (request.requestType === 'complete') {
                     transaction.status = 'completed';
                     // FIX: Trigger full financial settlement
-                    const transactionService = require('./transactionService');
                     await transactionService.settleTransaction(transaction, session);
                 }
                 await transaction.save({ session });
@@ -121,7 +120,6 @@ exports.reviewRequest = async (req, res) => {
 
         // Notify Stakeholders
         if (transaction) {
-            const transactionService = require('./transactionService');
             await transactionService.notifyParties(transaction);
         }
 
