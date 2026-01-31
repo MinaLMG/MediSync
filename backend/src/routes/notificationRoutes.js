@@ -3,7 +3,7 @@ const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { protect } = require('../middlewares/authMiddleware');
 
-const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
 
 router.use(protect);
 

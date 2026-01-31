@@ -3,7 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const excessController = require('../controllers/excessController');
 
-const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
 const validate = require('../middlewares/validationMiddleware');
 // Routes
 router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, excessController.createExcess);

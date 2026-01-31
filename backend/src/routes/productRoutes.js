@@ -3,7 +3,7 @@ const router = express.Router();
 const productController = require('../controllers/productController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
-const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
 
 router.use(protect);
 

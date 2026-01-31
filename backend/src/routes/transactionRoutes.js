@@ -16,7 +16,7 @@ const {
     updateTransaction
 } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
-const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middlewares/rateLimiter');
 
 // All transaction routes are protected and restricted to Admin
 router.use(protect);

@@ -73,7 +73,7 @@ const stockExcessSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'available', 'reserved', 'sold', 'expired', 'rejected', 'fulfilled', 'partially_fulfilled'],
+        enum: ['pending', 'available', 'partially_fulfilled', 'fulfilled', 'expired', 'rejected'],
         default: 'pending'
     }
 }, {

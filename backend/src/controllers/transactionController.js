@@ -160,9 +160,8 @@ exports.createTransaction = async (req, res) => {
                 throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
             }
 
-            // Deduct from excess
+            // Deduct from excess (don't sync status yet - transaction not saved)
             excess.remainingQuantity -= source.quantity;
-            await syncExcessStatus(excess, session);
             await excess.save({ session });
 
             const amount = source.quantity * excess.selectedPrice;
@@ -208,6 +207,13 @@ exports.createTransaction = async (req, res) => {
         });
 
         await transaction.save({ session });
+
+        // 6. NOW sync excess statuses (after transaction is saved)
+        for (const source of excessSources) {
+            const excess = await StockExcess.findById(source.stockExcessId).session(session);
+            await syncExcessStatus(excess, session);
+            await excess.save({ session });
+        }
 
         await session.commitTransaction();
 

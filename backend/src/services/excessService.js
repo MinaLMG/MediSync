@@ -88,7 +88,7 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
         throw new Error('Not authorized to update this excess');
     }
 
-    if (['sold', 'expired', 'rejected'].includes(excess.status)) {
+    if (['fulfilled', 'expired', 'rejected'].includes(excess.status)) {
         throw new Error(`Cannot update excess with status ${excess.status}. It is locked.`);
     }
 
@@ -130,28 +130,29 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
     return excess;
 };
 
-/**
- * Synchronizes the status of an excess based on remaining quantity and active transactions.
- */
 exports.syncExcessStatus = async (excess, session = null) => {
     const query = Transaction.find({ 'stockExcessSources.stockExcess': excess._id });
     if (session) query.session(session);
     const transactions = await query;
     
-    const hasActive = transactions.some(t => ['pending', 'accepted'].includes(t.status));
-    const hasCompleted = transactions.some(t => t.status === 'completed');
-
+    const hasActiveOrCompleted = transactions.some(t => ['pending', 'accepted', 'completed'].includes(t.status));
+    
+    // Don't change pending or rejected status
+    if (['pending', 'rejected'].includes(excess.status)) {
+        return;
+    }
+    
     if (excess.remainingQuantity > 0) {
-        if (hasActive || hasCompleted) {
+        // Has remaining quantity
+        if (hasActiveOrCompleted) {
+            // Some quantity has been taken
             excess.status = 'partially_fulfilled';
-        } else if (!['pending', 'rejected'].includes(excess.status)) {
+        } else {
+            // No active transactions
             excess.status = 'available';
         }
     } else {
-        if (hasActive) {
-            excess.status = hasCompleted ? 'fulfilled' : 'reserved';
-        } else {
-            excess.status = hasCompleted ? 'sold' : 'fulfilled';
-        }
+        // No remaining quantity (all taken)
+        excess.status = 'fulfilled';
     }
 };

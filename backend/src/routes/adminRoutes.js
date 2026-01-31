@@ -16,7 +16,7 @@ const {
 const { getPharmacyOrders } = require('../controllers/orderController');
 const { getPharmacyBalanceHistory } = require('../controllers/balanceHistoryController');
 const { protect, admin } = require('../middlewares/authMiddleware');
-const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter, sensitiveLimiter } = require('../middlewares/rateLimiter');
 
 router.use(protect);
 router.use(admin);

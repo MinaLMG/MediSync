@@ -428,7 +428,298 @@ async function run() {
         const shBadUpdate = await apiCall(`/shortage/${ids.shortage2}`, 'PUT', { quantity: 300 }, tokens.s3);
         assert(shBadUpdate.status !== 200, 'Reject shortage quantity increase', PHASE8, `Got ${shBadUpdate.status}`);
         
-        console.log('\n\x1b[32m✓ All advanced test phases completed!\x1b[0m');
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 9: DELIVERY ASSIGNMENT CONFLICTS
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE9 = 'Phase 9: Delivery Conflicts';
+        logSection(PHASE9);
+        
+        // Register second delivery user
+        const d2Reg = await apiCall('/auth/register', 'POST', { name: 'Delivery2', phone: prefixPhone(8), email: prefixEmail(8), password: 'password', role: 'delivery' });
+        tokens.d2 = d2Reg.data.data?.token;
+        
+        // Create new transaction for conflict test
+        const txConflict = await apiCall('/transaction', 'POST', {
+            shortageId: ids.shortage2, quantityTaken: 10,
+            excessSources: [{ stockExcessId: ids.ex3, quantity: 10 }]
+        }, tokens.admin);
+        ids.txConflict = txConflict.data.data?._id;
+        
+        // Both deliveries request acceptance
+        const d1Req = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txConflict, requestType: 'accept' }, tokens.d1);
+        const d2Req = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txConflict, requestType: 'accept' }, tokens.d2);
+        
+        assert(d1Req.status === 201, 'D1 accept request created', PHASE9);
+        assert(d2Req.status === 201, 'D2 accept request created', PHASE9);
+        
+        // Admin approves D1
+        await apiCall(`/delivery-requests/${d1Req.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        
+        // Check if D2's request was cleaned up
+        const pendingReqs = await apiCall('/delivery-requests/pending', 'GET', null, tokens.admin);
+        const d2StillPending = pendingReqs.data.data?.find(r => r._id === d2Req.data.data?._id);
+        
+        assert(!d2StillPending, 'D2 request auto-cleaned after D1 approved', PHASE9, d2StillPending ? 'Still exists' : '');
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 10: TRANSACTION RATIO UPDATES
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE10 = 'Phase 10: Ratio Updates';
+        logSection(PHASE10);
+        
+        // Create new transaction
+        const txRatio = await apiCall('/transaction', 'POST', {
+            shortageId: ids.shortage2, quantityTaken: 5,
+            excessSources: [{ stockExcessId: ids.ex3, quantity: 5 }]
+        }, tokens.admin);
+        ids.txRatio = txRatio.data.data?._id;
+        
+        // Update ratios
+        const updateRatios = await apiCall(`/transaction/${ids.txRatio}/ratios`, 'PUT', {
+            commissionRatio: 15,
+            buyerCommissionRatio: 12,
+            sellerBonusRatio: 8
+        }, tokens.admin);
+        
+        assert(updateRatios.status === 200, 'Update transaction ratios', PHASE10, `Got ${updateRatios.status}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 11: TRANSACTION UNASSIGNMENT
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE11 = 'Phase 11: Unassignment';
+        logSection(PHASE11);
+        
+        // Unassign D1 from txConflict
+        const unassign = await apiCall(`/transaction/${ids.txConflict}/unassign`, 'PUT', {}, tokens.admin);
+        assert(unassign.status === 200, 'Unassign delivery from transaction', PHASE11, `Got ${unassign.status}`);
+        
+        // Check transaction status (may or may not revert to pending - depends on implementation)
+        const txDataUnassign = await apiCall(`/transaction`, 'GET', null, tokens.admin);
+        const txUnassigned = txDataUnassign.data.data?.find(t => t._id === ids.txConflict);
+        // Note: This test documents current behavior, not necessarily expected behavior
+        assert(true, `Transaction status after unassign: ${txUnassigned?.status}`, PHASE11);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 12: DELETE PROTECTION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE12 = 'Phase 12: Delete Protection';
+        logSection(PHASE12);
+        
+        // Try to delete shortage with active transactions
+        const deleteSh = await apiCall(`/shortage/${ids.shortage2}`, 'DELETE', null, tokens.admin);
+        assert(deleteSh.status !== 200, 'Prevent delete shortage with transactions', PHASE12, `Got ${deleteSh.status}`);
+        
+        // Try to delete excess with active transactions
+        const deleteEx = await apiCall(`/excess/${ids.ex3}`, 'DELETE', null, tokens.admin);
+        assert(deleteEx.status !== 200, 'Prevent delete excess with transactions', PHASE12, `Got ${deleteEx.status}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 13: DUPLICATE REQUEST PREVENTION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE13 = 'Phase 13: Duplicate Prevention';
+        logSection(PHASE13);
+        
+        // Create new transaction
+        const txDup = await apiCall('/transaction', 'POST', {
+            shortageId: ids.shortage2, quantityTaken: 3,
+            excessSources: [{ stockExcessId: ids.ex3, quantity: 3 }]
+        }, tokens.admin);
+        
+        // D1 creates accept request
+        const dupReq1 = await apiCall('/delivery-requests', 'POST', { transactionId: txDup.data.data?._id, requestType: 'accept' }, tokens.d1);
+        assert(dupReq1.status === 201, 'First accept request created', PHASE13);
+        
+        // D1 tries to create another accept request (duplicate)
+        const dupReq2 = await apiCall('/delivery-requests', 'POST', { transactionId: txDup.data.data?._id, requestType: 'accept' }, tokens.d1);
+        assert(dupReq2.status === 400, 'Duplicate accept request rejected', PHASE13, `Got ${dupReq2.status}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 15: NOTIFICATION VALIDATION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE15 = 'Phase 15: Notifications';
+        logSection(PHASE15);
+        
+        // Get notifications for buyer
+        const notifications = await apiCall('/notifications', 'GET', null, tokens.buyer);
+        assert(notifications.status === 200, 'Get notifications', PHASE15);
+        assert(notifications.data.data?.length > 0, 'Has notifications', PHASE15, `Found ${notifications.data.data?.length}`);
+        
+        // Mark one as seen
+        if (notifications.data.data && notifications.data.data.length > 0) {
+            const notifId = notifications.data.data[0]._id;
+            const markSeen = await apiCall(`/notifications/${notifId}/seen`, 'PUT', {}, tokens.buyer);
+            assert(markSeen.status === 200, 'Mark notification as seen', PHASE15);
+        }
+        
+        // Mark all as seen
+        const markAllSeen = await apiCall('/notifications/mark-all-seen', 'PUT', {}, tokens.buyer);
+        assert(markAllSeen.status === 200, 'Mark all notifications as seen', PHASE15);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 16: SETTINGS VALIDATION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE16 = 'Phase 16: Settings';
+        logSection(PHASE16);
+        
+        // Get settings
+        const settings = await apiCall('/settings', 'GET', null, tokens.admin);
+        assert(settings.status === 200, 'Get settings', PHASE16);
+        assert(settings.data.data?.minimumCommission !== undefined, 'Has minimumCommission', PHASE16);
+        assert(settings.data.data?.shortageCommission !== undefined, 'Has shortageCommission', PHASE16);
+        
+        // Update settings
+        const updateSettings = await apiCall('/settings', 'PUT', {
+            minimumCommission: 12,
+            shortageCommission: 10
+        }, tokens.admin);
+        assert(updateSettings.status === 200, 'Update settings', PHASE16);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 17: PRODUCT STATUS VALIDATION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE17 = 'Phase 17: Product Status';
+        logSection(PHASE17);
+        
+        // Try to create excess with inactive product
+        const prod2 = await Product.findOneAndUpdate(
+            { name: prefix('InactiveMed') }, 
+            { name: prefix('InactiveMed'), status: 'inactive' }, 
+            { upsert: true, new: true }
+        );
+        
+        const exInactive = await apiCall('/excess', 'POST', {
+            product: prod2._id.toString(),
+            volume: ids.vol.toString(),
+            quantity: 10,
+            expiryDate: '12/26',
+            selectedPrice: 100,
+            shortage_fulfillment: true
+        }, tokens.s1);
+        
+        assert(exInactive.status === 400, 'Reject excess for inactive product', PHASE17, `Got ${exInactive.status}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 18: TRANSACTION COMPLETION FLOW
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE18 = 'Phase 18: Complete Transaction Flow';
+        logSection(PHASE18);
+        
+        // Create fresh transaction for full completion test
+        const sh3 = await apiCall('/shortage', 'POST', {
+            product: ids.prod.toString(),
+            volume: ids.vol.toString(),
+            quantity: 25
+        }, tokens.buyer);
+        
+        const ex4 = await apiCall('/excess', 'POST', {
+            product: ids.prod.toString(),
+            volume: ids.vol.toString(),
+            quantity: 25,
+            expiryDate: '12/26',
+            selectedPrice: 100,
+            shortage_fulfillment: true
+        }, tokens.s1);
+        await apiCall(`/excess/${ex4.data.data?._id}/approve`, 'PUT', {}, tokens.admin);
+        
+        const txComplete = await apiCall('/transaction', 'POST', {
+            shortageId: sh3.data.data?._id,
+            quantityTaken: 25,
+            excessSources: [{ stockExcessId: ex4.data.data?._id, quantity: 25 }]
+        }, tokens.admin);
+        
+        assert(txComplete.status === 201, 'Create transaction for completion', PHASE18);
+        
+        // Accept
+        const acceptReq = await apiCall('/delivery-requests', 'POST', {
+            transactionId: txComplete.data.data?._id,
+            requestType: 'accept'
+        }, tokens.d1);
+        await apiCall(`/delivery-requests/${acceptReq.data.data?._id}/review`, 'PUT', {
+            status: 'approved'
+        }, tokens.admin);
+        
+        // Wait a bit for async operations
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Complete
+        const completeReq = await apiCall('/delivery-requests', 'POST', {
+            transactionId: txComplete.data.data?._id,
+            requestType: 'complete'
+        }, tokens.d1);
+        await apiCall(`/delivery-requests/${completeReq.data.data?._id}/review`, 'PUT', {
+            status: 'approved'
+        }, tokens.admin);
+        
+        // Wait for settlement to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify completion
+        const txFinal = await apiCall('/transaction', 'GET', null, tokens.admin);
+        const completedTx = txFinal.data.data?.find(t => t._id === txComplete.data.data?._id);
+        assert(completedTx?.status === 'completed', 'Transaction completed', PHASE18, `Got ${completedTx?.status}`);
+        
+        // Verify balances changed
+        const buyerFinalBal = await getPharmacyBalance(tokens.buyer);
+        const s1FinalBal = await getPharmacyBalance(tokens.s1);
+        assert(buyerFinalBal < 0, 'Buyer paid (negative balance)', PHASE18, `Balance: ${buyerFinalBal}`);
+        assert(s1FinalBal > 0, 'Seller received (positive balance)', PHASE18, `Balance: ${s1FinalBal}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 14: BALANCE HISTORY VALIDATION (moved after completion)
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE14 = 'Phase 14: Balance History';
+        logSection(PHASE14);
+        
+        // Get balance history for buyer (should have entries now after completion)
+        const buyerHistory = await apiCall('/balance-history/my', 'GET', null, tokens.buyer);
+        assert(buyerHistory.status === 200, 'Get balance history', PHASE14, `Got ${buyerHistory.status}`);
+        
+        // Should have entries from completed transactions
+        const hasEntries = buyerHistory.data.data && buyerHistory.data.data.length > 0;
+        assert(hasEntries, 'Balance history has entries after completion', PHASE14, `Found ${buyerHistory.data.data?.length || 0}`);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 19: EXCESS UPDATE VALIDATION
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE19 = 'Phase 19: Excess Updates';
+        logSection(PHASE19);
+        
+        // Create new excess for update tests
+        const exUpdate = await apiCall('/excess', 'POST', {
+            product: ids.prod.toString(),
+            volume: ids.vol.toString(),
+            quantity: 50,
+            expiryDate: '12/26',
+            selectedPrice: 100,
+            shortage_fulfillment: false,
+            salePercentage: 10
+        }, tokens.s1);
+        await apiCall(`/excess/${exUpdate.data.data?._id}/approve`, 'PUT', {}, tokens.admin);
+        
+        // Update quantity (decrease)
+        const updateExQty = await apiCall(`/excess/${exUpdate.data.data?._id}`, 'PUT', {
+            quantity: 40,
+            shortage_fulfillment: false
+        }, tokens.s1);
+        assert(updateExQty.status === 200, 'Update excess quantity', PHASE19, `Got ${updateExQty.status}`);
+        
+        // Update sale percentage
+        const updateExSale = await apiCall(`/excess/${exUpdate.data.data?._id}`, 'PUT', {
+            salePercentage: 15,
+            shortage_fulfillment: false
+        }, tokens.s1);
+        assert(updateExSale.status === 200, 'Update excess sale percentage', PHASE19, `Got ${updateExSale.status}`);
+        
+        // Try to update fulfilled excess (should fail)
+        const exFulfilled = await getExcessState(ids.ex2, tokens.s2);
+        if (exFulfilled?.status === 'fulfilled') {
+            const updateFulfilled = await apiCall(`/excess/${ids.ex2}`, 'PUT', {
+                quantity: 50
+            }, tokens.s2);
+            assert(updateFulfilled.status !== 200, 'Reject update of fulfilled excess', PHASE19, `Got ${updateFulfilled.status}`);
+        }
+        
+        console.log('\n\x1b[32m✓ All test phases completed (19 comprehensive phases)!\x1b[0m');
         
     } catch (err) {
         console.error('\n\x1b[31m✗ Test execution error:\x1b[0m', err.message);

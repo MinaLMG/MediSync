@@ -3,7 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const { getMyOrders } = require('../controllers/orderController');
 
-const { getLimiter } = require('../middleware/rateLimiter');
+const { getLimiter } = require('../middlewares/rateLimiter');
 
 // All routes are protected
 router.use(protect);

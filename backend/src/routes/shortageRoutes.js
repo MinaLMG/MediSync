@@ -12,7 +12,7 @@ const {
     getOrders
 } = require('../controllers/shortageController');
 
-const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
+const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
 
 // Pharmacy Owner Routes
 router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, createShortage);
