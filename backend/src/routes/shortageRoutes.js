@@ -14,12 +14,12 @@ const {
 
 const { getLimiter, strictLimiter } = require('../middleware/rateLimiter');
 
-// All routes are protected
-router.use(protect);
+const validate = require('../middlewares/validationMiddleware');
+const { createShortageSchema, createOrderSchema } = require('../validations/stockValidations');
 
 // Pharmacy Owner Routes
-router.post('/', authorize('pharmacy_owner', 'manager'), strictLimiter, createShortage);
-router.post('/order', authorize('pharmacy_owner', 'manager'), strictLimiter, createOrder);
+router.post('/', authorize('pharmacy_owner', 'manager'), strictLimiter, validate(createShortageSchema), createShortage);
+router.post('/order', authorize('pharmacy_owner', 'manager'), strictLimiter, validate(createOrderSchema), createOrder);
 router.put('/:id', authorize('pharmacy_owner', 'manager'), strictLimiter, updateShortage); // Add Update
 router.get('/my', authorize('pharmacy_owner', 'manager'), getLimiter, getMyShortages);
 

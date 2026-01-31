@@ -1,14 +1,9 @@
-const express = require('express');
+const validate = require('../middlewares/validationMiddleware');
+const { registerSchema, loginSchema } = require('../validations/authValidations');
 const router = express.Router();
-const { 
-    register, login, getProfile, socialLogin, linkPharmacy, 
-    requestProfileUpdate, changePassword 
-} = require('../controllers/authController');
-const { protect } = require('../middlewares/authMiddleware');
-const upload = require('../config/uploadConfig');
 
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', validate(registerSchema), register);
+router.post('/login', validate(loginSchema), login);
 router.post('/social-login', socialLogin);
 router.get('/profile', protect, getProfile);
 router.put('/profile-update-request', protect, requestProfileUpdate);

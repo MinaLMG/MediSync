@@ -1,10 +1,12 @@
 const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User, ReversalTicket, } = require('../models');
 const mongoose = require('mongoose');
 const { addNotificationJob } = require('../utils/queueManager');
-const { syncExcessStatus } = require('./excessController');
-const { syncShortageStatus } = require('./shortageController');
+const { syncExcessStatus } = require('../services/excessService');
+const { syncShortageStatus } = require('../services/shortageService');
 const { sendToUser } = require('../utils/pusherManager');
-const transactionService = require('./transactionService');
+const transactionService = require('../services/transactionService');
+const serialService = require('../services/serialService');
+const auditService = require('../services/auditService');
 // @desc    Get products that have both active shortages and available excesses
 // @route   GET /api/transaction/matchable
 // @access  Admin
@@ -184,34 +186,8 @@ exports.createTransaction = async (req, res) => {
         await syncShortageStatus(shortage);
         await shortage.save({ session });
 
-        // 4. Generate Serial
-        const date = new Date();
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const datePrefix = `${yyyy}${mm}${dd}`;
-
-        // Find latest transaction with this date prefix
-        // We need to query OUTSIDE the session if we haven't locked the collection, 
-        // to avoid phantom reads if strict isolation level. 
-        // But for simplicity and since we are in a transaction, let's use the session.
-        // If high concurrency is expected, a separate counter collection is better.
-        // For now, sorting by serial desc is sufficient.
-        const lastTx = await Transaction.findOne({ serial: { $regex: `^${datePrefix}-` } })
-            .sort({ serial: -1 })
-            .session(session);
-
-        let sequence = 101; // Start at 0101
-        if (lastTx && lastTx.serial) {
-            const parts = lastTx.serial.split('-');
-            if (parts.length === 2) {
-                const lastSeq = parseInt(parts[1], 10);
-                if (!isNaN(lastSeq)) {
-                    sequence = lastSeq + 1;
-                }
-            }
-        }
-        const serial = `${datePrefix}-${String(sequence).padStart(4, '0')}`;
+        // 4. Generate Serial atomically
+        const serial = await serialService.generateDateSerial('transaction');
 
         // 5. Create transaction
         const settings = await Settings.getSettings();
@@ -339,16 +315,8 @@ exports.buyFromMarket = async (req, res) => {
         await syncShortageStatus(shortage);
         await shortage.save({ session });
 
-        // Generate Serial
-        const date = new Date();
-        const datePrefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-        const lastTx = await Transaction.findOne({ serial: { $regex: `^${datePrefix}-` } }).sort({ serial: -1 }).session(session);
-        let sequence = 101;
-        if (lastTx && lastTx.serial) {
-            const parts = lastTx.serial.split('-');
-            if (parts.length === 2 && !isNaN(parseInt(parts[1]))) sequence = parseInt(parts[1]) + 1;
-        }
-        const serial = `${datePrefix}-${String(sequence).padStart(4, '0')}`;
+        // Generate Serial atomically
+        const serial = await serialService.generateDateSerial('transaction');
 
         // Create Transaction
         const transaction = new Transaction({

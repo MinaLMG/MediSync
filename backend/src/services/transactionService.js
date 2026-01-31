@@ -145,7 +145,7 @@ exports.settleTransaction = async (transaction, session) => {
     for (const source of transaction.stockExcessSources) {
         const excess = await StockExcess.findById(source.stockExcess).session(session);
         if (excess) {
-            const { syncExcessStatus } = require('./excessController');
+            const { syncExcessStatus } = require('./excessService');
             await syncExcessStatus(excess, session);
             await excess.save({ session });
         }

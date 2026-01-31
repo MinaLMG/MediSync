@@ -1,6 +1,7 @@
 const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion, DeliveryRequest } = require('../models');
 const { deleteFiles } = require('../utils/fileHelper');
 const { addNotificationJob } = require('../utils/queueManager');
+const auditService = require('../services/auditService');
 
 // @desc    Get users waiting for approval
 // @route   GET /api/admin/waiting-users
@@ -93,6 +94,15 @@ const reviewUser = async (req, res) => {
             }
         }
         await user.save({ session });
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: status === 'active' ? 'APPROVE' : 'REJECT',
+            entityType: 'User',
+            entityId: user._id,
+            changes: { status }
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: user });
     } catch (error) {

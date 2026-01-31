@@ -16,19 +16,24 @@ exports.getAllProducts = async (req, res) => {
         }
 
         if (search) {
-            // Escape special regex characters except *
-            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-            // Convert * to .*
-            const regexSearch = escapedSearch.replace(/\*/g, '.*');
-            matchQuery.name = { $regex: regexSearch, $options: 'i' };
+            // Use $text search if possible, or a safer regex for simple prefix matching
+            // Given the text index already exists on 'name' and 'description'
+            matchQuery.$text = { $search: search };
         }
 
         // Use aggregation for efficiency
-        const productsCount = await Product.countDocuments(matchQuery);
+        const productsCount = search 
+            ? await Product.countDocuments({ $text: { $search: search }, ...(req.user.role !== 'admin' ? { status: 'active' } : {}) })
+            : await Product.countDocuments(matchQuery);
         
         const products = await Product.aggregate([
             { $match: matchQuery },
-            { $sort: { name: 1 } },
+            { 
+                $addFields: { 
+                    score: { $meta: "textScore" } 
+                } 
+            },
+            { $sort: search ? { score: { $meta: "textScore" } } : { name: 1 } },
             { $skip: skip },
             { $limit: limit },
             {
