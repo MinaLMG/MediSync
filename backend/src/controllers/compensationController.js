@@ -40,6 +40,14 @@ exports.createCompensation = async (req, res) => {
         pharmacy.balance += amount;
         await pharmacy.save({ session });
 
+        // Trigger Real-time Balance Update
+        const users = await User.find({ pharmacy: pharmacyId });
+        for (const u of users) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: pharmacy.balance
+            });
+        }
+
         // Create Balance History
         await BalanceHistory.create([{
             pharmacy: pharmacyId,
@@ -154,9 +162,12 @@ exports.updateCompensation = async (req, res) => {
         }
 
         // Trigger Real-time Balance Update
-        await sendToUser(compensation.pharmacy, 'balanceUpdatete', {
-            balance: pharmacy.balance
-        });
+        const users = await User.find({ pharmacy: pharmacy._id });
+        for (const u of users) {
+             await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: pharmacy.balance
+            });
+        }
 
         await session.commitTransaction();
 
@@ -206,9 +217,12 @@ exports.deleteCompensation = async (req, res) => {
         await compensation.deleteOne({ session });
 
         // Trigger Real-time Balance Update
-        await sendToUser(compensation.pharmacy, 'balanceUpdatete', {
-            balance: pharmacy.balance
-        });
+        const users = await User.find({ pharmacy: pharmacy._id });
+        for (const u of users) {
+             await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: pharmacy.balance
+            });
+        }
 
         await session.commitTransaction();
 
