@@ -47,10 +47,11 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/medisync.png"
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/medisync.png"
 
+  image_path: assets/images/icon_foreground.png  # required by the package
+
+  adaptive_icon_foreground: assets/images/icon_foreground.png
+  adaptive_icon_background: assets/images/icon_background.png
 flutter:
   uses-material-design: true
   assets:
