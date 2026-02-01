@@ -174,9 +174,15 @@ exports.syncShortageStatus = async (shortage, session = null) => {
 
     if (shortage.order) {
         const Order = mongoose.model('Order');
-        const order = await Order.findById(shortage.order);
+        const query = Order.findById(shortage.order);
+        if (session) query.session(session);
+        const order = await query;
+
         if (order) {
-            const allShortages = await StockShortage.find({ order: order._id });
+            const shortageQuery = StockShortage.find({ order: order._id });
+            if (session) shortageQuery.session(session);
+            const allShortages = await shortageQuery;
+            
             const fulfilledCount = allShortages.filter(s => s.status === 'fulfilled').length;
             order.fulfilledItems = fulfilledCount;
             if (fulfilledCount === order.totalItems) {
@@ -184,7 +190,7 @@ exports.syncShortageStatus = async (shortage, session = null) => {
             } else if (fulfilledCount > 0 || allShortages.some(s => s.status === 'partially_fulfilled')) {
                 order.status = 'partially_fulfilled';
             }
-            await order.save();
+            await order.save(session ? { session } : undefined);
         }
     }
 };
