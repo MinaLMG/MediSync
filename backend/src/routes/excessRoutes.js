@@ -11,6 +11,7 @@ router.put('/:id', protect, authorize('admin', 'pharmacy_owner', 'manager'), str
 router.get('/my', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMyExcesses);
 router.get('/market', protect, authorize('pharmacy_owner', 'manager'), getLimiter, excessController.getMarketExcesses);
 router.get('/pending', protect, authorize('admin'), getLimiter, excessController.getPendingExcesses);
+router.get('/fulfilled', protect, authorize('admin'), getLimiter, excessController.getFulfilledExcesses);
 router.get('/available', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getAvailableExcesses);
 router.put('/:id/approve', protect, authorize('admin'), strictLimiter, excessController.approveExcess);
 router.put('/:id/reject', protect, authorize('admin'), strictLimiter, excessController.rejectExcess);

@@ -18,6 +18,7 @@ import '../providers/app_suggestion_provider.dart';
 import '../providers/notification_provider.dart';
 import 'balance_history_screen.dart';
 import 'create_order_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -106,55 +107,65 @@ class _HomeTabState extends State<HomeTab> {
 
     final List<Map<String, dynamic>> menuItems = [
       {
-        'title': 'Requests History',
+        'title': AppLocalizations.of(context)!.menuRequestsHistory,
+        'originalTitle': 'Requests History',
         'icon': Icons.history,
         'color': Colors.blue,
       },
       {
-        'title': 'Shopping Tour',
+        'title': AppLocalizations.of(context)!.menuShoppingTour,
+        'originalTitle': 'Shopping Tour',
         'icon': Icons.shopping_cart,
         'color': Colors.orange,
       },
       {
-        'title': 'Add Shortage',
+        'title': AppLocalizations.of(context)!.menuAddShortage,
+        'originalTitle': 'Add Shortage',
         'icon': Icons.remove_circle_outline,
         'color': Colors.red,
       },
       {
-        'title': 'Add Excess',
+        'title': AppLocalizations.of(context)!.menuAddExcess,
+        'originalTitle': 'Add Excess',
         'icon': Icons.add_circle_outline,
         'color': Colors.green,
       },
       if (isAdmin) ...[
         {
-          'title': 'Start Transactions',
+          'title': AppLocalizations.of(context)!.menuStartTransactions,
+          'originalTitle': 'Start Transactions',
           'icon': Icons.swap_horiz,
           'color': Colors.indigo,
         },
         {
-          'title': 'View Transactions',
+          'title': AppLocalizations.of(context)!.menuViewTransactions,
+          'originalTitle': 'View Transactions',
           'icon': Icons.track_changes,
           'color': Colors.deepOrange,
         },
       ],
       {
-        'title': 'Suggest Product',
+        'title': AppLocalizations.of(context)!.menuSuggestProduct,
+        'originalTitle': 'Suggest Product',
         'icon': Icons.recommend,
         'color': Colors.purple,
       },
       {
-        'title': 'Suggestions/Complaints',
+        'title': AppLocalizations.of(context)!.menuSuggestionsComplaints,
+        'originalTitle': 'Suggestions/Complaints',
         'icon': Icons.lightbulb_outline,
         'color': Colors.teal,
       },
       {
-        'title': 'Balance History',
+        'title': AppLocalizations.of(context)!.menuBalanceHistory,
+        'originalTitle': 'Balance History',
         'icon': Icons.account_balance_wallet,
         'color': Colors.amber[800]!,
       },
       if (isAdmin)
         {
-          'title': 'Manage Users',
+          'title': AppLocalizations.of(context)!.menuManageUsers,
+          'originalTitle': 'Manage Users',
           'icon': Icons.people,
           'color': Colors.blueGrey,
         },
@@ -185,9 +196,9 @@ class _HomeTabState extends State<HomeTab> {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     color: Colors.black,
                     alignment: Alignment.center,
-                    child: const Text(
-                      'URGENT SHORTAGES',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context)!.urgentShortages,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -207,10 +218,10 @@ class _HomeTabState extends State<HomeTab> {
                             ),
                           )
                         : shortages.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
-                              'No current shortages reported',
-                              style: TextStyle(
+                              AppLocalizations.of(context)!.noShortages,
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 13,
                               ),
@@ -268,17 +279,6 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Text(
-                    'Advertisement Space\n(Promotions & Offers)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ),
               const SizedBox(height: 16),
               // Menu Grid
@@ -300,12 +300,12 @@ class _HomeTabState extends State<HomeTab> {
                     if (isAdmin) {
                       final suggestionProvider =
                           Provider.of<AppSuggestionProvider>(context);
-                      if (item['title'] == 'Suggest Product') {
+                      if (item['originalTitle'] == 'Suggest Product') {
                         badgeCount =
                             suggestionProvider.pendingProductSuggestionsCount;
-                      } else if (item['title'] == 'View Transactions') {
+                      } else if (item['originalTitle'] == 'View Transactions') {
                         badgeCount = suggestionProvider.pendingExcessCount;
-                      } else if (item['title'] == 'Manage Users') {
+                      } else if (item['originalTitle'] == 'Manage Users') {
                         badgeCount = suggestionProvider.waitingUsersCount;
                       }
                     }
@@ -313,6 +313,7 @@ class _HomeTabState extends State<HomeTab> {
                     return _buildMenuCard(
                       context,
                       item['title'] ?? 'Menu Item',
+                      item['originalTitle'] ?? '',
                       item['icon'] ?? Icons.help,
                       item['color'] ?? Colors.blue,
                       badgeCount: badgeCount,
@@ -331,6 +332,7 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildMenuCard(
     BuildContext context,
     String title,
+    String originalTitle,
     IconData icon,
     Color? color, {
     int badgeCount = 0,
@@ -345,54 +347,57 @@ class _HomeTabState extends State<HomeTab> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          if (title == 'Add Excess') {
+          // Use originalTitle for logic comparison to avoid localization issues in logic
+          final logicTitle = originalTitle.isNotEmpty ? originalTitle : title;
+
+          if (logicTitle == 'Add Excess') {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddExcessScreen()),
             );
-          } else if (title == 'Add Shortage') {
+          } else if (logicTitle == 'Add Shortage') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AddShortageScreen(),
               ),
             );
-          } else if (title == 'Requests History') {
+          } else if (logicTitle == 'Requests History') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const RequestsHistoryScreen(),
               ),
             );
-          } else if (title == 'Shopping Tour') {
+          } else if (logicTitle == 'Shopping Tour') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const CreateOrderScreen(),
               ),
             );
-          } else if (title == 'Start Transactions') {
+          } else if (logicTitle == 'Start Transactions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminMatchableProductsScreen(),
               ),
             );
-          } else if (title == 'View Transactions') {
+          } else if (logicTitle == 'View Transactions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const FollowUpTransactionsScreen(),
               ),
             );
-          } else if (title == 'Suggest Product') {
+          } else if (logicTitle == 'Suggest Product') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const SuggestProductScreen(),
               ),
             );
-          } else if (title == 'Suggestions/Complaints') {
+          } else if (logicTitle == 'Suggestions/Complaints') {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -401,14 +406,14 @@ class _HomeTabState extends State<HomeTab> {
                     : const SuggestionsComplaintsScreen(),
               ),
             );
-          } else if (title == 'Manage Users') {
+          } else if (logicTitle == 'Manage Users') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminManageUsersScreen(),
               ),
             );
-          } else if (title == 'Balance History') {
+          } else if (logicTitle == 'Balance History') {
             Navigator.push(
               context,
               MaterialPageRoute(

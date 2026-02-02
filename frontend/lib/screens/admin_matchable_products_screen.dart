@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import 'matching_detail_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminMatchableProductsScreen extends StatefulWidget {
   const AdminMatchableProductsScreen({super.key});
@@ -54,7 +55,7 @@ class _AdminMatchableProductsScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Matchable Products'),
+        title: Text(AppLocalizations.of(context)!.matchableProductsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -67,10 +68,10 @@ class _AdminMatchableProductsScreenState
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search products (* for wildcard)...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.searchProductsHint,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
               onChanged: _onSearchChanged,
             ),
@@ -92,8 +93,12 @@ class _AdminMatchableProductsScreenState
                                 child: Center(
                                   child: Text(
                                     _searchQuery.isEmpty
-                                        ? 'No matchable items found.'
-                                        : 'No matches found.',
+                                        ? AppLocalizations.of(
+                                            context,
+                                          )!.noMatchableItemsFound
+                                        : AppLocalizations.of(
+                                            context,
+                                          )!.noMatchesFound,
                                   ),
                                 ),
                               ),
@@ -143,9 +148,11 @@ class _AdminMatchableProductsScreenState
                                               4,
                                             ),
                                           ),
-                                          child: const Text(
-                                            'Shortage Fulfillment',
-                                            style: TextStyle(
+                                          child: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.shortageFulfillment,
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 10,
                                             ),
@@ -161,7 +168,11 @@ class _AdminMatchableProductsScreenState
                                     ],
                                   ),
                                   subtitle: Text(
-                                    'Matching available in ${item['volumes'].length} volumes',
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.matchingAvailableInVolumes(
+                                      item['volumes'].length,
+                                    ),
                                   ),
                                   trailing: const Icon(Icons.chevron_right),
                                   onTap: () {

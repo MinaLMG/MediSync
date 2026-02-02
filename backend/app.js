@@ -41,6 +41,7 @@ app.use('/api/delivery-requests', require('./src/routes/deliveryRequestRoutes'))
 app.use('/api/balance-history', require('./src/routes/balanceHistoryRoutes'));
 app.use('/api/compensation', require('./src/routes/compensationRoutes'));
 app.use('/api/pusher', require('./src/routes/pusherRoutes'));
+app.use('/api/payment', require('./src/routes/paymentRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

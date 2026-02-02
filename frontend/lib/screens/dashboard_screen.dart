@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 
 import 'requests_history_screen.dart';
 import 'profile_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userType;
@@ -39,12 +40,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Placeholder pages for other tabs
-  final List<Widget> _pages = [
-    const HomeTab(),
-    const RequestsHistoryScreen(), // Replaced placeholder
-    const Center(child: Text('Pending Cart (Coming Soon)')),
-    const ProfileScreen(),
-  ];
+  late List<Widget> _pages;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pages = [
+      const HomeTab(),
+      const RequestsHistoryScreen(), // Replaced placeholder
+      Center(child: Text(AppLocalizations.of(context)!.pendingCartPlaceholder)),
+      const ProfileScreen(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -84,7 +91,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'Balance: ${NumberFormat("#,##0").format(balance)} coins',
+                        AppLocalizations.of(context)!.balanceDisplay(
+                          NumberFormat("#,##0").format(balance),
+                        ),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -130,7 +139,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ).refreshProfile();
               }
             },
-            tooltip: 'Reload Current Tab',
+            tooltip: AppLocalizations.of(context)!.reloadTooltip,
           ),
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, _) {
@@ -181,17 +190,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Order History',
+            icon: const Icon(Icons.home),
+            label: AppLocalizations.of(context)!.navHome,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_checkout),
-            label: 'Pending Cart',
+            icon: const Icon(Icons.receipt_long),
+            label: AppLocalizations.of(context)!.navOrderHistory,
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.shopping_cart_checkout),
+            label: AppLocalizations.of(context)!.navPendingCart,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: AppLocalizations.of(context)!.navAccount,
+          ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue[800],

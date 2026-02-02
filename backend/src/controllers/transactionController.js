@@ -1,4 +1,4 @@
-const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User, ReversalTicket, } = require('../models');
+const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, User, ReversalTicket, Reservation } = require('../models');
 const mongoose = require('mongoose');
 const { addNotificationJob } = require('../utils/queueManager');
 const { syncExcessStatus } = require('../services/excessService');
@@ -216,6 +216,33 @@ exports.createTransaction = async (req, res) => {
         }
 
         await session.commitTransaction();
+
+        // 7. Decrease reservations for the sources used in this transaction
+        try {
+            const shortage = await StockShortage.findById(shortageId).populate('order');
+            
+            if (shortage && shortage.order) {
+                for (const source of excessSources) {
+                    const excess = await StockExcess.findById(source.stockExcessId).populate('product volume');
+                    if (excess) {
+                        // Decrease reservation for this order
+                        await Reservation.findOneAndUpdate(
+                            {
+                                product: excess.product._id,
+                                volume: excess.volume._id,
+                                price: excess.selectedPrice
+                            },
+                            {
+                                $inc: { quantity: -source.quantity }
+                            }
+                        );
+                    }
+                }
+            }
+        } catch (reservationErr) {
+            console.error('⚠️ [Transaction] Reservation update error:', reservationErr);
+            // Non-critical, continue
+        }
 
         // Notify Buyer about transaction creation
         try {
@@ -615,7 +642,7 @@ exports.revertTransaction = async (req, res) => {
             populate: { path: 'pharmacy' }
         }).populate({
             path: 'stockExcessSources.stockExcess',
-            populate: { path: 'pharmacy' }
+            populate: { path: 'pharmacy product volume' }
         }).session(session);
 
         if (!transaction) throw new Error('Transaction not found');
@@ -633,11 +660,6 @@ exports.revertTransaction = async (req, res) => {
 
         // Change transaction status FIRST so sync status helpers ignore this transaction
         transaction.status = 'cancelled';
-        // Note: we don't save yet, we save at the end, but the in-memory object 
-        // will be used by some logic, and the session will handle the rest.
-        // Actually, we must save it if syncExcessStatus queries the DB.
-        // Let's check syncExcessStatus. It queries TransactionModel.find.
-        // So we MUST save it (within the session) before calling sync status.
         await transaction.save({ session });
 
         // 1. Restore Stock Quantities
@@ -655,6 +677,26 @@ exports.revertTransaction = async (req, res) => {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
             await syncShortageStatus(shortage, session);
             await shortage.save({ session });
+        }
+
+        // 2. Restore Reservations
+        if (shortage && shortage.order) {
+            for (const source of transaction.stockExcessSources) {
+                const excess = source.stockExcess; // Now populated with product and volume
+                if (excess) {
+                    await Reservation.findOneAndUpdate(
+                        {
+                            product: excess.product._id || excess.product,
+                            volume: excess.volume._id || excess.volume,
+                            price: excess.selectedPrice
+                        },
+                        {
+                            $inc: { quantity: source.quantity }
+                        },
+                        { upsert: true, session }
+                    );
+                }
+            }
         }
 
         // 2. Financial Reversal (Automatic)
@@ -987,6 +1029,19 @@ exports.updateTransaction = async (req, res) => {
                 excess.remainingQuantity += source.quantity;
                 await syncExcessStatus(excess, session);
                 await excess.save({ session });
+
+                // Restore reservation
+                if (shortage && shortage.order) {
+                    await Reservation.findOneAndUpdate(
+                        {
+                            product: excess.product,
+                            volume: excess.volume,
+                            price: excess.selectedPrice
+                        },
+                        { $inc: { quantity: source.quantity } },
+                        { upsert: true, session }
+                    );
+                }
             }
         }
 
@@ -1014,6 +1069,19 @@ exports.updateTransaction = async (req, res) => {
             excess.remainingQuantity -= source.quantity;
             await syncExcessStatus(excess, session);
             await excess.save({ session });
+
+            // Deduct from reservation
+            if (shortage && shortage.order) {
+                await Reservation.findOneAndUpdate(
+                    {
+                        product: excess.product,
+                        volume: excess.volume,
+                        price: excess.selectedPrice
+                    },
+                    { $inc: { quantity: -source.quantity } },
+                    { session }
+                );
+            }
 
             const amount = source.quantity * excess.selectedPrice;
             newTotalAmount += amount;

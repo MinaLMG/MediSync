@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema({
         enum: ['pending', 'waiting', 'active', 'inactive', 'suspended'],
         default: 'pending'
     },
+    language: {
+        type: String,
+        enum: ['en', 'ar'],
+        default: 'en'
+    },
     lastLogin: {
         type: Date
     },

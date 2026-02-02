@@ -7,12 +7,14 @@ import '../utils/config.dart';
 class ExcessProvider with ChangeNotifier {
   List<dynamic> _pendingExcesses = [];
   List<dynamic> _availableExcesses = [];
+  List<dynamic> _fulfilledExcesses = [];
   List<dynamic> _marketExcesses = [];
   bool _isLoading = false;
   String? _errorMessage;
 
   List<dynamic> get pendingExcesses => _pendingExcesses;
   List<dynamic> get availableExcesses => _availableExcesses;
+  List<dynamic> get fulfilledExcesses => _fulfilledExcesses;
   List<dynamic> get marketExcesses => _marketExcesses;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -59,6 +61,14 @@ class ExcessProvider with ChangeNotifier {
   // Fetch Pending Excesses (Admin)
   Future<void> fetchPendingExcesses() async {
     await _fetchExcesses('/excess/pending', (data) => _pendingExcesses = data);
+  }
+
+  // Fetch Fulfilled Excesses (Admin)
+  Future<void> fetchFulfilledExcesses() async {
+    await _fetchExcesses(
+      '/excess/fulfilled',
+      (data) => _fulfilledExcesses = data,
+    );
   }
 
   // Fetch Market Excesses (Pharmacy)
@@ -214,6 +224,7 @@ class ExcessProvider with ChangeNotifier {
         // Refresh lists
         fetchPendingExcesses();
         fetchAvailableExcesses();
+        fetchFulfilledExcesses();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Action failed';

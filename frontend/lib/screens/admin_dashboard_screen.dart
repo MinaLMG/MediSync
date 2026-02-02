@@ -17,6 +17,7 @@ import 'admin_account_updates_screen.dart';
 import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
 import 'admin_order_list_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -26,6 +27,9 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +47,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: Text(AppLocalizations.of(context)!.adminDashboardTitle),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         leading: Padding(
@@ -57,6 +61,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: AppLocalizations.of(context)!.reloadTooltip,
+            onPressed: () {
+              _refreshIndicatorKey.currentState?.show();
+            },
+          ),
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, _) {
               return Stack(
@@ -113,81 +124,100 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-      body: const AdminHomeTab(),
+      body: AdminHomeTab(refreshIndicatorKey: _refreshIndicatorKey),
     );
   }
 }
 
 class AdminHomeTab extends StatelessWidget {
-  const AdminHomeTab({super.key});
+  final GlobalKey<RefreshIndicatorState> refreshIndicatorKey;
+  const AdminHomeTab({super.key, required this.refreshIndicatorKey});
 
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> menuItems = [
       {
-        'title': 'Start Transactions',
+        'id': 'Start Transactions',
+        'title': AppLocalizations.of(context)!.menuStartTransactions,
         'icon': Icons.swap_horiz,
         'color': Colors.blue,
       },
       {
-        'title': 'View Transactions',
+        'id': 'View Transactions',
+        'title': AppLocalizations.of(context)!.menuViewTransactions,
         'icon': Icons.track_changes,
         'color': Colors.deepOrange,
       },
       {
-        'title': 'Follow-up Excesses',
+        'id': 'Follow-up Excesses',
+        'title': AppLocalizations.of(context)!.menuFollowUpExcesses,
         'icon': Icons.trending_up,
         'color': Colors.green,
       },
       {
-        'title': 'Follow-up Shortages',
+        'id': 'Follow-up Shortages',
+        'title': AppLocalizations.of(context)!.menuFollowUpShortages,
         'icon': Icons.trending_down,
         'color': Colors.red,
       },
       {
-        'title': 'Manage Orders',
+        'id': 'Manage Orders',
+        'title': AppLocalizations.of(context)!.menuManageOrders,
         'icon': Icons.assignment,
         'color': Colors.lime,
       },
       {
-        'title': 'Delivery Requests',
+        'id': 'Delivery Requests',
+        'title': AppLocalizations.of(context)!.menuDeliveryRequests,
         'icon': Icons.local_shipping,
         'color': Colors.blueGrey,
       },
       {
-        'title': 'Manage Products',
+        'id': 'Manage Products',
+        'title': AppLocalizations.of(context)!.menuManageProducts,
         'icon': Icons.inventory_2,
         'color': Colors.orange,
       },
       {
-        'title': 'Product Suggestions',
+        'id': 'Product Suggestions',
+        'title': AppLocalizations.of(context)!.menuProductSuggestions,
         'icon': Icons.lightbulb,
         'color': Colors.amber,
       },
       {
-        'title': 'Manage Pharmacies',
+        'id': 'Manage Pharmacies',
+        'title': AppLocalizations.of(context)!.menuManagePharmacies,
         'icon': Icons.local_pharmacy,
         'color': Colors.teal,
       },
-      {'title': 'Manage Users', 'icon': Icons.people, 'color': Colors.purple},
       {
-        'title': 'App Suggestions',
+        'id': 'Manage Users',
+        'title': AppLocalizations.of(context)!.menuManageUsers,
+        'icon': Icons.people,
+        'color': Colors.purple,
+      },
+      {
+        'id': 'App Suggestions',
+        'title': AppLocalizations.of(context)!.menuAppSuggestions,
         'icon': Icons.feedback,
         'color': Colors.indigo,
       },
       {
-        'title': 'Account Updates',
+        'id': 'Account Updates',
+        'title': AppLocalizations.of(context)!.menuAccountUpdates,
         'icon': Icons.manage_accounts,
         'color': Colors.brown,
       },
       {
-        'title': 'System Settings',
+        'id': 'System Settings',
+        'title': AppLocalizations.of(context)!.menuSystemSettings,
         'icon': Icons.settings,
         'color': Colors.grey[700],
       },
     ];
 
     return RefreshIndicator(
+      key: refreshIndicatorKey,
       onRefresh: () async {
         await Provider.of<AppSuggestionProvider>(
           context,
@@ -215,26 +245,29 @@ class AdminHomeTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = menuItems[index];
                 int badgeCount = 0;
-                if (item['title'] == 'Follow-up Excesses') {
+                final id = item['id'];
+
+                if (id == 'Follow-up Excesses') {
                   badgeCount = suggestionProvider.pendingExcessCount;
-                } else if (item['title'] == 'Product Suggestions') {
+                } else if (id == 'Product Suggestions') {
                   badgeCount =
                       suggestionProvider.pendingProductSuggestionsCount;
-                } else if (item['title'] == 'Manage Users') {
+                } else if (id == 'Manage Users') {
                   badgeCount = suggestionProvider.waitingUsersCount;
-                } else if (item['title'] == 'App Suggestions') {
+                } else if (id == 'App Suggestions') {
                   badgeCount = suggestionProvider.appSuggestionsCount;
-                } else if (item['title'] == 'Delivery Requests') {
+                } else if (id == 'Delivery Requests') {
                   badgeCount = suggestionProvider.deliveryRequestsCount;
-                } else if (item['title'] == 'Account Updates') {
+                } else if (id == 'Account Updates') {
                   badgeCount = suggestionProvider.pendingAccountUpdatesCount;
-                } else if (item['title'] == 'Manage Orders') {
+                } else if (id == 'Manage Orders') {
                   badgeCount = suggestionProvider.pendingOrdersCount;
                 }
 
                 return _buildMenuCard(
                   context,
                   item['title'],
+                  item['id'],
                   item['icon'],
                   item['color'],
                   badgeCount: badgeCount,
@@ -250,6 +283,7 @@ class AdminHomeTab extends StatelessWidget {
   Widget _buildMenuCard(
     BuildContext context,
     String title,
+    String id,
     IconData icon,
     Color color, {
     int badgeCount = 0,
@@ -259,91 +293,91 @@ class AdminHomeTab extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          if (title == 'Start Transactions') {
+          if (id == 'Start Transactions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminMatchableProductsScreen(),
               ),
             );
-          } else if (title == 'View Transactions') {
+          } else if (id == 'View Transactions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const FollowUpTransactionsScreen(),
               ),
             );
-          } else if (title == 'Follow-up Excesses') {
+          } else if (id == 'Follow-up Excesses') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const ExcessFollowUpScreen(),
               ),
             );
-          } else if (title == 'Follow-up Shortages') {
+          } else if (id == 'Follow-up Shortages') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const ShortageFollowUpScreen(),
               ),
             );
-          } else if (title == 'Manage Users') {
+          } else if (id == 'Manage Users') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminManageUsersScreen(),
               ),
             );
-          } else if (title == 'Manage Pharmacies') {
+          } else if (id == 'Manage Pharmacies') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminPharmaciesScreen(),
               ),
             );
-          } else if (title == 'Manage Products') {
+          } else if (id == 'Manage Products') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminProductListScreen(),
               ),
             );
-          } else if (title == 'Product Suggestions') {
+          } else if (id == 'Product Suggestions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const ManageSuggestionsScreen(),
               ),
             );
-          } else if (title == 'App Suggestions') {
+          } else if (id == 'App Suggestions') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminViewSuggestionsScreen(),
               ),
             );
-          } else if (title == 'Delivery Requests') {
+          } else if (id == 'Delivery Requests') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminDeliveryRequestsScreen(),
               ),
             );
-          } else if (title == 'Account Updates') {
+          } else if (id == 'Account Updates') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminAccountUpdatesScreen(),
               ),
             );
-          } else if (title == 'System Settings') {
+          } else if (id == 'System Settings') {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminSettingsScreen(),
               ),
             );
-          } else if (title == 'Manage Orders') {
+          } else if (id == 'Manage Orders') {
             Navigator.push(
               context,
               MaterialPageRoute(

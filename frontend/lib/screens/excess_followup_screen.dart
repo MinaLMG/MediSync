@@ -4,6 +4,7 @@ import '../providers/excess_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/notification_provider.dart';
 import 'add_excess_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../utils/ui_utils.dart';
 
 class ExcessFollowUpScreen extends StatefulWidget {
@@ -20,12 +21,13 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     // Fetch data
     Future.microtask(() {
       final provider = Provider.of<ExcessProvider>(context, listen: false);
       provider.fetchPendingExcesses();
       provider.fetchAvailableExcesses();
+      provider.fetchFulfilledExcesses();
     });
   }
 
@@ -85,21 +87,134 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
               );
               provider.fetchPendingExcesses();
               provider.fetchAvailableExcesses();
+              provider.fetchFulfilledExcesses();
             },
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Pending (Not Accepted)'),
-            Tab(text: 'Available (Accepted)'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabPending),
+            Tab(text: AppLocalizations.of(context)!.tabAvailable),
+            Tab(text: AppLocalizations.of(context)!.tabFulfilled),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildPendingList(), _buildAvailableList()],
+        children: [
+          _buildPendingList(),
+          _buildAvailableList(),
+          _buildFulfilledList(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildFulfilledList() {
+    return Consumer<ExcessProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.fulfilledExcesses.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (provider.fulfilledExcesses.isEmpty) {
+          return const Center(child: Text('No fulfilled excesses'));
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchPendingExcesses(),
+              provider.fetchAvailableExcesses(),
+              provider.fetchFulfilledExcesses(),
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: provider.fulfilledExcesses.length,
+            itemBuilder: (context, index) {
+              final item = provider.fulfilledExcesses[index];
+              final expiryStr = item['expiryDate'];
+
+              return Card(
+                margin: const EdgeInsets.all(8.0),
+                color: Colors.grey[100],
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item['product']?['name'] ?? 'Unknown Product',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                          const Chip(
+                            label: Text(
+                              'Fulfilled',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            backgroundColor: Colors.white,
+                            padding: EdgeInsets.zero,
+                            avatar: Icon(
+                              Icons.check_circle,
+                              color: Colors.blueGrey,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                        child: Text(
+                          '${item['pharmacy']?['name']}',
+                          style: const TextStyle(
+                            color: Colors.blueGrey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Price: ${item['selectedPrice']} coins'),
+                      Text('Quantity Fulfilled: ${item['originalQuantity']}'),
+                      Text(
+                        'Expiry: $expiryStr',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const Divider(),
+                      const Text(
+                        'This action is completed and locked.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

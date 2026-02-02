@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../utils/config.dart';
 import '../utils/search_utils.dart';
 import '../utils/ui_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminManageUsersScreen extends StatefulWidget {
   const AdminManageUsersScreen({super.key});
@@ -62,15 +63,15 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Users'),
+        title: Text(AppLocalizations.of(context)!.manageUsersTitle),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchUsers),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'New Requests'),
-            Tab(text: 'Active Users'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabNewRequests),
+            Tab(text: AppLocalizations.of(context)!.tabActiveUsers),
           ],
         ),
       ),
@@ -79,10 +80,10 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search users (* for wildcard)...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.searchUsersHint,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (v) => setState(() => _searchQuery = v),
             ),
@@ -102,7 +103,9 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           ? FloatingActionButton(
               onPressed: _showCreateDeliveryDialog,
               child: const Icon(Icons.add),
-              tooltip: 'Create Delivery Account',
+              tooltip: AppLocalizations.of(
+                context,
+              )!.dialogCreateDeliveryAccount,
             )
           : null,
     );
@@ -121,7 +124,9 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
     if (filteredUsers.isEmpty) {
       return Center(
         child: Text(
-          _searchQuery.isEmpty ? 'No users found.' : 'No matches found.',
+          _searchQuery.isEmpty
+              ? AppLocalizations.of(context)!.noUsersFound
+              : AppLocalizations.of(context)!.noMatchesFound,
         ),
       );
     }
@@ -144,7 +149,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       ? () => UIUtils.showPharmacyInfo(context, pharmacy)
                       : null,
                   child: Text(
-                    pharmacy?['name'] ?? 'No Pharmacy Linked',
+                    pharmacy?['name'] ??
+                        AppLocalizations.of(context)!.noPharmacyLinked,
                     style: TextStyle(
                       color: pharmacy != null ? Colors.blue : Colors.grey,
                       fontWeight: pharmacy != null
@@ -178,40 +184,55 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           padding: const EdgeInsets.all(24),
           children: [
             Text(
-              'User Information',
+              AppLocalizations.of(context)!.userInformation,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            ListTile(title: const Text('Name'), subtitle: Text(user['name'])),
-            ListTile(title: const Text('Phone'), subtitle: Text(user['phone'])),
+            ListTile(
+              title: Text(AppLocalizations.of(context)!.labelName),
+              subtitle: Text(user['name']),
+            ),
+            ListTile(
+              title: Text(AppLocalizations.of(context)!.labelPhone),
+              subtitle: Text(user['phone']),
+            ),
             if (pharmacy != null) ...[
               const Divider(),
               Text(
-                'Pharmacy Documentation',
+                AppLocalizations.of(context)!.pharmacyDocumentation,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               ListTile(
-                title: const Text('Pharmacy Name'),
+                title: Text(AppLocalizations.of(context)!.labelPharmacyName),
                 subtitle: Text(pharmacy['name']),
               ),
               ListTile(
-                title: const Text('Owner Name'),
+                title: Text(AppLocalizations.of(context)!.labelOwnerName),
                 subtitle: Text(pharmacy['ownerName']),
               ),
               ListTile(
-                title: const Text('National ID'),
+                title: Text(AppLocalizations.of(context)!.labelNationalId),
                 subtitle: Text(pharmacy['nationalId']),
               ),
               ListTile(
-                title: const Text('Pharmacy Address'),
+                title: Text(AppLocalizations.of(context)!.labelPharmacyAddress),
                 subtitle: Text(pharmacy['address'] ?? 'N/A'),
               ),
-              _buildImageSection('Pharmacist Card', pharmacy['pharmacistCard']),
               _buildImageSection(
-                'Commercial Registry',
+                AppLocalizations.of(context)!.labelPharmacistCard,
+                pharmacy['pharmacistCard'],
+              ),
+              _buildImageSection(
+                AppLocalizations.of(context)!.labelCommercialRegistry,
                 pharmacy['commercialRegistry'],
               ),
-              _buildImageSection('Tax Card', pharmacy['taxCard']),
-              _buildImageSection('License', pharmacy['pharmacyLicense']),
+              _buildImageSection(
+                AppLocalizations.of(context)!.labelTaxCard,
+                pharmacy['taxCard'],
+              ),
+              _buildImageSection(
+                AppLocalizations.of(context)!.labelLicense,
+                pharmacy['pharmacyLicense'],
+              ),
             ],
             if (isWaiting) ...[
               const SizedBox(height: 24),
@@ -226,9 +247,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       onPressed: _isLoading
                           ? null
                           : () => _confirmAction(
-                              title: 'Reject Request',
-                              message:
-                                  'Are you sure you want to reject this user registration?',
+                              title: AppLocalizations.of(
+                                context,
+                              )!.dialogRejectRequest,
+                              message: AppLocalizations.of(
+                                context,
+                              )!.dialogRejectMessage,
                               onConfirm: () =>
                                   _reviewUser(user['_id'], 'rejected'),
                             ),
@@ -241,7 +265,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Reject'),
+                          : Text(AppLocalizations.of(context)!.actionReject),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -254,9 +278,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       onPressed: _isLoading
                           ? null
                           : () => _confirmAction(
-                              title: 'Approve User',
-                              message:
-                                  'Are you sure you want to approve this user and activate their account?',
+                              title: AppLocalizations.of(
+                                context,
+                              )!.dialogApproveUser,
+                              message: AppLocalizations.of(
+                                context,
+                              )!.dialogApproveMessage,
                               onConfirm: () =>
                                   _reviewUser(user['_id'], 'active'),
                             ),
@@ -269,7 +296,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Approve'),
+                          : Text(AppLocalizations.of(context)!.actionApprove),
                     ),
                   ),
                 ],
@@ -278,9 +305,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 12),
-              const Text(
-                'Management Actions',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Text(
+                AppLocalizations.of(context)!.managementActions,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -293,7 +323,9 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                             : Icons.block,
                       ),
                       label: Text(
-                        user['status'] == 'suspended' ? 'Activate' : 'Suspend',
+                        user['status'] == 'suspended'
+                            ? AppLocalizations.of(context)!.actionActivate
+                            : AppLocalizations.of(context)!.actionSuspend,
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: user['status'] == 'suspended'
@@ -304,10 +336,19 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                           ? null
                           : () => _confirmAction(
                               title: user['status'] == 'suspended'
-                                  ? 'Activate User'
-                                  : 'Suspend User',
-                              message:
-                                  'Are you sure you want to ${user['status'] == 'suspended' ? 'activate' : 'suspend'} this account?',
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.dialogActivateUser
+                                  : AppLocalizations.of(
+                                      context,
+                                    )!.dialogSuspendUser,
+                              message: user['status'] == 'suspended'
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.dialogActivateUserMessage
+                                  : AppLocalizations.of(
+                                      context,
+                                    )!.dialogSuspendUserMessage,
                               onConfirm: () =>
                                   _adminAction(user['_id'], 'suspend'),
                             ),
@@ -317,16 +358,21 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.password),
-                      label: const Text('Reset Pass'),
+                      label: Text(
+                        AppLocalizations.of(context)!.actionResetPass,
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                       ),
                       onPressed: _isLoading
                           ? null
                           : () => _confirmAction(
-                              title: 'Reset Password',
-                              message:
-                                  'Are you sure you want to reset this user\'s password to "00000000"?',
+                              title: AppLocalizations.of(
+                                context,
+                              )!.dialogResetPassword,
+                              message: AppLocalizations.of(
+                                context,
+                              )!.dialogResetPasswordMessage,
                               onConfirm: () =>
                                   _adminAction(user['_id'], 'reset-password'),
                             ),
@@ -354,16 +400,16 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.actionCancel),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirm();
             },
-            child: const Text(
-              'Confirm',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            child: Text(
+              AppLocalizations.of(context)!.actionConfirm,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -388,7 +434,11 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         if (mounted) Navigator.pop(context);
         _fetchUsers();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Action successful')),
+          SnackBar(
+            content: Text(
+              data['message'] ?? AppLocalizations.of(context)!.actionSuccessful,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -408,7 +458,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create Delivery Account'),
+        title: Text(AppLocalizations.of(context)!.dialogCreateDeliveryAccount),
         content: SingleChildScrollView(
           child: Form(
             key: formKey,
@@ -417,27 +467,42 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelName,
+                  ),
+                  validator: (v) => v == null || v.isEmpty
+                      ? AppLocalizations.of(context)!.errorRequired
+                      : null,
                 ),
                 TextFormField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelEmail,
+                  ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.isEmpty
+                      ? AppLocalizations.of(context)!.errorRequired
+                      : null,
                 ),
                 TextFormField(
                   controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'Phone'),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelPhone,
+                  ),
                   keyboardType: TextInputType.phone,
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.isEmpty
+                      ? AppLocalizations.of(context)!.errorRequired
+                      : null,
                 ),
                 TextFormField(
                   controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelPassword,
+                  ),
                   obscureText: true,
-                  validator: (v) =>
-                      v == null || v.length < 6 ? 'Min 6 chars' : null,
+                  validator: (v) => v == null || v.length < 6
+                      ? AppLocalizations.of(context)!.errorMin6Chars
+                      : null,
                 ),
               ],
             ),
@@ -446,7 +511,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.actionCancel),
           ),
           StatefulBuilder(
             builder: (context, setDialogState) => ElevatedButton(
@@ -480,9 +545,11 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                             Navigator.pop(context);
                             _fetchUsers();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Delivery user created and pending approval',
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.msgDeliveryUserCreated,
                                 ),
                               ),
                             );
@@ -490,7 +557,10 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  data['message'] ?? 'Failed to create user',
+                                  data['message'] ??
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.msgFailedCreateUser,
                                 ),
                               ),
                             );
@@ -558,15 +628,18 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                     child: Image.network(
                       fullUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(child: Text('Error loading image')),
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Text(
+                          AppLocalizations.of(context)!.errorLoadingImage,
+                        ),
+                      ),
                     ),
                   )
-                : const Center(
+                : Center(
                     child: Text(
-                      'No Image',
+                      AppLocalizations.of(context)!.noImage,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/notification_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../utils/ui_utils.dart';
 
 class ShortageFollowUpScreen extends StatefulWidget {
@@ -11,16 +12,25 @@ class ShortageFollowUpScreen extends StatefulWidget {
   State<ShortageFollowUpScreen> createState() => _ShortageFollowUpScreenState();
 }
 
-class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
+class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => Provider.of<ShortageProvider>(
-        context,
-        listen: false,
-      ).fetchActiveShortages(),
-    );
+    _tabController = TabController(length: 2, vsync: this);
+    Future.microtask(() {
+      final provider = Provider.of<ShortageProvider>(context, listen: false);
+      provider.fetchActiveShortages();
+      provider.fetchFulfilledShortages();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -32,10 +42,12 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              Provider.of<ShortageProvider>(
+              final provider = Provider.of<ShortageProvider>(
                 context,
                 listen: false,
-              ).fetchActiveShortages();
+              );
+              provider.fetchActiveShortages();
+              provider.fetchFulfilledShortages();
               Provider.of<NotificationProvider>(
                 context,
                 listen: false,
@@ -43,127 +55,237 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen> {
             },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabActive),
+            Tab(text: AppLocalizations.of(context)!.tabFulfilled),
+          ],
+        ),
       ),
-      body: Consumer<ShortageProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && provider.activeShortages.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildActiveList(), _buildFulfilledList()],
+      ),
+    );
+  }
 
-          if (provider.activeShortages.isEmpty) {
-            return const Center(child: Text('No active shortages'));
-          }
+  Widget _buildActiveList() {
+    return Consumer<ShortageProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.activeShortages.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await Future.wait([
-                provider.fetchActiveShortages(),
-                Provider.of<NotificationProvider>(
-                  context,
-                  listen: false,
-                ).fetchNotifications(),
-              ]);
-            },
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: provider.activeShortages.length,
-              itemBuilder: (context, index) {
-                final item = provider.activeShortages[index];
-                return Card(
-                  margin: const EdgeInsets.all(8.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['product']['name'] ?? 'Unknown Product',
+        if (provider.activeShortages.isEmpty) {
+          return const Center(child: Text('No active shortages'));
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchActiveShortages(),
+              provider.fetchFulfilledShortages(),
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: provider.activeShortages.length,
+            itemBuilder: (context, index) {
+              final item = provider.activeShortages[index];
+              return Card(
+                margin: const EdgeInsets.all(8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['product']?['name'] ?? 'Unknown Product',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                        child: Text(
+                          'Pharmacy: ${item['pharmacy']?['name']}',
                           style: const TextStyle(
+                            color: Colors.blue,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
                           ),
                         ),
-                        InkWell(
-                          onTap: () => UIUtils.showPharmacyInfo(
-                            context,
-                            item['pharmacy'],
-                          ),
-                          child: Text(
-                            'Pharmacy: ${item['pharmacy']['name']}',
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Text('Volume: ${item['volume']['name']}'),
-                        const SizedBox(height: 8),
-                        Text('Quantity Needed: ${item['quantity']}'),
-                        Text(
-                          'Remaining Quantity: ${item['remainingQuantity']}',
-                        ),
-
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                final int total = item['quantity'] ?? 0;
-                                final int remaining =
-                                    item['remainingQuantity'] ?? 0;
-                                if (total - remaining > 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Cannot delete shortage that has already been partially fulfilled.',
-                                      ),
+                      ),
+                      Text('Volume: ${item['volume']?['name']}'),
+                      const SizedBox(height: 8),
+                      Text('Quantity Needed: ${item['quantity']}'),
+                      Text('Remaining Quantity: ${item['remainingQuantity']}'),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              final int total = item['quantity'] ?? 0;
+                              final int remaining =
+                                  item['remainingQuantity'] ?? 0;
+                              if (total - remaining > 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cannot delete shortage that has already been partially fulfilled.',
                                     ),
-                                  );
-                                  return;
-                                }
-                                showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Confirm Delete'),
-                                    content: const Text(
-                                      'Are you sure you want to delete this shortage?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(ctx);
-                                          provider.deleteShortage(item['_id']);
-                                        },
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
                                   ),
                                 );
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                              child: const Text('Delete'),
+                                return;
+                              }
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Confirm Delete'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this shortage?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        provider.deleteShortage(item['_id']);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
-          );
-        },
-      ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFulfilledList() {
+    return Consumer<ShortageProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.fulfilledShortages.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (provider.fulfilledShortages.isEmpty) {
+          return const Center(child: Text('No fulfilled shortages'));
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchActiveShortages(),
+              provider.fetchFulfilledShortages(),
+              Provider.of<NotificationProvider>(
+                context,
+                listen: false,
+              ).fetchNotifications(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: provider.fulfilledShortages.length,
+            itemBuilder: (context, index) {
+              final item = provider.fulfilledShortages[index];
+              return Card(
+                margin: const EdgeInsets.all(8.0),
+                color: Colors.grey[100],
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item['product']?['name'] ?? 'Unknown Product',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                          const Chip(
+                            label: Text(
+                              'Fulfilled',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            backgroundColor: Colors.white,
+                            padding: EdgeInsets.zero,
+                            avatar: Icon(
+                              Icons.check_circle,
+                              color: Colors.blueGrey,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            UIUtils.showPharmacyInfo(context, item['pharmacy']),
+                        child: Text(
+                          'Pharmacy: ${item['pharmacy']?['name']}',
+                          style: const TextStyle(
+                            color: Colors.blueGrey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Text('Volume: ${item['volume']?['name']}'),
+                      const SizedBox(height: 8),
+                      Text('Quantity Fulfilled: ${item['quantity']}'),
+                      const Divider(),
+                      const Text(
+                        'This requirement is completed.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

@@ -21,7 +21,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchMarketItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMarketItems();
+    });
   }
 
   Future<void> _fetchMarketItems() async {
@@ -34,131 +36,281 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   void _addToCart(Map<String, dynamic> item) {
-    final key =
-        '${item['product']['_id']}_${item['volume']['_id']}_${item['price']}';
+    // Get all price options for this product/volume
+    final productId = item['product']['_id'];
+    final volumeId = item['volume']['_id'];
+
+    final excesses = Provider.of<ExcessProvider>(
+      context,
+      listen: false,
+    ).marketExcesses;
+    final priceOptions = excesses
+        .where(
+          (e) =>
+              e['product']['_id'] == productId &&
+              e['volume']['_id'] == volumeId,
+        )
+        .toList();
+
+    // Sort by price
+    priceOptions.sort(
+      (a, b) => (a['price'] as num).compareTo(b['price'] as num),
+    );
 
     showDialog(
       context: context,
       builder: (ctx) {
-        int quantity = _cart[key]?['quantity'] ?? 1;
-        final maxQty = item['totalQuantity'];
+        // Map to track quantities for each price: Map<price, quantity>
+        final Map<double, int> priceQuantities = {};
+
+        // Initialize with existing cart values
+        for (var option in priceOptions) {
+          final price = (option['price'] as num).toDouble();
+          final key = '${productId}_${volumeId}_$price';
+          priceQuantities[price] = _cart[key]?['quantity'] ?? 0;
+        }
 
         return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('Add to Cart'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['product']['name'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text('Volume: ${item['volume']['name']}'),
-                Text('Price: ${item['price']} coins'),
-                Text('Available: $maxQty units'),
-                const SizedBox(height: 16),
-                const Text(
-                  'Quantity:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: quantity > 0
-                          ? () => setState(() => quantity--)
-                          : null,
-                      icon: const Icon(Icons.remove_circle_outline),
+          builder: (context, setState) {
+            final totalQuantity = priceQuantities.values.fold(
+              0,
+              (sum, qty) => sum + qty,
+            );
+            final totalCost = priceQuantities.entries.fold(
+              0.0,
+              (sum, entry) => sum + (entry.key * entry.value),
+            );
+
+            return AlertDialog(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['product']['name'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    SizedBox(
-                      width: 100,
-                      child: TextField(
-                        controller: TextEditingController(text: '$quantity')
-                          ..selection = TextSelection.fromPosition(
-                            TextPosition(offset: '$quantity'.length),
-                          ),
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          final newQty = int.tryParse(value);
-                          if (newQty != null &&
-                              newQty >= 0 &&
-                              newQty <= maxQty) {
-                            setState(() => quantity = newQty);
-                          } else if (newQty != null && newQty > maxQty) {
-                            setState(() => quantity = maxQty);
-                          }
-                        },
+                  ),
+                  Text(
+                    item['volume']['name'],
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select quantities by price:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
-                    IconButton(
-                      onPressed: quantity < maxQty
-                          ? () => setState(() => quantity++)
-                          : null,
-                      icon: const Icon(Icons.add_circle_outline),
+                    const SizedBox(height: 12),
+                    ...priceOptions.map((option) {
+                      final price = (option['price'] as num).toDouble();
+                      final maxQty = option['totalQuantity'];
+                      final currentQty = priceQuantities[price] ?? 0;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '$price coins',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Available: $maxQty',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    onPressed: currentQty > 0
+                                        ? () => setState(
+                                            () => priceQuantities[price] =
+                                                currentQty - 1,
+                                          )
+                                        : null,
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 80,
+                                    child: TextField(
+                                      controller:
+                                          TextEditingController(
+                                              text: '$currentQty',
+                                            )
+                                            ..selection =
+                                                TextSelection.fromPosition(
+                                                  TextPosition(
+                                                    offset:
+                                                        '$currentQty'.length,
+                                                  ),
+                                                ),
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 8,
+                                            ),
+                                      ),
+                                      onChanged: (value) {
+                                        final newQty = int.tryParse(value);
+                                        if (newQty != null &&
+                                            newQty >= 0 &&
+                                            newQty <= maxQty) {
+                                          setState(
+                                            () =>
+                                                priceQuantities[price] = newQty,
+                                          );
+                                        } else if (newQty != null &&
+                                            newQty > maxQty) {
+                                          setState(
+                                            () =>
+                                                priceQuantities[price] = maxQty,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: currentQty < maxQty
+                                        ? () => setState(
+                                            () => priceQuantities[price] =
+                                                currentQty + 1,
+                                          )
+                                        : null,
+                                    icon: const Icon(Icons.add_circle_outline),
+                                  ),
+                                ],
+                              ),
+                              if (currentQty > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Subtotal: ${(price * currentQty).toStringAsFixed(2)} coins',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Quantity:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '$totalQuantity units',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Cost:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${totalCost.toStringAsFixed(2)} coins',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Text(
-                  'Max: $maxQty units',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Total: ${(quantity * item['price']).toStringAsFixed(2)} coins',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
+                ElevatedButton(
+                  onPressed: () {
+                    this.setState(() {
+                      // Update cart for each price option
+                      for (var option in priceOptions) {
+                        final price = (option['price'] as num).toDouble();
+                        final key = '${productId}_${volumeId}_$price';
+                        final qty = priceQuantities[price] ?? 0;
+
+                        if (qty == 0) {
+                          _cart.remove(key);
+                        } else {
+                          _cart[key] = {'item': option, 'quantity': qty};
+                        }
+                      }
+                    });
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          totalQuantity == 0
+                              ? 'Removed from cart'
+                              : 'Cart updated!',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Update Cart'),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  this.setState(() {
-                    if (quantity == 0) {
-                      _cart.remove(key);
-                    } else {
-                      _cart[key] = {'item': item, 'quantity': quantity};
-                    }
-                  });
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        quantity == 0 ? 'Removed from cart' : 'Added to cart!',
-                      ),
-                    ),
-                  );
-                },
-                child: Text(quantity == 0 ? 'Update Cart' : 'Add to Cart'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -377,9 +529,40 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget build(BuildContext context) {
     final excesses = Provider.of<ExcessProvider>(context).marketExcesses;
 
-    final filteredExcesses = _searchQuery.isEmpty
-        ? excesses
-        : excesses.where((item) {
+    // Group excesses by product/volume
+    final Map<String, Map<String, dynamic>> groupedItems = {};
+    for (var excess in excesses) {
+      final key = '${excess['product']['_id']}_${excess['volume']['_id']}';
+      final price = (excess['price'] as num).toDouble();
+
+      if (!groupedItems.containsKey(key)) {
+        // Store first occurrence with aggregated data
+        groupedItems[key] = {
+          'product': excess['product'],
+          'volume': excess['volume'],
+          'totalQuantity': excess['totalQuantity'],
+          'minPrice': price,
+          'maxPrice': price,
+          'priceCount': 1,
+        };
+      } else {
+        // Update aggregated data
+        groupedItems[key]!['totalQuantity'] += excess['totalQuantity'];
+        if (price < groupedItems[key]!['minPrice']) {
+          groupedItems[key]!['minPrice'] = price;
+        }
+        if (price > groupedItems[key]!['maxPrice']) {
+          groupedItems[key]!['maxPrice'] = price;
+        }
+        groupedItems[key]!['priceCount']++;
+      }
+    }
+
+    final groupedList = groupedItems.values.toList();
+
+    final filteredItems = _searchQuery.isEmpty
+        ? groupedList
+        : groupedList.where((item) {
             final productName = item['product']['name']
                 .toString()
                 .toLowerCase();
@@ -455,7 +638,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : filteredExcesses.isEmpty
+                : filteredItems.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -487,12 +670,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           mainAxisSpacing: 16,
                           childAspectRatio: 0.75,
                         ),
-                    itemCount: filteredExcesses.length,
+                    itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
-                      final item = filteredExcesses[index];
-                      final key =
-                          '${item['product']['_id']}_${item['volume']['_id']}_${item['price']}';
-                      final inCart = _cart.containsKey(key);
+                      final item = filteredItems[index];
+                      final productId = item['product']['_id'];
+                      final volumeId = item['volume']['_id'];
+
+                      // Check if any price option is in cart
+                      final inCart = _cart.keys.any(
+                        (key) => key.startsWith('${productId}_${volumeId}_'),
+                      );
+
+                      final minPrice = item['minPrice'];
+                      final maxPrice = item['maxPrice'];
+                      final priceCount = item['priceCount'];
 
                       return Card(
                         elevation: 4,
@@ -570,12 +761,30 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      '${item['price']} coins',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.blue,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            priceCount > 1
+                                                ? '$minPrice - $maxPrice'
+                                                : '$minPrice',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                          if (priceCount > 1)
+                                            Text(
+                                              '$priceCount prices',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                     Container(

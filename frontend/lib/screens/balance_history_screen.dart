@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/balance_history_provider.dart';
 import 'package:intl/intl.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class BalanceHistoryScreen extends StatefulWidget {
   final String? pharmacyId; // null for self
@@ -65,7 +66,9 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> item) {
-    final amount = item['amount'] ?? 0.0;
+    final amount = (item['amount'] is int)
+        ? (item['amount'] as int).toDouble()
+        : (item['amount'] as double? ?? 0.0);
     final isNegative = amount < 0;
     final date = DateTime.parse(item['createdAt']).toLocal();
     final formattedDate = DateFormat('MMM dd, yyyy HH:mm').format(date);
@@ -106,7 +109,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
             Text(formattedDate),
             const SizedBox(height: 4),
             Text(
-              'Balance: ${item['previousBalance'].toStringAsFixed(2)} → ${item['newBalance'].toStringAsFixed(2)}',
+              '${AppLocalizations.of(context)!.labelBalance}: ${item['previousBalance']?.toStringAsFixed(2)} → ${item['newBalance']?.toStringAsFixed(2)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
@@ -133,13 +136,20 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
         final details = item['details'] as Map<String, dynamic>? ?? {};
 
         return AlertDialog(
-          title: const Text('Entry Details'),
+          title: Text(
+            AppLocalizations.of(
+              context,
+            )!.ticketTitle(item['_id']?.toString().substring(0, 6) ?? '...'),
+          ),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _detailRow('Description', item['description']),
+                _detailRow(
+                  'Description',
+                  item['description'],
+                ), // Could localize 'Description' label if needed
                 _detailRow(
                   'Type',
                   item['type'].toString().replaceAll('_', ' ').toUpperCase(),
@@ -151,14 +161,17 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
                   ).format(DateTime.parse(item['createdAt']).toLocal()),
                 ),
                 const Divider(),
-                _detailRow('Amount', item['amount'].toStringAsFixed(2)),
                 _detailRow(
-                  'Prev Balance',
-                  item['previousBalance'].toStringAsFixed(2),
+                  AppLocalizations.of(context)!.amountLabel,
+                  item['amount']?.toStringAsFixed(2),
                 ),
                 _detailRow(
-                  'New Balance',
-                  item['newBalance'].toStringAsFixed(2),
+                  'Prev Balance', // Add key if strict
+                  item['previousBalance']?.toStringAsFixed(2),
+                ),
+                _detailRow(
+                  'New Balance', // Add key if strict
+                  item['newBalance']?.toStringAsFixed(2),
                 ),
                 if (details.isNotEmpty) ...[
                   const Divider(),
@@ -168,15 +181,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...details.entries.map(
-                    (e) => _detailRow(
-                      e.key
-                          .replaceAllMapped(
-                            RegExp(r'([a-z])([A-Z])'),
-                            (Match m) => '${m[1]} ${m[2]}',
-                          )
-                          .capitalize(),
-                      e.value.toString(),
-                    ),
+                    (e) => _detailRow(e.key.capitalize(), e.value.toString()),
                   ),
                 ],
               ],
@@ -185,7 +190,9 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(
+                AppLocalizations.of(context)!.actionDone,
+              ), // reusing Done or Close
             ),
           ],
         );

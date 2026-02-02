@@ -6,6 +6,7 @@ import 'registration_screen.dart';
 import 'onboarding_screen.dart';
 import 'delivery_dashboard_screen.dart';
 import '../providers/auth_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,7 +72,10 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Login failed'),
+            content: Text(
+              authProvider.errorMessage ??
+                  AppLocalizations.of(context)!.loginFailed,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -103,23 +107,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Welcome to MediSync',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context)!.welcomeToMediSync,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.emailLabel,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return AppLocalizations.of(context)!.emailRequiredError;
                       }
                       return null;
                     },
@@ -127,15 +135,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.passwordLabel,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return AppLocalizations.of(
+                          context,
+                        )!.passwordRequiredError;
                       }
                       return null;
                     },
@@ -157,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('Login'),
+                        : Text(AppLocalizations.of(context)!.loginButton),
                   ),
                   const SizedBox(height: 16),
                   TextButton(
@@ -169,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       );
                     },
-                    child: const Text("Don't have an account? Sign up"),
+                    child: Text(AppLocalizations.of(context)!.signUpPrompt),
                   ),
                 ],
               ),

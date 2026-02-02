@@ -140,6 +140,21 @@ exports.requestProfileUpdate = async (req, res) => {
     }
 };
 
+// @desc    Update user preferences (language, etc.)
+exports.updatePreferences = async (req, res) => {
+    try {
+        const { language } = req.body;
+        const user = await User.findById(req.user._id);
+        
+        if (language) user.language = language;
+        
+        await user.save();
+        res.status(200).json({ success: true, data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Change user password
 exports.changePassword = async (req, res) => {
     try {

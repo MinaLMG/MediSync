@@ -34,17 +34,7 @@ exports.updateShortage = async (req, res) => {
 // Delete shortage (Admin/Owner/Manager)
 exports.deleteShortage = async (req, res) => {
     try {
-        const shortage = await StockShortage.findById(req.params.id);
-        if (!shortage) return res.status(404).json({ success: false, message: 'Shortage not found' });
-
-        if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
-             return res.status(403).json({ success: false, message: 'Not authorized' });
-        }
-
-        const fulfilled = shortage.quantity - shortage.remainingQuantity;
-        if (fulfilled > 0) return res.status(400).json({ success: false, message: 'Cannot delete fulfilled shortage' });
-
-        await shortage.deleteOne();
+        await shortageService.deleteShortage(req.params.id, req.user.pharmacy, req);
         res.status(200).json({ success: true, message: 'Deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -102,6 +92,20 @@ exports.getGlobalActiveShortages = async (req, res) => {
         const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } }).select('product').populate('product', 'name');
         const productNames = [...new Set(shortages.map(s => s.product?.name).filter(Boolean))];
         res.status(200).json({ success: true, count: productNames.length, data: productNames });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get fulfilled shortages (Admin)
+exports.getFulfilledShortages = async (req, res) => {
+    try {
+        const shortages = await StockShortage.find({ remainingQuantity: 0 })
+            .populate('pharmacy', 'name address phone')
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .sort({ updatedAt: -1 });
+        res.status(200).json({ success: true, data: shortages });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

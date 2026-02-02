@@ -18,5 +18,7 @@ module.exports = {
     ReversalTicket: require('./ReversalTicket'),
     BalanceHistory: require('./BalanceHistory'),
     Counter: require('./Counter'),
-    Compensation: require('./Compensation')
+    Compensation: require('./Compensation'),
+    Reservation: require('./Reservation'),
+    Payment: require('./Payment')
 };

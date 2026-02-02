@@ -243,6 +243,42 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateLanguage(String languageCode) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.put(
+        Uri.parse('${Constants.baseUrl}/auth/preferences'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode({'language': languageCode}),
+      );
+
+      final data = json.decode(response.body);
+      _isLoading = false;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _currentUser = data['data'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(Constants.userDataKey, json.encode(_currentUser));
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to update language';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> changePassword(String oldPassword, String newPassword) async {
     _isLoading = true;
     _errorMessage = null;

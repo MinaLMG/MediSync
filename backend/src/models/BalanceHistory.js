@@ -8,7 +8,7 @@ const balanceHistorySchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['transaction_revenue', 'transaction_payment', 'expenses', 'manual', 'compensation'],
+        enum: ['transaction_revenue', 'transaction_payment', 'expenses', 'manual', 'compensation','deposit','withdrawal'],
         required: true
     },
     amount: {
@@ -29,7 +29,7 @@ const balanceHistorySchema = new mongoose.Schema({
     },
     relatedEntityType: {
         type: String,
-        enum: ['Transaction', 'ReversalTicket', 'Compensation']
+        enum: ['Transaction', 'ReversalTicket', 'Compensation','Payment']
     },
     description: {
         type: String,

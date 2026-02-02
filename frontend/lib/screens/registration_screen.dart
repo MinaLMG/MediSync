@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'onboarding_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -48,7 +49,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           SnackBar(
             content: Text(
               Provider.of<AuthProvider>(context, listen: false).errorMessage ??
-                  'Registration failed',
+                  AppLocalizations.of(context)!.registrationFailed,
             ),
             backgroundColor: Colors.red,
           ),
@@ -62,7 +63,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final isLoading = Provider.of<AuthProvider>(context).isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.createAccountTitle),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -81,37 +84,42 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.fullNameLabel,
+                    prefixIcon: const Icon(Icons.person),
+                    border: const OutlineInputBorder(),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                  validator: (v) => v!.isEmpty
+                      ? AppLocalizations.of(context)!.requiredError
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.emailLabel,
+                    prefixIcon: const Icon(Icons.email),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => v!.contains('@') ? null : 'Invalid email',
+                  validator: (v) => v!.contains('@')
+                      ? null
+                      : AppLocalizations.of(context)!.invalidEmailError,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.phoneLabel,
+                    prefixIcon: const Icon(Icons.phone),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.phone,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Required';
+                    if (v == null || v.isEmpty)
+                      return AppLocalizations.of(context)!.requiredError;
                     if (!RegExp(r'^01\d{9}$').hasMatch(v)) {
-                      return 'Invalid phone number (11 digits starting with 01)';
+                      return AppLocalizations.of(context)!.invalidPhoneError;
                     }
                     return null;
                   },
@@ -119,14 +127,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.passwordLabel,
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
                   ),
                   obscureText: true,
-                  validator: (v) =>
-                      v!.length < 8 ? 'Too short (min 8 chars)' : null,
+                  validator: (v) => v!.length < 8
+                      ? AppLocalizations.of(context)!.passwordMinLengthError
+                      : null,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
@@ -145,7 +154,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Sign Up'),
+                      : Text(AppLocalizations.of(context)!.signUpButton),
                 ),
                 const SizedBox(height: 16),
               ],

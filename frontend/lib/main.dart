@@ -12,19 +12,23 @@ import 'providers/app_suggestion_provider.dart';
 import 'providers/delivery_request_provider.dart';
 import 'providers/balance_history_provider.dart';
 import 'providers/requests_history_provider.dart';
+import 'providers/payment_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadLocale()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ExcessProvider()),
         ChangeNotifierProvider(create: (_) => AppSuggestionProvider()),
         ChangeNotifierProvider(create: (_) => DeliveryRequestProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ShortageProvider>(
           create: (context) => ShortageProvider(
             Provider.of<AuthProvider>(context, listen: false),
@@ -66,9 +70,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return MaterialApp(
       title: 'MediSync',
       debugShowCheckedModeBanner: false,
+      locale: settingsProvider.locale,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('ar'), // Arabic
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

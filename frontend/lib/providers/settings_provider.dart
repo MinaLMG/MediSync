@@ -13,6 +13,26 @@ class SettingsProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  Locale _locale = const Locale('en'); // Default to English
+  Locale get locale => _locale;
+
+  Future<void> loadLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? languageCode = prefs.getString('language_code');
+    if (languageCode != null) {
+      _locale = Locale(languageCode);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    if (_locale == locale) return;
+    _locale = locale;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language_code', locale.languageCode);
+  }
+
   double get minCommission =>
       (_settings?['minimumCommission'] ?? 10.0).toDouble();
   double get minimumCommission => minCommission;

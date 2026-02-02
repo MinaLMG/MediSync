@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'pharmacy_form_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -25,7 +26,7 @@ class OnboardingScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Onboarding'),
+        title: Text(AppLocalizations.of(context)!.onboardingTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -58,15 +59,15 @@ class OnboardingScreen extends StatelessWidget {
       children: [
         const Icon(Icons.local_pharmacy_outlined, size: 80, color: Colors.blue),
         const SizedBox(height: 24),
-        const Text(
-          'Welcome to MediSync!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context)!.welcomeMessage,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
-        const Text(
-          'To start using the platform, you need to link your pharmacy and provide documentation.',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+        Text(
+          AppLocalizations.of(context)!.linkPharmacyInstructions,
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 40),
@@ -80,7 +81,7 @@ class OnboardingScreen extends StatelessWidget {
             );
           },
           icon: const Icon(Icons.add),
-          label: const Text('Adding New Pharmacy'),
+          label: Text(AppLocalizations.of(context)!.addNewPharmacyButton),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             backgroundColor: Colors.blue[800],
@@ -97,15 +98,15 @@ class OnboardingScreen extends StatelessWidget {
       children: [
         const Icon(Icons.hourglass_empty, size: 80, color: Colors.orange),
         const SizedBox(height: 24),
-        const Text(
-          'Awaiting Approval',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context)!.awaitingApprovalTitle,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Your documents have been submitted and are currently being reviewed by the admin. We will notify you once your account is active.',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+        Text(
+          AppLocalizations.of(context)!.awaitingApprovalMessage,
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 40),
@@ -115,7 +116,7 @@ class OnboardingScreen extends StatelessWidget {
           onPressed: () {
             Provider.of<AuthProvider>(context, listen: false).refreshProfile();
           },
-          child: const Text('Check Status Now'),
+          child: Text(AppLocalizations.of(context)!.checkStatusButton),
         ),
       ],
     );

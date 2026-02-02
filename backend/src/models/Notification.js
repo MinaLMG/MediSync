@@ -27,7 +27,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedEntityType: {
         type: String,
-        enum: ['Transaction', 'StockShortage', 'StockExcess', 'Review', 'User', 'Pharmacy', 'Product', 'ProductSuggestion', 'Compensation']
+        enum: ['Transaction', 'StockShortage', 'StockExcess', 'Review', 'User', 'Pharmacy', 'Product', 'ProductSuggestion', 'Compensation','Payment']
     },
     actionUrl: {
         type: String,

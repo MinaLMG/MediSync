@@ -94,19 +94,53 @@ exports.getMyExcesses = async (req, res) => {
 exports.getMarketExcesses = async (req, res) => {
     try {
         const mongoose = require('mongoose');
-        const { product, volume } = req.query;
+        const { product, volume, excludeShortageFulfillment } = req.query;
         let matchStage = { remainingQuantity: { $gt: 0 }, status: { $in: ['available', 'partially_fulfilled'] } };
+        if (excludeShortageFulfillment === 'true') {
+            matchStage.shortage_fulfillment = { $ne: true };
+        }
         if (product) matchStage.product = new mongoose.Types.ObjectId(product);
         if (volume) matchStage.volume = new mongoose.Types.ObjectId(volume);
         if (req.user.pharmacy) matchStage.pharmacy = { $ne: new mongoose.Types.ObjectId(req.user.pharmacy) };
         const aggregated = await StockExcess.aggregate([
             { $match: matchStage },
             { $group: { _id: { product: "$product", volume: "$volume", price: "$selectedPrice" }, totalQuantity: { $sum: "$remainingQuantity" } } },
+            // Look up reservations for this product/volume/price
+            {
+                $lookup: {
+                    from: "reservations",
+                    let: { prod: "$_id.product", vol: "$_id.volume", pri: "$_id.price" },
+                    pipeline: [
+                         { $match: {
+                             $expr: {
+                                 $and: [
+                                     { $eq: ["$product", "$$prod"] },
+                                     { $eq: ["$volume", "$$vol"] },
+                                     { $eq: ["$price", "$$pri"] },
+                                  ]
+                             }
+                         }},
+                         { $group: { _id: null, reservedTotal: { $sum: "$quantity" } } }
+                    ],
+                    as: "reservationInfo"
+                }
+            },
+            {
+                $addFields: {
+                    reservedQty: { $ifNull: [{ $arrayElemAt: ["$reservationInfo.reservedTotal", 0] }, 0] }
+                }
+            },
+            {
+                $addFields: {
+                    availableQuantity: { $subtract: ["$totalQuantity", "$reservedQty"] }
+                }
+            },
+            { $match: { availableQuantity: { $gt: 0 } } }, // Hide if fully reserved
             { $lookup: { from: "products", localField: "_id.product", foreignField: "_id", as: "productDetails" } },
             { $unwind: "$productDetails" },
             { $lookup: { from: "volumes", localField: "_id.volume", foreignField: "_id", as: "volumeDetails" } },
             { $unwind: "$volumeDetails" },
-            { $project: { _id: 0, product: { _id: "$_id.product", name: "$productDetails.name" }, volume: { _id: "$_id.volume", name: "$volumeDetails.name" }, price: "$_id.price", totalQuantity: 1 } },
+            { $project: { _id: 0, product: { _id: "$_id.product", name: "$productDetails.name" }, volume: { _id: "$_id.volume", name: "$volumeDetails.name" }, price: "$_id.price", totalQuantity: "$availableQuantity" } },
             { $sort: { "product.name": 1, price: 1 } }
         ]);
         res.status(200).json({ success: true, data: aggregated });
@@ -124,6 +158,20 @@ exports.getAvailableExcesses = async (req, res) => {
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, data: excesses });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getFulfilledExcesses = async (req, res) => {
+    try {
+        const excesses = await StockExcess.find({ status: 'fulfilled' })
+            .populate('pharmacy', 'name address phone')
+            .populate('product', 'name')
+            .populate('volume', 'name')
+            .sort({ updatedAt: -1 });
 
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {

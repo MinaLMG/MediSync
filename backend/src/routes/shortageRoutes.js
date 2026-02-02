@@ -9,7 +9,8 @@ const {
     deleteShortage,
     getGlobalActiveShortages,
     createOrder,
-    getOrders
+    getOrders,
+    getFulfilledShortages
 } = require('../controllers/shortageController');
 
 const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
@@ -23,6 +24,7 @@ router.get('/my', protect, authorize('pharmacy_owner', 'manager'), getLimiter, g
 // Admin Routes
 router.get('/orders', protect, authorize('admin'), getLimiter, getOrders);
 router.get('/active', protect, authorize('admin'), getLimiter, getActiveShortages);
+router.get('/fulfilled', protect, authorize('admin'), getLimiter, getFulfilledShortages);
 router.get('/global-active', protect, getLimiter, getGlobalActiveShortages);
 router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, deleteShortage);
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/settings_provider.dart';
 import 'login_screen.dart';
 import 'account_details_screen.dart';
 import 'help_screen.dart';
@@ -60,6 +61,46 @@ class ProfileScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
+
+            // Language Selector
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 2,
+                child: Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    return ListTile(
+                      leading: const Icon(Icons.language, color: Colors.blue),
+                      title: const Text('App Language / اللغة'),
+                      trailing: DropdownButton<String>(
+                        value: settings.locale.languageCode,
+                        underline: const SizedBox(),
+                        icon: const Icon(Icons.arrow_drop_down),
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            settings.setLocale(Locale(newValue));
+                            // Also update backend preference if logged in
+                            final auth = Provider.of<AuthProvider>(
+                              context,
+                              listen: false,
+                            );
+                            if (auth.isAuthenticated) {
+                              auth.updateLanguage(newValue);
+                            }
+                          }
+                        },
+                        items: const [
+                          DropdownMenuItem(value: 'en', child: Text('English')),
+                          DropdownMenuItem(value: 'ar', child: Text('العربية')),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
 
             // Menu Items
             _buildMenuItem(

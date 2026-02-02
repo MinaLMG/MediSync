@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminProductListScreen extends StatefulWidget {
   const AdminProductListScreen({super.key});
@@ -61,13 +62,17 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
         builder: (context, setState) {
           final provider = Provider.of<ProductProvider>(context);
           return AlertDialog(
-            title: const Text('Manage Prices'),
+            title: Text(AppLocalizations.of(context)!.managePricesTitle),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ...currentPrices.asMap().entries.map(
                   (entry) => ListTile(
-                    title: Text('${entry.value} coins'),
+                    title: Text(
+                      AppLocalizations.of(
+                        context,
+                      )!.priceCoins(entry.value.toString()),
+                    ),
                     trailing: IconButton(
                       icon: provider.isLoading
                           ? const SizedBox(
@@ -101,18 +106,24 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                     final double? newPrice = await showDialog<double>(
                       context: context,
                       builder: (c) => AlertDialog(
-                        title: const Text('Add Price'),
+                        title: Text(
+                          AppLocalizations.of(context)!.dialogAddPrice,
+                        ),
                         content: TextField(
                           controller: priceController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Customer Price',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.labelCustomerPrice,
                           ),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(c),
-                            child: const Text('Cancel'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionCancel,
+                            ),
                           ),
                           StatefulBuilder(
                             builder: (context, setDialogState) {
@@ -133,7 +144,9 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : const Text('Add'),
+                                    : Text(
+                                        AppLocalizations.of(context)!.actionAdd,
+                                      ),
                               );
                             },
                           ),
@@ -153,14 +166,14 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                     }
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Add New Price'),
+                  label: Text(AppLocalizations.of(context)!.actionAddNewPrice),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Done'),
+                child: Text(AppLocalizations.of(context)!.actionDone),
               ),
             ],
           );
@@ -178,20 +191,22 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
         builder: (context, setDialogState) {
           final provider = Provider.of<ProductProvider>(context);
           return AlertDialog(
-            title: const Text('Edit Product Info'),
+            title: Text(AppLocalizations.of(context)!.dialogEditProductInfo),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Product Name'),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelProductName,
+                  ),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context)!.actionCancel),
               ),
               ElevatedButton(
                 onPressed: provider.isLoading
@@ -212,7 +227,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Update'),
+                    : Text(AppLocalizations.of(context)!.actionUpdate),
               ),
             ],
           );
@@ -229,7 +244,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Products'),
+        title: Text(AppLocalizations.of(context)!.manageProductsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -242,10 +257,10 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.searchProductsHint,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
               onChanged: _onSearchChanged,
             ),
@@ -265,7 +280,11 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                       ? const CircularProgressIndicator()
                                       : ElevatedButton(
                                           onPressed: _fetchMoreProducts,
-                                          child: const Text('Load More'),
+                                          child: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.actionLoadMore,
+                                          ),
                                         ),
                                 ),
                               )
@@ -303,7 +322,14 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                 ),
                               ),
                               child: Text(
-                                (p['status'] ?? 'active').toUpperCase(),
+                                (p['status'] == 'active'
+                                        ? AppLocalizations.of(
+                                            context,
+                                          )!.statusActive
+                                        : AppLocalizations.of(
+                                            context,
+                                          )!.statusInactive)
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   color: p['status'] == 'active'
                                       ? Colors.green
@@ -332,8 +358,12 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                           : Colors.green,
                                     ),
                               tooltip: p['status'] == 'active'
-                                  ? 'Deactivate'
-                                  : 'Activate',
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.tooltipDeactivate
+                                  : AppLocalizations.of(
+                                      context,
+                                    )!.tooltipActivate,
                               onPressed: provider.isLoading
                                   ? null
                                   : () =>
@@ -350,7 +380,9 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                           ],
                         ),
                         subtitle: Text(
-                          'Price: ${p['volumes'][0]['prices'].isEmpty ? "No prices set" : p['volumes'][0]['prices'].join(", ")} coins',
+                          p['volumes'][0]['prices'].isEmpty
+                              ? AppLocalizations.of(context)!.noPricesSet
+                              : '${p['volumes'][0]['prices'].join(", ")} ${AppLocalizations.of(context)!.coinsSuffix}',
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.edit_note, color: Colors.blue),
