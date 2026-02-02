@@ -11,29 +11,18 @@ exports.getAllProducts = async (req, res) => {
         const search = req.query.search || '';
 
         let matchQuery = {};
-        if (req.user.role !== 'admin') {
-            matchQuery.status = 'active';
-        }
+        if (req.user.role !== 'admin') matchQuery.status = 'active';
 
         if (search) {
-            // Use $text search if possible, or a safer regex for simple prefix matching
-            // Given the text index already exists on 'name' and 'description'
-            matchQuery.$text = { $search: search };
+            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+            matchQuery.name = { $regex: escapedSearch, $options: 'i' };
         }
 
-        // Use aggregation for efficiency
-        const productsCount = search 
-            ? await Product.countDocuments({ $text: { $search: search }, ...(req.user.role !== 'admin' ? { status: 'active' } : {}) })
-            : await Product.countDocuments(matchQuery);
-        
+        const productsCount = await Product.countDocuments(matchQuery);
+
         const products = await Product.aggregate([
             { $match: matchQuery },
-            { 
-                $addFields: { 
-                    score: { $meta: "textScore" } 
-                } 
-            },
-            { $sort: search ? { score: { $meta: "textScore" } } : { name: 1 } },
+            { $sort: { name: 1 } },
             { $skip: skip },
             { $limit: limit },
             {
@@ -41,71 +30,40 @@ exports.getAllProducts = async (req, res) => {
                     from: 'hasvolumes',
                     localField: '_id',
                     foreignField: 'product',
-                    as: 'hasVolumes'
+                    as: 'volumes'
                 }
             },
             {
                 $lookup: {
                     from: 'volumes',
-                    localField: 'hasVolumes.volume',
+                    localField: 'volumes.volume',
                     foreignField: '_id',
                     as: 'volumeDetails'
-                }
-            },
-            {
-                $project: {
-                    name: 1,
-                    status: 1,
-                    conversions: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    volumes: {
-                        $map: {
-                            input: '$hasVolumes',
-                            as: 'hv',
-                            in: {
-                                hasVolumeId: { $toString: '$$hv._id' },
-                                volumeId: { $toString: '$$hv.volume' },
-                                value: '$$hv.value',
-                                prices: '$$hv.prices',
-                                volumeName: {
-                                    $arrayElemAt: [
-                                        {
-                                            $filter: {
-                                                input: '$volumeDetails',
-                                                as: 'v',
-                                                cond: { $eq: [{ $toString: '$$v._id' }, { $toString: '$$hv.volume' }] }
-                                            }
-                                        },
-                                        0
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    volumes: {
-                        $map: {
-                            input: '$volumes',
-                            as: 'v',
-                            in: {
-                                $mergeObjects: [
-                                    '$$v',
-                                    { volumeName: { $ifNull: ['$$v.volumeName.name', 'Unknown Volume'] } }
-                                ]
-                            }
-                        }
-                    }
                 }
             }
         ]);
 
+        // Post-process to merge volume names (simpler than complex aggregation)
+        const formattedProducts = products.map(p => ({
+            ...p,
+            volumes: p.volumes.map(v => {
+                const volDetail = p.volumeDetails.find(vd => vd._id.toString() === v.volume.toString());
+                return {
+                    hasVolumeId: v._id.toString(),
+                    volumeId: v.volume.toString(),
+                    value: v.value,
+                    prices: v.prices,
+                    volumeName: volDetail ? volDetail.name : 'Unknown Volume'
+                };
+            })
+        }));
+
+        // Clean up temporary fields
+        formattedProducts.forEach(p => delete p.volumeDetails);
+
         res.status(200).json({ 
             success: true, 
-            data: products,
+            data: formattedProducts,
             pagination: {
                 total: productsCount,
                 page,

@@ -10,12 +10,13 @@ router.use(protect);
 // Basic product listing
 router.get('/', getLimiter, productController.getAllProducts);
 router.get('/lite', getLimiter, productController.getProductsLite);
-router.get('/:id', getLimiter, productController.getProductById);
 
 // Suggestions
 router.post('/suggest', authorize('pharmacy_owner', 'pharmacy_staff'), strictLimiter, productController.suggestProduct);
 router.get('/suggestions', getLimiter, productController.getSuggestions);
 router.put('/suggestions/:id', authorize('admin'), strictLimiter, productController.updateSuggestionStatus);
+
+router.get('/:id', getLimiter, productController.getProductById);
 
 // Admin Direct CRUD
 router.post('/', authorize('admin'), strictLimiter, productController.createProduct);

@@ -2,3 +2,4 @@ models.txt
 data.docx
 backend/src/db/products_full_simple.json
 backend/src/db/products.json
+backend/src/db/seed_production.js
