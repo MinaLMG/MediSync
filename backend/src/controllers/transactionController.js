@@ -260,7 +260,8 @@ exports.createTransaction = async (req, res) => {
                     {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction'
-                    }
+                    },
+                    `المعاملة #${serial}: معاملة جديدة تم إنشاؤها لـ "${product?.name || 'دواء غير معروف'}".`
                 );
             }
 
@@ -279,7 +280,8 @@ exports.createTransaction = async (req, res) => {
                             {
                                 relatedEntity: transaction._id,
                                 relatedEntityType: 'Transaction'
-                            }
+                            },
+                            `المعاملة #${serial}: طلب جديد لـ "${product?.name}"`
                         );
                     }
                 }
@@ -387,7 +389,8 @@ exports.buyFromMarket = async (req, res) => {
                 req.user._id.toString(),
                 'transaction',
                 `Market Order #${serial}: Purchase of ${quantity} x ${excess.product.name} initiated.`,
-                { relatedEntity: transaction._id, relatedEntityType: 'Transaction' }
+                { relatedEntity: transaction._id, relatedEntityType: 'Transaction' },
+                `طلب سوق #${serial}: بدء عملية شراء ${quantity} × ${excess.product.name}.`
             );
 
             // Notify Seller
@@ -396,7 +399,8 @@ exports.buyFromMarket = async (req, res) => {
                     seller._id.toString(),
                     'transaction',
                     `Market Order #${serial}: New purchase request for ${excess.product.name} from market.`,
-                    { relatedEntity: transaction._id, relatedEntityType: 'Transaction' }
+                    { relatedEntity: transaction._id, relatedEntityType: 'Transaction' },
+                    `طلب سوق #${serial}: طلب شراء جديد لـ ${excess.product.name} من السوق.`
                 );
             }
         } catch (notifErr) {
@@ -556,7 +560,8 @@ exports.unassignTransaction = async (req, res) => {
                     {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction'
-                    }
+                    },
+                    `تم فصلك عن المعاملة #${transaction._id.toString().slice(-6)}.`
                 );
             } catch (notifErr) {
                 console.error('Notification error in unassignTransaction:', notifErr);
@@ -720,6 +725,7 @@ exports.revertTransaction = async (req, res) => {
                 relatedEntity: transaction._id,
                 relatedEntityType: 'Transaction',
                 description: `Reversal of payment for transaction #${transaction.serial}`,
+                description_ar: `عكس عملية الدفع للمعاملة #${transaction.serial}`,
                 details: { type: 'reversal' }
             }], { session });
 
@@ -750,6 +756,7 @@ exports.revertTransaction = async (req, res) => {
                     relatedEntity: transaction._id,
                     relatedEntityType: 'Transaction',
                     description: `Reversal of revenue for transaction #${transaction.serial}`,
+                    description_ar: `عكس عملية التحصيل للمعاملة #${transaction.serial}`,
                     details: { type: 'reversal' }
                 }], { session });
 
@@ -799,6 +806,7 @@ exports.revertTransaction = async (req, res) => {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction',
                         description: `Expense ticket for transaction #${transaction.serial}`,
+                        description_ar: `تذكرة مصروفات للمعاملة #${transaction.serial}`,
                         details: { type: 'expenses' }
                     }], { session });
 
@@ -927,6 +935,7 @@ exports.updateReversalTicket = async (req, res) => {
                         relatedEntity: ticket.transaction,
                         relatedEntityType: 'Transaction',
                         description: `Adjusted expense for transaction #${ticket.transaction.toString().slice(-6)}`,
+                        description_ar: `تم تعديل تكاليف المعاملة #${ticket.transaction.toString().slice(-6)}`,
                         details: { type: 'expense_adjustment' }
                     }], { session });
 

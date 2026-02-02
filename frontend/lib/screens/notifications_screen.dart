@@ -107,7 +107,10 @@ class NotificationsScreen extends StatelessWidget {
                     ),
                   ),
                   title: Text(
-                    notification['message'],
+                    (Localizations.localeOf(context).languageCode == 'ar' &&
+                            notification['message_ar'] != null)
+                        ? notification['message_ar']
+                        : notification['message'],
                     style: TextStyle(
                       fontWeight: isSeen ? FontWeight.normal : FontWeight.bold,
                     ),

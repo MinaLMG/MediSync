@@ -1606,135 +1606,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get labelCommissionRatios => 'Commission Ratios (%)';
-
-  @override
-  String get labelMinComm => 'Minimum Commission (%)';
-
-  @override
-  String get helperMinComm => 'Default commission for real excess rebalance.';
-
-  @override
-  String get labelShortageComm => 'Shortage Commission (%)';
-
-  @override
-  String get helperShortageComm =>
-      'Default commission for shortage fulfillment.';
-
-  @override
-  String get labelShortageSellerRewardField => 'Shortage Seller Reward (%)';
-
-  @override
-  String get helperShortageSellerReward =>
-      'Default reward for shortage fulfillment provider.';
-
-  @override
-  String get msgSettingsUpdated => 'Settings updated successfully';
-
-  @override
-  String get msgFailedUpdateSettings => 'Failed to update settings';
-
-  @override
-  String get msgPleaseEnterValue => 'Please enter a value';
-
-  @override
-  String get msgEnterNumberBetween0And20 => 'Enter a number between 0 and 20';
-
-  @override
-  String get msgEnterPositiveNumber => 'Enter a positive number';
-
-  @override
-  String get titleFeedbackComplaints => 'Feedback & Complaints';
-
-  @override
-  String get msgNoSuggestionsFound => 'No suggestions found.';
-
-  @override
-  String get labelUnknownPharmacy => 'Unknown Pharmacy';
-
-  @override
-  String labelUserPrefix(String name) {
-    return 'User: $name';
-  }
-
-  @override
-  String labelFromPrefix(String name) {
-    return 'From: $name';
-  }
-
-  @override
-  String get titleFeedbackDetails => 'Feedback Details';
-
-  @override
-  String get msgNoContentProvided => 'No content provided';
-
-  @override
-  String get titleProductSuggestions => 'New Product Suggestions';
-
-  @override
-  String titleSuggestionAction(String status) {
-    return '$status Suggestion';
-  }
-
-  @override
-  String msgConfirmSuggestionAction(String status) {
-    return 'Are you sure you want to $status this suggestion?';
-  }
-
-  @override
-  String get labelReviewerNotesOptional => 'Reviewer Notes (Optional)';
-
-  @override
-  String get labelProposedPrice => 'Proposed Price';
-
-  @override
-  String get labelSuggestedBy => 'Suggested By';
-
-  @override
-  String labelReviewerNotes(String notes) {
-    return 'Reviewer Notes: $notes';
-  }
-
-  @override
-  String get hintSearchSuggestions => 'Search suggestions (* for wildcard)...';
-
-  @override
-  String titleBuyProduct(String name, String volume) {
-    return 'Buy $name ($volume)';
-  }
-
-  @override
-  String labelTotalCoins(String amount) {
-    return 'Total: $amount coins';
-  }
-
-  @override
-  String get titleExcessFollowUp => 'Follow-up Excesses';
-
-  @override
-  String get msgNoFulfilledExcesses => 'No fulfilled excesses';
-
-  @override
-  String get msgNoPendingExcesses => 'No pending excesses';
-
-  @override
-  String get msgNoAvailableExcesses => 'No available excesses';
-
-  @override
-  String get msgActionCompletedLocked => 'This action is completed and locked.';
-
-  @override
-  String get msgCannotDeleteTakenExcess =>
-      'Cannot delete excess where stock has already been taken.';
-
-  @override
-  String get labelConfirmDelete => 'Confirm Delete';
-
-  @override
-  String get msgConfirmDeleteExcess =>
-      'Are you sure you want to delete this excess?';
-
-  @override
   String get msgConfirmDeleteExcessAvailable =>
       'Are you sure you want to delete this available excess?';
 
@@ -1755,5 +1626,305 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelNewPrice => 'New Price';
 
   @override
+  String get priceLabel => 'Price';
+
+  @override
+  String get quantityLabel => 'Quantity';
+
+  @override
+  String get expiryLabel => 'Expiry';
+
+  @override
   String get labelOff => 'Off';
+
+  @override
+  String get titleConfirmDelete => 'Confirm Delete';
+
+  @override
+  String get msgConfirmReversePayment =>
+      'Are you sure? This will REVERSE the payment.';
+
+  @override
+  String get actionRecord => 'Record';
+
+  @override
+  String get msgPaymentDeleted => 'Payment deleted and reversed';
+
+  @override
+  String get titleFollowUpTransactions => 'Follow-up Transactions';
+
+  @override
+  String get labelAll => 'All';
+
+  @override
+  String labelBuyer(Object name) {
+    return 'Buyer: $name';
+  }
+
+  @override
+  String labelSeller(Object name) {
+    return 'Seller: $name';
+  }
+
+  @override
+  String get labelSellers => 'Sellers:';
+
+  @override
+  String labelTotalQty(Object count) {
+    return 'Total Qty: $count';
+  }
+
+  @override
+  String labelTotalValue(Object amount) {
+    return 'Total Value: $amount coins';
+  }
+
+  @override
+  String labelDelivery(Object name) {
+    return 'Delivery: $name';
+  }
+
+  @override
+  String get dialogConfirmAccept => 'Confirm Accept';
+
+  @override
+  String get msgConfirmAcceptTransaction =>
+      'Are you sure you want to accept this transaction?';
+
+  @override
+  String get actionAccept => 'Accept';
+
+  @override
+  String get actionYesAccept => 'Yes, Accept';
+
+  @override
+  String get dialogConfirmComplete => 'Confirm Complete';
+
+  @override
+  String get msgConfirmCompleteTransaction =>
+      'Are you sure you want to mark this transaction as completed?';
+
+  @override
+  String get actionComplete => 'Complete';
+
+  @override
+  String get actionYesComplete => 'Yes, Complete';
+
+  @override
+  String get dialogConfirmCancel => 'Confirm Cancel';
+
+  @override
+  String get msgConfirmCancelTransaction =>
+      'Are you sure you want to cancel this transaction? All quantities will be returned to their respective pharmacies.';
+
+  @override
+  String get actionYesCancel => 'Yes, Cancel';
+
+  @override
+  String get labelEdit => 'Edit';
+
+  @override
+  String get labelEditRatios => 'Edit Ratios';
+
+  @override
+  String get dialogDetachDelivery => 'Detach Delivery';
+
+  @override
+  String get msgDetachDelivery =>
+      'This will remove the assigned delivery person. The transaction will become available for assignment again.';
+
+  @override
+  String get actionDetach => 'Detach';
+
+  @override
+  String get msgDeliveryDetached => 'Delivery person detached';
+
+  @override
+  String get actionRevertTransaction => 'Revert Transaction';
+
+  @override
+  String get actionViewEditTicket => 'View/Edit Ticket';
+
+  @override
+  String labelRefundStatus(Object status) {
+    return 'Status updated to $status';
+  }
+
+  @override
+  String labelRef(Object ref) {
+    return 'Ref: $ref';
+  }
+
+  @override
+  String get labelBuyerCommPercentage => 'Buyer Commission % (Sh. Fulfill)';
+
+  @override
+  String get labelSellerRewardPercentage => 'Seller Reward % (Sh. Fulfill)';
+
+  @override
+  String get labelDescriptionReason => 'Description / Reason';
+
+  @override
+  String get actionUpdateTicket => 'Update Ticket';
+
+  @override
+  String get actionConfirmReversion => 'Confirm Reversion';
+
+  @override
+  String get titleReversalExpenses => 'Revert Transaction & Expenses';
+
+  @override
+  String get titleEditReversalTicket => 'Edit Reversal Ticket';
+
+  @override
+  String get labelAutomaticReversalSummary => 'AUTOMATIC REVERSAL SUMMARY:';
+
+  @override
+  String get labelInvolvedParties =>
+      'INVOLVED PARTIES (Select to Add Expense):';
+
+  @override
+  String get labelAddExpense => 'Add Expense';
+
+  @override
+  String get labelAmountEgp => 'Amount (EGP):';
+
+  @override
+  String get actionNo => 'No';
+
+  @override
+  String get actionYes => 'Yes';
+
+  @override
+  String get msgNoData => 'No data found.';
+
+  @override
+  String get titleProductSuggestions => 'Product Suggestions';
+
+  @override
+  String get hintSearchSuggestions => 'Search suggestions...';
+
+  @override
+  String get msgNoSuggestionsFound => 'No product suggestions found.';
+
+  @override
+  String get labelProposedPrice => 'Proposed Price';
+
+  @override
+  String get labelSuggestedBy => 'Suggested By';
+
+  @override
+  String labelReviewerNotes(String notes) {
+    return 'Reviewer Notes: $notes';
+  }
+
+  @override
+  String get msgSettingsUpdated => 'Settings updated successfully!';
+
+  @override
+  String get msgFailedUpdateSettings => 'Failed to update settings.';
+
+  @override
+  String get labelCommissionRatios => 'Commission Ratios';
+
+  @override
+  String get labelMinComm => 'Minimum Commission (%)';
+
+  @override
+  String get helperMinComm => 'Minimum percentage deducted from transactions';
+
+  @override
+  String get msgPleaseEnterValue => 'Please enter a value';
+
+  @override
+  String get msgEnterNumberBetween0And20 =>
+      'Please enter a number between 0 and 20';
+
+  @override
+  String get labelShortageComm => 'Shortage Commission (Coins)';
+
+  @override
+  String get helperShortageComm =>
+      'Coins deducted per unit for shortage fulfillment';
+
+  @override
+  String get msgEnterPositiveNumber => 'Please enter a positive number';
+
+  @override
+  String get labelShortageSellerRewardField => 'Shortage Seller Reward (Coins)';
+
+  @override
+  String get helperShortageSellerReward => 'Coins rewarded to seller per unit';
+
+  @override
+  String get titleFeedbackComplaints => 'Feedback & Complaints';
+
+  @override
+  String get labelUnknownPharmacy => 'Unknown Pharmacy';
+
+  @override
+  String labelUserPrefix(String user) {
+    return 'User: $user';
+  }
+
+  @override
+  String get titleFeedbackDetails => 'Feedback Details';
+
+  @override
+  String labelFromPrefix(String from) {
+    return 'From: $from';
+  }
+
+  @override
+  String get msgConfirmDeleteExcess =>
+      'Are you sure you want to delete this excess stock?';
+
+  @override
+  String get msgNoAvailableExcesses => 'No available excess stock found.';
+
+  @override
+  String get msgCannotDeleteTakenExcess =>
+      'Cannot delete an excess that is already being used for a transaction.';
+
+  @override
+  String get labelConfirmDelete => 'Confirm Delete';
+
+  @override
+  String titleSuggestionAction(String action) {
+    return '$action Suggestion';
+  }
+
+  @override
+  String msgConfirmSuggestionAction(String action) {
+    return 'Are you sure you want to $action this suggestion?';
+  }
+
+  @override
+  String get labelReviewerNotesOptional => 'Reviewer Notes (Optional)';
+
+  @override
+  String titleBuyProduct(String product, String volume) {
+    return 'Buy $product ($volume)';
+  }
+
+  @override
+  String labelTotalCoins(String coins) {
+    return 'Total: $coins Coins';
+  }
+
+  @override
+  String get msgNoContentProvided => 'No content provided.';
+
+  @override
+  String get titleExcessFollowUp => 'Excess Stock Follow-up';
+
+  @override
+  String get msgNoFulfilledExcesses => 'No fulfilled excesses found.';
+
+  @override
+  String get msgActionCompletedLocked =>
+      'This action is locked because the transaction is already completed.';
+
+  @override
+  String get msgNoPendingExcesses => 'No pending excesses found.';
 }

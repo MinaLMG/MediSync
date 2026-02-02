@@ -131,7 +131,12 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(DateFormat('MMM dd, yyyy • HH:mm').format(date)),
+                        Text(
+                          DateFormat(
+                            'MMM dd, yyyy • HH:mm',
+                            Localizations.localeOf(context).languageCode,
+                          ).format(date),
+                        ),
                         Text(
                           _formatMethod(payment['method'] ?? 'cash'),
                           style: TextStyle(
@@ -142,7 +147,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                         if (payment['referenceNumber'] != null &&
                             payment['referenceNumber'].toString().isNotEmpty)
                           Text(
-                            'Ref: ${payment['referenceNumber']}',
+                            l10n.labelRef(payment['referenceNumber']),
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey[500],
@@ -307,7 +312,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       decoration: InputDecoration(
                         labelText: l10n.labelPharmacyName,
                       ),
-                      value: _selectedPharmacyId,
+                      initialValue: _selectedPharmacyId,
                       items: _pharmacies.map<DropdownMenuItem<String>>((p) {
                         return DropdownMenuItem(
                           value: p['_id'],
@@ -325,7 +330,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       decoration: InputDecoration(
                         labelText: l10n.labelPaymentType,
                       ),
-                      value: _type,
+                      initialValue: _type,
                       items: [
                         DropdownMenuItem(
                           value: 'deposit',
@@ -361,7 +366,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       decoration: InputDecoration(
                         labelText: l10n.labelPaymentMethod,
                       ),
-                      value: _method,
+                      initialValue: _method,
                       items: [
                         DropdownMenuItem(
                           value: 'cash',

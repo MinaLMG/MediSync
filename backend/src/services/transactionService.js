@@ -93,6 +93,7 @@ exports.settleTransaction = async (transaction, session) => {
                 relatedEntity: transaction._id,
                 relatedEntityType: 'Transaction',
                 description: `Revenue for transaction #${transaction.serial}`,
+                description_ar: `عائد للمعاملة #${transaction.serial}`,
                 details: sellerDetails
             }], { session });
 
@@ -127,6 +128,7 @@ exports.settleTransaction = async (transaction, session) => {
             relatedEntity: transaction._id,
             relatedEntityType: 'Transaction',
             description: `Payment for transaction #${transaction.serial}`,
+            description_ar: `دفع للمعاملة #${transaction.serial}`,
             details: {
                 sources: buyerDetailsList,
                 totalBuyerEffect
@@ -176,7 +178,16 @@ exports.notifyParties = async (transaction) => {
         }).filter(Boolean))];
 
         const statusMsg = transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1);
+        const staticStatusAr = {
+            'pending': 'قيد الانتظار',
+            'accepted': 'مقبولة',
+            'rejected': 'مرفوضة',
+            'completed': 'مكتملة',
+            'cancelled': 'ملغاة'
+        };
+        const statusMsgAr = staticStatusAr[transaction.status.toLowerCase()] || transaction.status;
         const serialMsg = `Transaction #${transaction.serial}`;
+        const serialMsgAr = `المعاملة #${transaction.serial}`;
 
         // -- Notify Buyer --
         const buyerUsers = await User.find({ pharmacy: buyerPhId });
@@ -188,7 +199,8 @@ exports.notifyParties = async (transaction) => {
                 {
                     relatedEntity: transaction._id,
                     relatedEntityType: 'Transaction'
-                }
+                },
+                `المعاملة الخاصة بـ "${productName}" أصبحت الآن ${statusMsgAr}.`
             );
             sendToUser(user._id.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
         }
@@ -204,7 +216,8 @@ exports.notifyParties = async (transaction) => {
                     {
                         relatedEntity: transaction._id,
                         relatedEntityType: 'Transaction'
-                    }
+                    },
+                    `معاملتك الخاصة بـ "${productName}" أصبحت الآن ${statusMsgAr}.`
                 );
                 sendToUser(user._id.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
             }
@@ -219,7 +232,8 @@ exports.notifyParties = async (transaction) => {
                 {
                     relatedEntity: transaction._id,
                     relatedEntityType: 'Transaction'
-                }
+                },
+                `${serialMsgAr} لـ "${productName}" أصبحت ${statusMsgAr}.`
             );
             sendToUser(transaction.delivery.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
         }

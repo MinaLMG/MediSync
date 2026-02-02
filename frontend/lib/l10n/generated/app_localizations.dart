@@ -3062,228 +3062,6 @@ abstract class AppLocalizations {
   /// **'Portion in this transaction: {count}'**
   String labelPortionInTx(int count);
 
-  /// No description provided for @labelCommissionRatios.
-  ///
-  /// In en, this message translates to:
-  /// **'Commission Ratios (%)'**
-  String get labelCommissionRatios;
-
-  /// No description provided for @labelMinComm.
-  ///
-  /// In en, this message translates to:
-  /// **'Minimum Commission (%)'**
-  String get labelMinComm;
-
-  /// No description provided for @helperMinComm.
-  ///
-  /// In en, this message translates to:
-  /// **'Default commission for real excess rebalance.'**
-  String get helperMinComm;
-
-  /// No description provided for @labelShortageComm.
-  ///
-  /// In en, this message translates to:
-  /// **'Shortage Commission (%)'**
-  String get labelShortageComm;
-
-  /// No description provided for @helperShortageComm.
-  ///
-  /// In en, this message translates to:
-  /// **'Default commission for shortage fulfillment.'**
-  String get helperShortageComm;
-
-  /// No description provided for @labelShortageSellerRewardField.
-  ///
-  /// In en, this message translates to:
-  /// **'Shortage Seller Reward (%)'**
-  String get labelShortageSellerRewardField;
-
-  /// No description provided for @helperShortageSellerReward.
-  ///
-  /// In en, this message translates to:
-  /// **'Default reward for shortage fulfillment provider.'**
-  String get helperShortageSellerReward;
-
-  /// No description provided for @msgSettingsUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Settings updated successfully'**
-  String get msgSettingsUpdated;
-
-  /// No description provided for @msgFailedUpdateSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to update settings'**
-  String get msgFailedUpdateSettings;
-
-  /// No description provided for @msgPleaseEnterValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a value'**
-  String get msgPleaseEnterValue;
-
-  /// No description provided for @msgEnterNumberBetween0And20.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a number between 0 and 20'**
-  String get msgEnterNumberBetween0And20;
-
-  /// No description provided for @msgEnterPositiveNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a positive number'**
-  String get msgEnterPositiveNumber;
-
-  /// No description provided for @titleFeedbackComplaints.
-  ///
-  /// In en, this message translates to:
-  /// **'Feedback & Complaints'**
-  String get titleFeedbackComplaints;
-
-  /// No description provided for @msgNoSuggestionsFound.
-  ///
-  /// In en, this message translates to:
-  /// **'No suggestions found.'**
-  String get msgNoSuggestionsFound;
-
-  /// No description provided for @labelUnknownPharmacy.
-  ///
-  /// In en, this message translates to:
-  /// **'Unknown Pharmacy'**
-  String get labelUnknownPharmacy;
-
-  /// No description provided for @labelUserPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'User: {name}'**
-  String labelUserPrefix(String name);
-
-  /// No description provided for @labelFromPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'From: {name}'**
-  String labelFromPrefix(String name);
-
-  /// No description provided for @titleFeedbackDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Feedback Details'**
-  String get titleFeedbackDetails;
-
-  /// No description provided for @msgNoContentProvided.
-  ///
-  /// In en, this message translates to:
-  /// **'No content provided'**
-  String get msgNoContentProvided;
-
-  /// No description provided for @titleProductSuggestions.
-  ///
-  /// In en, this message translates to:
-  /// **'New Product Suggestions'**
-  String get titleProductSuggestions;
-
-  /// No description provided for @titleSuggestionAction.
-  ///
-  /// In en, this message translates to:
-  /// **'{status} Suggestion'**
-  String titleSuggestionAction(String status);
-
-  /// No description provided for @msgConfirmSuggestionAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to {status} this suggestion?'**
-  String msgConfirmSuggestionAction(String status);
-
-  /// No description provided for @labelReviewerNotesOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'Reviewer Notes (Optional)'**
-  String get labelReviewerNotesOptional;
-
-  /// No description provided for @labelProposedPrice.
-  ///
-  /// In en, this message translates to:
-  /// **'Proposed Price'**
-  String get labelProposedPrice;
-
-  /// No description provided for @labelSuggestedBy.
-  ///
-  /// In en, this message translates to:
-  /// **'Suggested By'**
-  String get labelSuggestedBy;
-
-  /// No description provided for @labelReviewerNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'Reviewer Notes: {notes}'**
-  String labelReviewerNotes(String notes);
-
-  /// No description provided for @hintSearchSuggestions.
-  ///
-  /// In en, this message translates to:
-  /// **'Search suggestions (* for wildcard)...'**
-  String get hintSearchSuggestions;
-
-  /// No description provided for @titleBuyProduct.
-  ///
-  /// In en, this message translates to:
-  /// **'Buy {name} ({volume})'**
-  String titleBuyProduct(String name, String volume);
-
-  /// No description provided for @labelTotalCoins.
-  ///
-  /// In en, this message translates to:
-  /// **'Total: {amount} coins'**
-  String labelTotalCoins(String amount);
-
-  /// No description provided for @titleExcessFollowUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow-up Excesses'**
-  String get titleExcessFollowUp;
-
-  /// No description provided for @msgNoFulfilledExcesses.
-  ///
-  /// In en, this message translates to:
-  /// **'No fulfilled excesses'**
-  String get msgNoFulfilledExcesses;
-
-  /// No description provided for @msgNoPendingExcesses.
-  ///
-  /// In en, this message translates to:
-  /// **'No pending excesses'**
-  String get msgNoPendingExcesses;
-
-  /// No description provided for @msgNoAvailableExcesses.
-  ///
-  /// In en, this message translates to:
-  /// **'No available excesses'**
-  String get msgNoAvailableExcesses;
-
-  /// No description provided for @msgActionCompletedLocked.
-  ///
-  /// In en, this message translates to:
-  /// **'This action is completed and locked.'**
-  String get msgActionCompletedLocked;
-
-  /// No description provided for @msgCannotDeleteTakenExcess.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot delete excess where stock has already been taken.'**
-  String get msgCannotDeleteTakenExcess;
-
-  /// No description provided for @labelConfirmDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Delete'**
-  String get labelConfirmDelete;
-
-  /// No description provided for @msgConfirmDeleteExcess.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to delete this excess?'**
-  String get msgConfirmDeleteExcess;
-
   /// No description provided for @msgConfirmDeleteExcessAvailable.
   ///
   /// In en, this message translates to:
@@ -3320,11 +3098,533 @@ abstract class AppLocalizations {
   /// **'New Price'**
   String get labelNewPrice;
 
+  /// No description provided for @priceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get priceLabel;
+
+  /// No description provided for @quantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get quantityLabel;
+
+  /// No description provided for @expiryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry'**
+  String get expiryLabel;
+
   /// No description provided for @labelOff.
   ///
   /// In en, this message translates to:
   /// **'Off'**
   String get labelOff;
+
+  /// No description provided for @titleConfirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete'**
+  String get titleConfirmDelete;
+
+  /// No description provided for @msgConfirmReversePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure? This will REVERSE the payment.'**
+  String get msgConfirmReversePayment;
+
+  /// No description provided for @actionRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get actionRecord;
+
+  /// No description provided for @msgPaymentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment deleted and reversed'**
+  String get msgPaymentDeleted;
+
+  /// No description provided for @titleFollowUpTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow-up Transactions'**
+  String get titleFollowUpTransactions;
+
+  /// No description provided for @labelAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get labelAll;
+
+  /// No description provided for @labelBuyer.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer: {name}'**
+  String labelBuyer(Object name);
+
+  /// No description provided for @labelSeller.
+  ///
+  /// In en, this message translates to:
+  /// **'Seller: {name}'**
+  String labelSeller(Object name);
+
+  /// No description provided for @labelSellers.
+  ///
+  /// In en, this message translates to:
+  /// **'Sellers:'**
+  String get labelSellers;
+
+  /// No description provided for @labelTotalQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Qty: {count}'**
+  String labelTotalQty(Object count);
+
+  /// No description provided for @labelTotalValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Value: {amount} coins'**
+  String labelTotalValue(Object amount);
+
+  /// No description provided for @labelDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery: {name}'**
+  String labelDelivery(Object name);
+
+  /// No description provided for @dialogConfirmAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Accept'**
+  String get dialogConfirmAccept;
+
+  /// No description provided for @msgConfirmAcceptTransaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to accept this transaction?'**
+  String get msgConfirmAcceptTransaction;
+
+  /// No description provided for @actionAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get actionAccept;
+
+  /// No description provided for @actionYesAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Accept'**
+  String get actionYesAccept;
+
+  /// No description provided for @dialogConfirmComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Complete'**
+  String get dialogConfirmComplete;
+
+  /// No description provided for @msgConfirmCompleteTransaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to mark this transaction as completed?'**
+  String get msgConfirmCompleteTransaction;
+
+  /// No description provided for @actionComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get actionComplete;
+
+  /// No description provided for @actionYesComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Complete'**
+  String get actionYesComplete;
+
+  /// No description provided for @dialogConfirmCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Cancel'**
+  String get dialogConfirmCancel;
+
+  /// No description provided for @msgConfirmCancelTransaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel this transaction? All quantities will be returned to their respective pharmacies.'**
+  String get msgConfirmCancelTransaction;
+
+  /// No description provided for @actionYesCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Cancel'**
+  String get actionYesCancel;
+
+  /// No description provided for @labelEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get labelEdit;
+
+  /// No description provided for @labelEditRatios.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Ratios'**
+  String get labelEditRatios;
+
+  /// No description provided for @dialogDetachDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach Delivery'**
+  String get dialogDetachDelivery;
+
+  /// No description provided for @msgDetachDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove the assigned delivery person. The transaction will become available for assignment again.'**
+  String get msgDetachDelivery;
+
+  /// No description provided for @actionDetach.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach'**
+  String get actionDetach;
+
+  /// No description provided for @msgDeliveryDetached.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery person detached'**
+  String get msgDeliveryDetached;
+
+  /// No description provided for @actionRevertTransaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert Transaction'**
+  String get actionRevertTransaction;
+
+  /// No description provided for @actionViewEditTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'View/Edit Ticket'**
+  String get actionViewEditTicket;
+
+  /// No description provided for @labelRefundStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status updated to {status}'**
+  String labelRefundStatus(Object status);
+
+  /// No description provided for @labelRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Ref: {ref}'**
+  String labelRef(Object ref);
+
+  /// No description provided for @labelBuyerCommPercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer Commission % (Sh. Fulfill)'**
+  String get labelBuyerCommPercentage;
+
+  /// No description provided for @labelSellerRewardPercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Seller Reward % (Sh. Fulfill)'**
+  String get labelSellerRewardPercentage;
+
+  /// No description provided for @labelDescriptionReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Description / Reason'**
+  String get labelDescriptionReason;
+
+  /// No description provided for @actionUpdateTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Ticket'**
+  String get actionUpdateTicket;
+
+  /// No description provided for @actionConfirmReversion.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Reversion'**
+  String get actionConfirmReversion;
+
+  /// No description provided for @titleReversalExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert Transaction & Expenses'**
+  String get titleReversalExpenses;
+
+  /// No description provided for @titleEditReversalTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Reversal Ticket'**
+  String get titleEditReversalTicket;
+
+  /// No description provided for @labelAutomaticReversalSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'AUTOMATIC REVERSAL SUMMARY:'**
+  String get labelAutomaticReversalSummary;
+
+  /// No description provided for @labelInvolvedParties.
+  ///
+  /// In en, this message translates to:
+  /// **'INVOLVED PARTIES (Select to Add Expense):'**
+  String get labelInvolvedParties;
+
+  /// No description provided for @labelAddExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Expense'**
+  String get labelAddExpense;
+
+  /// No description provided for @labelAmountEgp.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (EGP):'**
+  String get labelAmountEgp;
+
+  /// No description provided for @actionNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get actionNo;
+
+  /// No description provided for @actionYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get actionYes;
+
+  /// No description provided for @msgNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data found.'**
+  String get msgNoData;
+
+  /// No description provided for @titleProductSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Suggestions'**
+  String get titleProductSuggestions;
+
+  /// No description provided for @hintSearchSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Search suggestions...'**
+  String get hintSearchSuggestions;
+
+  /// No description provided for @msgNoSuggestionsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No product suggestions found.'**
+  String get msgNoSuggestionsFound;
+
+  /// No description provided for @labelProposedPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposed Price'**
+  String get labelProposedPrice;
+
+  /// No description provided for @labelSuggestedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested By'**
+  String get labelSuggestedBy;
+
+  /// No description provided for @labelReviewerNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer Notes: {notes}'**
+  String labelReviewerNotes(String notes);
+
+  /// No description provided for @msgSettingsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings updated successfully!'**
+  String get msgSettingsUpdated;
+
+  /// No description provided for @msgFailedUpdateSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update settings.'**
+  String get msgFailedUpdateSettings;
+
+  /// No description provided for @labelCommissionRatios.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission Ratios'**
+  String get labelCommissionRatios;
+
+  /// No description provided for @labelMinComm.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum Commission (%)'**
+  String get labelMinComm;
+
+  /// No description provided for @helperMinComm.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum percentage deducted from transactions'**
+  String get helperMinComm;
+
+  /// No description provided for @msgPleaseEnterValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a value'**
+  String get msgPleaseEnterValue;
+
+  /// No description provided for @msgEnterNumberBetween0And20.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a number between 0 and 20'**
+  String get msgEnterNumberBetween0And20;
+
+  /// No description provided for @labelShortageComm.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortage Commission (Coins)'**
+  String get labelShortageComm;
+
+  /// No description provided for @helperShortageComm.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins deducted per unit for shortage fulfillment'**
+  String get helperShortageComm;
+
+  /// No description provided for @msgEnterPositiveNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a positive number'**
+  String get msgEnterPositiveNumber;
+
+  /// No description provided for @labelShortageSellerRewardField.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortage Seller Reward (Coins)'**
+  String get labelShortageSellerRewardField;
+
+  /// No description provided for @helperShortageSellerReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins rewarded to seller per unit'**
+  String get helperShortageSellerReward;
+
+  /// No description provided for @titleFeedbackComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback & Complaints'**
+  String get titleFeedbackComplaints;
+
+  /// No description provided for @labelUnknownPharmacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Pharmacy'**
+  String get labelUnknownPharmacy;
+
+  /// No description provided for @labelUserPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'User: {user}'**
+  String labelUserPrefix(String user);
+
+  /// No description provided for @titleFeedbackDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback Details'**
+  String get titleFeedbackDetails;
+
+  /// No description provided for @labelFromPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'From: {from}'**
+  String labelFromPrefix(String from);
+
+  /// No description provided for @msgConfirmDeleteExcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this excess stock?'**
+  String get msgConfirmDeleteExcess;
+
+  /// No description provided for @msgNoAvailableExcesses.
+  ///
+  /// In en, this message translates to:
+  /// **'No available excess stock found.'**
+  String get msgNoAvailableExcesses;
+
+  /// No description provided for @msgCannotDeleteTakenExcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete an excess that is already being used for a transaction.'**
+  String get msgCannotDeleteTakenExcess;
+
+  /// No description provided for @labelConfirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete'**
+  String get labelConfirmDelete;
+
+  /// No description provided for @titleSuggestionAction.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} Suggestion'**
+  String titleSuggestionAction(String action);
+
+  /// No description provided for @msgConfirmSuggestionAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to {action} this suggestion?'**
+  String msgConfirmSuggestionAction(String action);
+
+  /// No description provided for @labelReviewerNotesOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer Notes (Optional)'**
+  String get labelReviewerNotesOptional;
+
+  /// No description provided for @titleBuyProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy {product} ({volume})'**
+  String titleBuyProduct(String product, String volume);
+
+  /// No description provided for @labelTotalCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {coins} Coins'**
+  String labelTotalCoins(String coins);
+
+  /// No description provided for @msgNoContentProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'No content provided.'**
+  String get msgNoContentProvided;
+
+  /// No description provided for @titleExcessFollowUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Excess Stock Follow-up'**
+  String get titleExcessFollowUp;
+
+  /// No description provided for @msgNoFulfilledExcesses.
+  ///
+  /// In en, this message translates to:
+  /// **'No fulfilled excesses found.'**
+  String get msgNoFulfilledExcesses;
+
+  /// No description provided for @msgActionCompletedLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This action is locked because the transaction is already completed.'**
+  String get msgActionCompletedLocked;
+
+  /// No description provided for @msgNoPendingExcesses.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending excesses found.'**
+  String get msgNoPendingExcesses;
 }
 
 class _AppLocalizationsDelegate

@@ -750,6 +750,10 @@
   "qHowToEditProfile": "كيف يمكنني تعديل بيانات صيدليتي؟",
   "aHowToEditProfile": "اذهب إلى \"الحساب\" -> \"حسابي\" واضغط على زر \"تعديل\". قم بتحديث معلوماتك وأرسلها. سيتم معالجة طلبك قريباً.",
   "qCanIChangePassword": "هل يمكنني تغيير كلمة المرور؟",
+  "aHowToEditProfile": "اذهب إلى \"الحساب\" -> \"حسابي\" واضغط على زر \"تعديل\". قم بتحديث معلوماتك وأرسلها. سيتم معالجة طلبك قريباً.",
+  "qCanIChangePassword": "هل يمكنني تغيير كلمة المرور؟",
+  "aHowToEditProfile": "اذهب إلى \"الحساب\" -> \"حسابي\" واضغط على زر \"تعديل\". قم بتحديث معلوماتك وأرسلها. سيتم معالجة طلبك قريباً.",
+  "qCanIChangePassword": "هل يمكنني تغيير كلمة المرور؟",
   "aCanIChangePassword": "نعم! استخدم خيار \"إعادة تعيين كلمة المرور\" في قائمة الحساب. ستحتاج إلى كلمة مرورك الحالية لتعيين كلمة مرور جديدة.",
   "labelAdminDeliveryRequests": "طلبات التوصيل",
   "actionSaveSettings": "حفظ الإعدادات",
@@ -798,57 +802,69 @@
       }
     }
   },
-  "labelCommissionRatios": "نسب العمولة (%)",
-  "labelMinComm": "العمولة الدنيا (%)",
-  "helperMinComm": "العمولة الافتراضية لإعادة توازن الوفرة الحقيقية.",
-  "labelShortageComm": "عمولة النقص (%)",
-  "helperShortageComm": "العمولة الافتراضية لتلبية طلبات النقص.",
-  "labelShortageSellerRewardField": "مكافأة البائع في النقص (%)",
-  "helperShortageSellerReward": "المكافأة الافتراضية لموفر تلبية النقص.",
-  "msgSettingsUpdated": "تم تحديث الإعدادات بنجاح",
-  "msgFailedUpdateSettings": "فشل في تحديث الإعدادات",
-  "msgPleaseEnterValue": "يرجى إدخال قيمة",
-  "msgEnterNumberBetween0And20": "أدخل رقماً بين 0 و 20",
-  "msgEnterPositiveNumber": "أدخل رقماً موجباً",
-  "titleFeedbackComplaints": "الآراء والشكاوى",
-  "msgNoSuggestionsFound": "لم يتم العثور على اقتراحات.",
-  "labelUnknownPharmacy": "صيدلية غير معروفة",
-  "labelUserPrefix": "المستخدم: {name}",
-  "@labelUserPrefix": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "labelFromPrefix": "من: {name}",
-  "@labelFromPrefix": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "titleFeedbackDetails": "تفاصيل الرأي",
-  "msgNoContentProvided": "لم يتم تقديم محتوى",
-  "titleProductSuggestions": "اقتراحات المنتجات الجديدة",
-  "titleSuggestionAction": "{status} اقتراح",
-  "@titleSuggestionAction": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
-  "msgConfirmSuggestionAction": "هل أنت متأكد أنك تريد {status} هذا الاقتراح؟",
-  "@msgConfirmSuggestionAction": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
-  "labelReviewerNotesOptional": "ملاحظات المراجع (اختياري)",
+  "msgConfirmDeleteExcessAvailable": "هل أنت متأكد أنك تريد حذف هذه الزيادة المتاحة؟",
+  "labelRejectExcessOffer": "رفض عرض الزيادة",
+  "hintRejectionReason": "مثال: السعر مرتفع جداً، تاريخ الانتهاء قريب جداً",
+  "labelConfirmApproval": "تأكيد الموافقة",
+  "msgConfirmApproveExcess": "هل أنت متأكد أنك تريد الموافقة على هذه الزيادة وجعلها متاحة للمطابقة؟",
+  "labelNewPrice": "سعر جديد",
+  "priceLabel": "السعر",
+  "quantityLabel": "الكمية",
+  "expiryLabel": "تاريخ الانتهاء",
+  "labelOff": "خصم",
+  "titleConfirmDelete": "تأكيد الحذف",
+  "msgConfirmReversePayment": "هل أنت متأكد؟ سيؤدي هذا إلى عكس عملية الدفع.",
+  "actionRecord": "تسجيل",
+  "msgPaymentDeleted": "تم حذف وعكس عملية الدفع",
+  "titleFollowUpTransactions": "متابعة المعاملات",
+  "labelAll": "الكل",
+  "labelBuyer": "المشتري: {name}",
+  "labelSeller": "البائع: {name}",
+  "labelSellers": "البائعون:",
+  "labelTotalQty": "إجمالي الكمية: {count}",
+  "labelTotalValue": "إجمالي القيمة: {amount} عملة",
+  "labelDelivery": "التوصيل: {name}",
+  "dialogConfirmAccept": "تأكيد القبول",
+  "msgConfirmAcceptTransaction": "هل أنت متأكد أنك تريد قبول هذه المعاملة؟",
+  "actionAccept": "قبول",
+  "actionYesAccept": "نعم، قبول",
+  "dialogConfirmComplete": "تأكيد الإكمال",
+  "msgConfirmCompleteTransaction": "هل أنت متأكد أنك تريد تحديد هذه المعاملة كمكتملة؟",
+  "actionComplete": "إكمال",
+  "actionYesComplete": "نعم، إكمال",
+  "dialogConfirmCancel": "تأكيد الإلغاء",
+  "msgConfirmCancelTransaction": "هل أنت متأكد أنك تريد إلغاء هذه المعاملة؟ سيتم إرجاع جميع الكميات إلى صيدلياتها المعنية.",
+  "actionYesCancel": "نعم، إلغاء",
+  "labelEdit": "تعديل",
+  "labelEditRatios": "تعديل النسب",
+  "dialogDetachDelivery": "فصل التوصيل",
+  "msgDetachDelivery": "هذا سيزيل عامل التوصيل المعين. ستصبح المعاملة متاحة للتعيين مرة أخرى.",
+  "actionDetach": "فصل",
+  "msgDeliveryDetached": "تم فصل عامل التوصيل",
+  "actionRevertTransaction": "عكس المعاملة",
+  "actionViewEditTicket": "عرض/تعديل التذكرة",
+  "labelRefundStatus": "تم تحديث الحالة إلى {status}",
+  "labelRef": "المرجع: {ref}",
+  "labelBuyerCommPercentage": "نسبة عمولة المشتري (توفير العجز)",
+  "labelSellerRewardPercentage": "نسبة مكافأة البائع (توفير العجز)",
+  "labelOrderPrefix": "طلب رقم #",
+  "labelUnitsShort": "وحدات",
+  "labelDescriptionReason": "الوصف / السبب",
+  "actionUpdateTicket": "تحديث التذكرة",
+  "actionConfirmReversion": "تأكيد العكس",
+  "titleReversalExpenses": "عكس المعاملة والمصاريف",
+  "titleEditReversalTicket": "تعديل تذكرة العكس",
+  "labelAutomaticReversalSummary": "ملخص العكس التلقائي:",
+  "labelInvolvedParties": "الأطراف المعنية (اختر لإضافة مصاريف):",
+  "labelAddExpense": "إضافة مصاريف",
+  "labelAmountEgp": "المبلغ (ج.م):",
+  "labelCreated": "تاريخ الإنشاء: {date}",
+  "actionNo": "لا",
+  "actionYes": "نعم",
+  "msgNoData": "لا توجد بيانات.",
+  "titleProductSuggestions": "مقترحات الأدوية",
+  "hintSearchSuggestions": "البحث في المقترحات...",
+  "msgNoSuggestionsFound": "لم يتم العثور على مقترحات أدوية.",
   "labelProposedPrice": "السعر المقترح",
   "labelSuggestedBy": "مقترح بواسطة",
   "labelReviewerNotes": "ملاحظات المراجع: {notes}",
@@ -859,11 +875,62 @@
       }
     }
   },
-  "hintSearchSuggestions": "البحث في الاقتراحات (* للكل)...",
-  "titleBuyProduct": "شراء {name} ({volume})",
+  "msgSettingsUpdated": "تم تحديث الإعدادات بنجاح!",
+  "msgFailedUpdateSettings": "فشل تحديث الإعدادات.",
+  "labelCommissionRatios": "نسب العمولات",
+  "labelMinComm": "الحد الأدنى للعمولة (%)",
+  "helperMinComm": "الحد الأدنى لنسبة الخصم من المعاملات",
+  "msgPleaseEnterValue": "يرجى إدخال قيمة",
+  "msgEnterNumberBetween0And20": "يرجى إدخال رقم بين 0 و 20",
+  "labelShortageComm": "عمولة النواقص (عملات)",
+  "helperShortageComm": "العملات المخصومة لكل وحدة لتلبية النواقص",
+  "msgEnterPositiveNumber": "يرجى إدخال رقم موجب",
+  "labelShortageSellerRewardField": "مكافأة بائع النواقص (عملات)",
+  "helperShortageSellerReward": "العملات التي يتم مكافأة البائع بها لكل وحدة",
+  "titleFeedbackComplaints": "الآراء والشكاوى",
+  "labelUnknownPharmacy": "صيدلية غير معروفة",
+  "labelUserPrefix": "المستخدم: {user}",
+  "@labelUserPrefix": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFeedbackDetails": "تفاصيل الرأي",
+  "labelFromPrefix": "من: {from}",
+  "@labelFromPrefix": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  },
+  "msgConfirmDeleteExcess": "هل أنت متأكد من حذف هذه البضاعة الزائدة؟",
+  "msgNoAvailableExcesses": "لا توجد بضائع زائدة متاحة حالياً.",
+  "msgCannotDeleteTakenExcess": "لا يمكن حذف بضاعة زائدة يتم استخدامها بالفعل في معاملة.",
+  "labelConfirmDelete": "تأكيد الحذف",
+  "titleSuggestionAction": "{action} الاقتراح",
+  "@titleSuggestionAction": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "msgConfirmSuggestionAction": "هل أنت متأكد من أنك تريد {action} هذا الاقتراح؟",
+  "@msgConfirmSuggestionAction": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "labelReviewerNotesOptional": "ملاحظات المراجع (اختياري)",
+  "titleBuyProduct": "شراء {product} ({volume})",
   "@titleBuyProduct": {
     "placeholders": {
-      "name": {
+      "product": {
         "type": "String"
       },
       "volume": {
@@ -871,30 +938,17 @@
       }
     }
   },
-  "labelTotalCoins": "الإجمالي: {amount} عملة",
+  "labelTotalCoins": "الإجمالي: {coins} عملة",
   "@labelTotalCoins": {
     "placeholders": {
-      "amount": {
+      "coins": {
         "type": "String"
       }
     }
   },
-  "titleExcessFollowUp": "متابعة الزيادات",
-  "msgNoFulfilledExcesses": "لا توجد زيادات مكتملة",
-  "msgNoPendingExcesses": "لا توجد زيادات معلقة",
-  "msgNoAvailableExcesses": "لا توجد زيادات متاحة",
-  "msgActionCompletedLocked": "هذا الإجراء مكتمل ومغلق.",
-  "msgCannotDeleteTakenExcess": "لا يمكن حذف الزيادة التي تم سحب مخزون منها بالفعل.",
-  "labelConfirmDelete": "تأكيد الحذف",
-  "msgConfirmDeleteExcess": "هل أنت متأكد أنك تريد حذف هذه الزيادة؟",
-  "msgConfirmDeleteExcessAvailable": "هل أنت متأكد أنك تريد حذف هذه الزيادة المتاحة؟",
-  "labelRejectExcessOffer": "رفض عرض الزيادة",
-  "hintRejectionReason": "مثال: السعر مرتفع جداً، تاريخ الانتهاء قريب جداً",
-  "labelConfirmApproval": "تأكيد الموافقة",
-  "msgConfirmApproveExcess": "هل أنت متأكد أنك تريد الموافقة على هذه الزيادة وجعلها متاحة للمطابقة؟",
-  "labelNewPrice": "سعر جديد",
-  "labelPrice": "السعر",
-  "labelQuantity": "الكمية",
-  "labelExpiry": "تاريخ الانتهاء",
-  "labelOff": "خصم"
+  "msgNoContentProvided": "لم يتم تقديم أي محتوى.",
+  "titleExcessFollowUp": "متابعة البضائع الزائدة",
+  "msgNoFulfilledExcesses": "لم يتم العثور على بضائع زائدة ملباة.",
+  "msgActionCompletedLocked": "هذا الإجراء مغلق لأن المعاملة مكتملة بالفعل.",
+  "msgNoPendingExcesses": "لم يتم العثور على بضائع زائدة معلقة."
 }

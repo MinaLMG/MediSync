@@ -312,8 +312,8 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: p['status'] == 'active'
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.red.withOpacity(0.1),
+                                    ? Colors.green.withAlpha(25)
+                                    : Colors.red.withAlpha(25),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
                                   color: p['status'] == 'active'

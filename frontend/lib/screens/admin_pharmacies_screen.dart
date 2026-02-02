@@ -184,7 +184,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                           icon: const Icon(
                                             Icons.monetization_on,
                                           ),
-                                          label: const Text('Compensation'),
+                                          label: Text(l10n.actionCompensation),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green[700],
                                             foregroundColor: Colors.white,
@@ -201,7 +201,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                                 ph['name'],
                                               ),
                                           icon: const Icon(Icons.history),
-                                          label: const Text('History'),
+                                          label: Text(l10n.actionHistory),
                                         ),
                                       ),
                                     ],
@@ -217,7 +217,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                             ph['name'],
                                           ),
                                           icon: const Icon(Icons.payment),
-                                          label: const Text('Payment'),
+                                          label: Text(l10n.actionPayment),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.blue[700],
                                             foregroundColor: Colors.white,
@@ -233,7 +233,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                             ph['name'],
                                           ),
                                           icon: const Icon(Icons.receipt_long),
-                                          label: const Text('Payments'),
+                                          label: Text(l10n.actionPayments),
                                         ),
                                       ),
                                     ],
@@ -485,7 +485,13 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                           title: Text(
                             '${comp['amount']} ${AppLocalizations.of(context)!.coinsSuffix}',
                           ),
-                          subtitle: Text(comp['description'] ?? ''),
+                          subtitle: Text(
+                            (Localizations.localeOf(context).languageCode ==
+                                        'ar' &&
+                                    comp['description_ar'] != null)
+                                ? comp['description_ar']
+                                : (comp['description'] ?? ''),
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -739,8 +745,8 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                         final amount = double.tryParse(amountController.text);
                         if (amount == null || amount <= 0) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Invalid amount'),
+                            SnackBar(
+                              content: Text(l10n.msgInvalidAmount),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -820,7 +826,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(isEdit ? 'Update' : 'Record'),
+                    : Text(isEdit ? l10n.actionUpdate : l10n.actionRecord),
               ),
             ],
           );
@@ -910,6 +916,14 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                   pmt['adminNote'],
                                   style: const TextStyle(fontSize: 11),
                                 ),
+                              if (pmt['description'] != null)
+                                Text(
+                                  pmt['description'],
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.blue,
+                                  ),
+                                ),
                             ],
                           ),
                           trailing: Row(
@@ -985,8 +999,8 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure? This will REVERSE the payment.'),
+        title: Text(AppLocalizations.of(context)!.titleConfirmDelete),
+        content: Text(AppLocalizations.of(context)!.msgConfirmReversePayment),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -1000,7 +1014,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
               _fetchPharmacies(); // Refresh balance
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete & Reverse'),
+            child: Text(AppLocalizations.of(context)!.actionDeleteRevert),
           ),
         ],
       ),
@@ -1008,6 +1022,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
   }
 
   Future<void> _deletePayment(BuildContext context, String paymentId) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final token = Provider.of<AuthProvider>(context, listen: false).token;
       final response = await http.delete(
@@ -1018,8 +1033,8 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       if (data['success']) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment deleted and reversed'),
+            SnackBar(
+              content: Text(l10n.msgPaymentDeleted),
               backgroundColor: Colors.green,
             ),
           );

@@ -57,7 +57,8 @@ exports.createCompensation = async (req, res) => {
             newBalance: pharmacy.balance,
             relatedEntity: compensation[0]._id,
             relatedEntityType: 'Compensation',
-            description: `Compensation added: ${description}`
+            description: `Compensation added: ${description}`,
+            description_ar: `تم إضافة تعويض: ${description}`
         }], { session });
 
         // Notify Pharmacy Owner
@@ -71,7 +72,8 @@ exports.createCompensation = async (req, res) => {
                     priority: 'high', // System notifs are high priority
                     relatedEntity: compensation[0]._id,
                     relatedEntityType: 'Compensation'
-                }
+                },
+                `لقد تلقيت تعويضاً بقيمة ${amount} قطعة. السبب: ${description}`
             );
         }
 
@@ -157,7 +159,8 @@ exports.updateCompensation = async (req, res) => {
                 newBalance: pharmacy.balance,
                 relatedEntity: compensation._id,
                 relatedEntityType: 'Compensation',
-                description: `Compensation updated: ${oldAmount} -> ${amount}. Reason: ${description}`
+                description: `Compensation updated: ${oldAmount} -> ${amount}. Reason: ${description}`,
+                description_ar: `تم تحديث التعويض: ${oldAmount} -> ${amount}. السبب: ${description}`
             }], { session });
         }
 
@@ -210,7 +213,8 @@ exports.deleteCompensation = async (req, res) => {
             newBalance: pharmacy.balance,
             relatedEntity: compensation._id, // Keep ID even if deleted? Or null? Let's keep ID for reference.
             relatedEntityType: 'Compensation',
-            description: `Compensation reverted/deleted: -${compensation.amount}`
+            description: `Compensation reverted/deleted: -${compensation.amount}`,
+            description_ar: `تم عكس/حذف التعويض: -${compensation.amount}`
         }], { session });
 
         // Delete Compensation

@@ -35,6 +35,9 @@ const balanceHistorySchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    description_ar: {
+        type: String
+    },
     details: {
         type: mongoose.Schema.Types.Mixed // For storing specific breakdown like commission ratios
     }

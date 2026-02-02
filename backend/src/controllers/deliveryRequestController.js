@@ -135,7 +135,8 @@ exports.reviewRequest = async (req, res) => {
                 {
                     relatedEntity: request.transaction,
                     relatedEntityType: 'Transaction'
-                }
+                },
+                `طلبك لل  ${action=="accept"?'قبول' : 'الإتمام'} تم ${status=="approved"? 'قبوله' : 'رفضه'}.`
             );
         } catch (notifErr) {
             console.error('Notification error in reviewRequest:', notifErr);

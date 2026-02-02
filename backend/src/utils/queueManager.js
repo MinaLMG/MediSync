@@ -28,12 +28,13 @@ const notificationQueue = new Queue('notificationQueue', {
  * @param {string} message - The notification message
  * @param {Object} metadata - Additional info (relatedEntityId, actionUrl, etc.)
  */
-const addNotificationJob = async (userId, type, message, metadata = {}) => {
+const addNotificationJob = async (userId, type, message, metadata = {}, messageAr = null) => {
     try {
         await notificationQueue.add('sendNotification', {
             userId,
             type,
             message,
+            message_ar: messageAr,
             ...metadata
         }, {
             attempts: 3,

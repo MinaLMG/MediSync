@@ -54,6 +54,7 @@ exports.createPayment = async (req, res) => {
             relatedEntity: payment[0]._id,
             relatedEntityType: 'Payment',
             description: `Manual ${type} recorded by Admin`,
+            description_ar: `عملية ${type === 'deposit' ? 'إيداع' : 'سحب'} يدوية مسجلة من قبل المسؤول`,
             details: { 
                 method, 
                 reference: referenceNumber,
@@ -157,6 +158,7 @@ exports.updatePayment = async (req, res) => {
             relatedEntity: payment._id,
             relatedEntityType: 'Payment',
             description: `Payment updated by Admin`,
+            description_ar: `تم تحديث عملية الدفع من قبل المسؤول`,
             details: { 
                 method: payment.method, 
                 reference: payment.referenceNumber,
@@ -215,6 +217,7 @@ exports.deletePayment = async (req, res) => {
             relatedEntity: payment._id,
             relatedEntityType: 'Payment',
             description: `Payment deleted/reversed by Admin`,
+            description_ar: `تم حذف/عكس عملية الدفع من قبل المسؤول`,
             details: { 
                 originalType: payment.type,
                 originalAmount: payment.amount,

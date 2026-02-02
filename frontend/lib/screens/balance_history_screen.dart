@@ -102,7 +102,10 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
       child: ListTile(
         leading: Icon(icon, color: color, size: 32),
         title: Text(
-          item['description'] ?? l10n.labelBalanceUpdate,
+          (Localizations.localeOf(context).languageCode == 'ar' &&
+                  item['description_ar'] != null)
+              ? item['description_ar']
+              : (item['description'] ?? l10n.labelBalanceUpdate),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
@@ -147,7 +150,13 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _detailRow(l10n.labelName, item['description']),
+                _detailRow(
+                  l10n.labelName,
+                  (Localizations.localeOf(context).languageCode == 'ar' &&
+                          item['description_ar'] != null)
+                      ? item['description_ar']
+                      : item['description'],
+                ),
                 _detailRow(
                   l10n.labelType,
                   item['type'].toString().replaceAll('_', ' ').toUpperCase(),

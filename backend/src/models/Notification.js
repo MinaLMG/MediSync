@@ -21,6 +21,10 @@ const notificationSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    message_ar: {
+        type: String,
+        trim: true
+    },
     relatedEntity: {
         type: mongoose.Schema.Types.ObjectId,
         refPath: 'relatedEntityType'

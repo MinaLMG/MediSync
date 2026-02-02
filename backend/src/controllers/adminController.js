@@ -65,7 +65,8 @@ const reviewUser = async (req, res) => {
                     user._id.toString(),
                     'system',
                     `Your pharmacy "${pharmacy?.name || 'registration'}" registration request was rejected. You can now re-submit your documents.`,
-                    { priority: 'high' }
+                    { priority: 'high' },
+                    `صيدلية "${pharmacy?.name || 'registration'}" طلب التسجيل تم رفضه. يمكنك الآن إعادة تقديم المستندات.`
                 );
 
                 user.pharmacy = undefined;
@@ -88,7 +89,7 @@ const reviewUser = async (req, res) => {
                             priority: 'high',
                             relatedEntity: pharmacy._id,
                             relatedEntityType: 'Pharmacy'
-                        }
+                        },`الصيدلية "${pharmacy.name}" تم الموافقة عليها.`
                     );
                 }
             }
@@ -252,13 +253,17 @@ const reviewUpdateData = async (req, res) => {
             await addNotificationJob(
                 user._id.toString(),
                 'system',
-                'Your profile update request has been approved and applied.'
+                'Your profile update request has been approved and applied.',
+                { priority: 'high' },
+                `تم الموافقة على طلب تحديث ملفك الشخصي`
             );
         } else {
             await addNotificationJob(
                 user._id.toString(),
                 'system',
-                'Your profile update request was rejected.'
+                'Your profile update request was rejected.',
+                { priority: 'high' },
+                `تم رفض طلب تحديث ملفك الشخصي`
             );
         }
 

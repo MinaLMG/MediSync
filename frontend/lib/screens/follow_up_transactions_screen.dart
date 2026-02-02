@@ -5,6 +5,7 @@ import '../providers/transaction_provider.dart';
 import '../utils/ui_utils.dart';
 import '../providers/auth_provider.dart';
 import 'admin_edit_transaction_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class FollowUpTransactionsScreen extends StatefulWidget {
   final String? initialStatus;
@@ -38,9 +39,10 @@ class _FollowUpTransactionsScreenState
       listen: false,
     ).updateTransactionStatus(id, newStatus);
     if (mounted && success) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Status updated to $newStatus')));
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.labelRefundStatus(newStatus))),
+      );
       // Refresh with current filter
       Provider.of<TransactionProvider>(
         context,
@@ -52,10 +54,11 @@ class _FollowUpTransactionsScreenState
   @override
   Widget build(BuildContext context) {
     final tp = Provider.of<TransactionProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Follow-up Transactions'),
+        title: Text(l10n.titleFollowUpTransactions),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -85,9 +88,7 @@ class _FollowUpTransactionsScreenState
                               SizedBox(
                                 height:
                                     MediaQuery.of(context).size.height * 0.7,
-                                child: const Center(
-                                  child: Text('No transactions found.'),
-                                ),
+                                child: Center(child: Text(l10n.msgNoData)),
                               ),
                             ],
                           )
@@ -107,17 +108,18 @@ class _FollowUpTransactionsScreenState
   }
 
   Widget _buildFilterBar() {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _filterChip(null, 'All'),
-          _filterChip('pending', 'Pending'),
-          _filterChip('accepted', 'Accepted'),
-          _filterChip('completed', 'Completed'),
-          _filterChip('cancelled', 'Cancelled'),
-          _filterChip('rejected', 'Rejected'),
+          _filterChip(null, l10n.labelAll),
+          _filterChip('pending', l10n.statusPending),
+          _filterChip('accepted', l10n.statusActive),
+          _filterChip('completed', l10n.statusFulfilled),
+          _filterChip('cancelled', l10n.statusCancelled),
+          _filterChip('rejected', l10n.statusRejected),
         ],
       ),
     );
@@ -157,6 +159,7 @@ class _FollowUpTransactionsScreenState
     final shortage = tx['stockShortage']['shortage'];
     final product = shortage['product']['name'];
     final buyer = shortage['pharmacy']['name'];
+    final l10n = AppLocalizations.of(context)!;
 
     final isOrder = tx['stockShortage']?['shortage']?['order'] != null;
     final orderSerial = isOrder
@@ -206,14 +209,12 @@ class _FollowUpTransactionsScreenState
                         ),
                         margin: const EdgeInsets.only(bottom: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withAlpha(25),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Colors.blue.withOpacity(0.3),
-                          ),
+                          border: Border.all(color: Colors.blue.withAlpha(76)),
                         ),
                         child: Text(
-                          'Order #$orderSerial',
+                          l10n.labelOrderPrefix + orderSerial,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -240,15 +241,15 @@ class _FollowUpTransactionsScreenState
                 tx['stockShortage']['shortage']['pharmacy'],
               ),
               child: Text(
-                'Buyer: $buyer',
+                l10n.labelBuyer(buyer),
                 style: const TextStyle(
                   color: Colors.blue,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            Text('Total Qty: ${tx['totalQuantity']}'),
-            Text('Total Value: ${tx['totalAmount']} coins'),
+            Text(l10n.labelTotalQty(tx['totalQuantity'])),
+            Text(l10n.labelTotalValue(tx['totalAmount'].toString())),
             if (tx['delivery'] != null) ...[
               const SizedBox(height: 4),
               Row(
@@ -260,7 +261,7 @@ class _FollowUpTransactionsScreenState
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Delivery: ${tx['delivery']['name']}',
+                    l10n.labelDelivery(tx['delivery']['name']),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -271,9 +272,9 @@ class _FollowUpTransactionsScreenState
               ),
             ],
             const Divider(),
-            const Text(
-              'Sellers:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            Text(
+              l10n.labelSellers,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
             ...(tx['stockExcessSources'] as List).map(
               (s) => InkWell(
@@ -284,7 +285,7 @@ class _FollowUpTransactionsScreenState
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Text(
-                    '- ${s['stockExcess']['pharmacy']['name']} (${s['quantity']} units)',
+                    '- ${s['stockExcess']['pharmacy']['name']} (${s['quantity']} ${l10n.labelUnitsShort})',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.blue,
@@ -309,21 +310,19 @@ class _FollowUpTransactionsScreenState
                             showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: const Text('Confirm Accept'),
-                                content: const Text(
-                                  'Are you sure you want to accept this transaction?',
-                                ),
+                                title: Text(l10n.dialogConfirmAccept),
+                                content: Text(l10n.msgConfirmAcceptTransaction),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('No'),
+                                    child: Text(l10n.actionNo),
                                   ),
                                   TextButton(
                                     onPressed: () {
                                       Navigator.pop(ctx);
                                       _updateStatus(tx['_id'], 'accepted');
                                     },
-                                    child: const Text('Yes, Accept'),
+                                    child: Text(l10n.actionYesAccept),
                                   ),
                                 ],
                               ),
@@ -337,21 +336,21 @@ class _FollowUpTransactionsScreenState
                             showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title: const Text('Confirm Complete'),
-                                content: const Text(
-                                  'Are you sure you want to mark this transaction as completed?',
+                                title: Text(l10n.dialogConfirmComplete),
+                                content: Text(
+                                  l10n.msgConfirmCompleteTransaction,
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('No'),
+                                    child: Text(l10n.actionNo),
                                   ),
                                   TextButton(
                                     onPressed: () {
                                       Navigator.pop(ctx);
                                       _updateStatus(tx['_id'], 'completed');
                                     },
-                                    child: const Text('Yes, Complete'),
+                                    child: Text(l10n.actionYesComplete),
                                   ),
                                 ],
                               ),
@@ -364,14 +363,12 @@ class _FollowUpTransactionsScreenState
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Confirm Cancel'),
-                              content: const Text(
-                                'Are you sure you want to cancel this transaction? All quantities will be returned to their respective pharmacies.',
-                              ),
+                              title: Text(l10n.dialogConfirmCancel),
+                              content: Text(l10n.msgConfirmCancelTransaction),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('No'),
+                                  child: Text(l10n.actionNo),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -381,7 +378,7 @@ class _FollowUpTransactionsScreenState
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.red,
                                   ),
-                                  child: const Text('Yes, Cancel'),
+                                  child: Text(l10n.actionYesCancel),
                                 ),
                               ],
                             ),
@@ -409,9 +406,9 @@ class _FollowUpTransactionsScreenState
                           }
                         },
                         icon: const Icon(Icons.edit, size: 16),
-                        label: const Text(
-                          'Edit',
-                          style: TextStyle(fontSize: 12),
+                        label: Text(
+                          l10n.labelEdit,
+                          style: const TextStyle(fontSize: 12),
                         ),
                       ),
                       if (Provider.of<AuthProvider>(
@@ -425,9 +422,9 @@ class _FollowUpTransactionsScreenState
                         TextButton.icon(
                           onPressed: () => _showEditRatiosDialog(tx),
                           icon: const Icon(Icons.percent, size: 16),
-                          label: const Text(
-                            'Edit Ratios',
-                            style: TextStyle(fontSize: 12),
+                          label: Text(
+                            l10n.labelEditRatios,
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ),
                     ],
@@ -445,14 +442,12 @@ class _FollowUpTransactionsScreenState
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Detach Delivery'),
-                              content: const Text(
-                                'This will remove the assigned delivery person. The transaction will become available for assignment again.',
-                              ),
+                              title: Text(l10n.dialogDetachDelivery),
+                              content: Text(l10n.msgDetachDelivery),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('Close'),
+                                  child: Text(l10n.actionClose),
                                 ),
                                 TextButton(
                                   onPressed: () async {
@@ -466,9 +461,9 @@ class _FollowUpTransactionsScreenState
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Delivery person detached',
+                                            l10n.msgDeliveryDetached,
                                           ),
                                         ),
                                       );
@@ -484,14 +479,14 @@ class _FollowUpTransactionsScreenState
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.orange,
                                   ),
-                                  child: const Text('Detach'),
+                                  child: Text(l10n.actionDetach),
                                 ),
                               ],
                             ),
                           );
                         },
                         icon: const Icon(Icons.person_remove, size: 16),
-                        label: const Text('Detach Delivery'),
+                        label: Text(l10n.dialogDetachDelivery),
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.orange,
                         ),
@@ -500,7 +495,12 @@ class _FollowUpTransactionsScreenState
                 ],
               ),
             Text(
-              'Created: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(tx['createdAt']))}',
+              l10n.labelCreated(
+                DateFormat(
+                  'yyyy-MM-dd HH:mm',
+                  Localizations.localeOf(context).languageCode,
+                ).format(DateTime.parse(tx['createdAt'])),
+              ),
               style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
             if (tx['status'] == 'completed' &&
@@ -518,9 +518,9 @@ class _FollowUpTransactionsScreenState
                     color: Colors.red,
                     size: 16,
                   ),
-                  label: const Text(
-                    'Revert Transaction',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  label: Text(
+                    l10n.actionRevertTransaction,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 ),
               ),
@@ -537,9 +537,9 @@ class _FollowUpTransactionsScreenState
                     size: 16,
                     color: Colors.blue,
                   ),
-                  label: const Text(
-                    'View/Edit Ticket',
-                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                  label: Text(
+                    l10n.actionViewEditTicket,
+                    style: const TextStyle(color: Colors.blue, fontSize: 12),
                   ),
                 ),
               ),
@@ -675,12 +675,15 @@ class _FollowUpTransactionsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),
       child: Text(
-        status.toUpperCase(),
+        (Localizations.localeOf(context).languageCode == 'ar'
+                ? UIUtils.translateStatus(status)
+                : status)
+            .toUpperCase(),
         style: TextStyle(
           color: color,
           fontSize: 10,
@@ -691,6 +694,7 @@ class _FollowUpTransactionsScreenState
   }
 
   void _showEditRatiosDialog(dynamic tx) {
+    final l10n = AppLocalizations.of(context)!;
     // commissionRatio is 0-1 range in backend, so multiply by 100 for percentage
     final double buyerComm = (tx['buyerCommissionRatio'] ?? 0.0) * 100;
     final double sellerRew = (tx['sellerBonusRatio'] ?? 0.0) * 100;
@@ -705,21 +709,21 @@ class _FollowUpTransactionsScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Transaction Ratios'),
+        title: Text(l10n.labelEditRatios),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: buyerCommController,
-              decoration: const InputDecoration(
-                labelText: 'Buyer Commission % (Sh. Fulfill)',
+              decoration: InputDecoration(
+                labelText: l10n.labelBuyerCommPercentage,
               ),
               keyboardType: TextInputType.number,
             ),
             TextField(
               controller: sellerRewController,
-              decoration: const InputDecoration(
-                labelText: 'Seller Reward % (Sh. Fulfill)',
+              decoration: InputDecoration(
+                labelText: l10n.labelSellerRewardPercentage,
               ),
               keyboardType: TextInputType.number,
             ),
@@ -728,7 +732,7 @@ class _FollowUpTransactionsScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () async {
@@ -754,7 +758,7 @@ class _FollowUpTransactionsScreenState
                 ).fetchTransactions(status: selectedStatus);
               }
             },
-            child: const Text('Update'),
+            child: Text(l10n.actionUpdateTicket),
           ),
         ],
       ),
@@ -799,6 +803,7 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final shortage = widget.tx['stockShortage'];
     final buyerPh = shortage['shortage']['pharmacy'];
     final sources = widget.tx['stockExcessSources'] as List;
@@ -806,8 +811,8 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
     return AlertDialog(
       title: Text(
         widget.isEditing
-            ? 'Edit Reversal Ticket'
-            : 'Revert Transaction & Expenses',
+            ? l10n.titleEditReversalTicket
+            : l10n.titleReversalExpenses,
       ),
       content: SingleChildScrollView(
         child: Column(
@@ -815,26 +820,29 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!widget.isEditing) ...[
-              const Text(
-                'AUTOMATIC REVERSAL SUMMARY:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              Text(
+                l10n.labelAutomaticReversalSummary,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Buyer: ${buyerPh['name']} (Refunded: ${-(shortage['balanceEffect'] ?? 0)} EGP)',
+                '${l10n.labelBuyer(buyerPh['name'])} (Refunded: ${-(shortage['balanceEffect'] ?? 0)} EGP)',
                 style: const TextStyle(fontSize: 12),
               ),
               ...sources.map(
                 (s) => Text(
-                  'Seller: ${s['stockExcess']['pharmacy']['name']} (Deducted: ${s['balanceEffect'] ?? 0} EGP)',
+                  '${l10n.labelSeller(s['stockExcess']['pharmacy']['name'])} (Deducted: ${s['balanceEffect'] ?? 0} EGP)',
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
               const Divider(),
             ],
-            const Text(
-              'INVOLVED PARTIES (Select to Add Expense):',
-              style: TextStyle(
+            Text(
+              l10n.labelInvolvedParties,
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
                 fontSize: 12,
@@ -853,9 +861,9 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
             const SizedBox(height: 16),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description / Reason',
-                labelStyle: TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                labelText: l10n.labelDescriptionReason,
+                labelStyle: const TextStyle(fontSize: 12),
               ),
             ),
           ],
@@ -864,7 +872,7 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(l10n.actionCancel),
         ),
         ElevatedButton(
           onPressed: () =>
@@ -873,13 +881,18 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
             backgroundColor: widget.isEditing ? Colors.blue : Colors.red,
             foregroundColor: Colors.white,
           ),
-          child: Text(widget.isEditing ? 'Update Ticket' : 'Confirm Reversion'),
+          child: Text(
+            widget.isEditing
+                ? l10n.actionUpdateTicket
+                : l10n.actionConfirmReversion,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildPartyItem(dynamic pharmacy, String role, String pharmacyId) {
+    final l10n = AppLocalizations.of(context)!;
     final existingIndex = _expenses.indexWhere(
       (p) => p['userId'] == pharmacyId,
     );
@@ -931,9 +944,9 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
                     size: 16,
                     color: Colors.red,
                   ),
-                  label: const Text(
-                    'Add Expense',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  label: Text(
+                    l10n.labelAddExpense,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 )
               else
@@ -952,9 +965,12 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
               padding: const EdgeInsets.only(top: 8),
               child: Row(
                 children: [
-                  const Text(
-                    'Amount (EGP): ',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.labelAmountEgp,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   SizedBox(

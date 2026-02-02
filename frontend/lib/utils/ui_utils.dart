@@ -40,6 +40,27 @@ class UIUtils {
     );
   }
 
+  static String translateStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'نشط';
+      case 'rejected':
+        return 'مرفوض';
+      case 'cancelled':
+        return 'ملغي';
+      case 'fulfilled':
+        return 'مكتمل';
+      case 'pending':
+        return 'قيد الانتظار';
+      case 'accepted':
+        return 'مقبول';
+      case 'completed':
+        return 'مكتمل';
+      default:
+        return status;
+    }
+  }
+
   static Widget _infoRow(IconData icon, String text) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

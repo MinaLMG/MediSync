@@ -15,7 +15,7 @@ console.log('👷 Notification Worker initialized...');
 
 const worker = new Worker('notificationQueue', async (job) => {
     console.log('📦 Job received:', job.id, job.name);
-    const { userId, type, message, relatedEntity, relatedEntityType, actionUrl, priority } = job.data;
+    const { userId, type, message, message_ar, relatedEntity, relatedEntityType, actionUrl, priority } = job.data;
     
     console.log(`Processing notification for user: ${userId}, Type: ${type}`);
 
@@ -25,6 +25,7 @@ const worker = new Worker('notificationQueue', async (job) => {
             user: userId,
             type,
             message,
+            message_ar,
             relatedEntity,
             relatedEntityType,
             actionUrl,

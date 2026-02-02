@@ -301,7 +301,6 @@ exports.updateSuggestionStatus = async (req, res) => {
         await suggestion.save({ session });
         await session.commitTransaction();
 
-        // Notify the user who suggested the product
         try {
             await addNotificationJob(
                 suggestion.suggestedBy.toString(),
@@ -311,7 +310,8 @@ exports.updateSuggestionStatus = async (req, res) => {
                     adminNotes: adminNotes,
                     relatedEntity: status === 'approved' ? (product && product[0] ? product[0]._id : suggestion._id) : suggestion._id,
                     relatedEntityType: status === 'approved' ? 'Product' : 'ProductSuggestion'
-                }
+                },
+                `اقتراح المنتج الخاص بك بـ "${suggestion.name}" قد تم ${status === 'approved' ? 'الموافقة عليه' : 'رفضه'}.`
             );
         } catch (notifErr) {
             console.error('Notification error in updateSuggestionStatus:', notifErr);

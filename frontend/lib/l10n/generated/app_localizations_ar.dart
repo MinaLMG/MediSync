@@ -1403,7 +1403,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get labelOrderPrefix => 'طلب رقم ';
+  String get labelOrderPrefix => 'طلب رقم #';
 
   @override
   String get helpSupportTitle => 'المساعدة والدعم';
@@ -1599,134 +1599,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get labelCommissionRatios => 'نسب العمولة (%)';
-
-  @override
-  String get labelMinComm => 'العمولة الدنيا (%)';
-
-  @override
-  String get helperMinComm =>
-      'العمولة الافتراضية لإعادة توازن الوفرة الحقيقية.';
-
-  @override
-  String get labelShortageComm => 'عمولة النقص (%)';
-
-  @override
-  String get helperShortageComm => 'العمولة الافتراضية لتلبية طلبات النقص.';
-
-  @override
-  String get labelShortageSellerRewardField => 'مكافأة البائع في النقص (%)';
-
-  @override
-  String get helperShortageSellerReward =>
-      'المكافأة الافتراضية لموفر تلبية النقص.';
-
-  @override
-  String get msgSettingsUpdated => 'تم تحديث الإعدادات بنجاح';
-
-  @override
-  String get msgFailedUpdateSettings => 'فشل في تحديث الإعدادات';
-
-  @override
-  String get msgPleaseEnterValue => 'يرجى إدخال قيمة';
-
-  @override
-  String get msgEnterNumberBetween0And20 => 'أدخل رقماً بين 0 و 20';
-
-  @override
-  String get msgEnterPositiveNumber => 'أدخل رقماً موجباً';
-
-  @override
-  String get titleFeedbackComplaints => 'الآراء والشكاوى';
-
-  @override
-  String get msgNoSuggestionsFound => 'لم يتم العثور على اقتراحات.';
-
-  @override
-  String get labelUnknownPharmacy => 'صيدلية غير معروفة';
-
-  @override
-  String labelUserPrefix(String name) {
-    return 'المستخدم: $name';
-  }
-
-  @override
-  String labelFromPrefix(String name) {
-    return 'من: $name';
-  }
-
-  @override
-  String get titleFeedbackDetails => 'تفاصيل الرأي';
-
-  @override
-  String get msgNoContentProvided => 'لم يتم تقديم محتوى';
-
-  @override
-  String get titleProductSuggestions => 'اقتراحات المنتجات الجديدة';
-
-  @override
-  String titleSuggestionAction(String status) {
-    return '$status اقتراح';
-  }
-
-  @override
-  String msgConfirmSuggestionAction(String status) {
-    return 'هل أنت متأكد أنك تريد $status هذا الاقتراح؟';
-  }
-
-  @override
-  String get labelReviewerNotesOptional => 'ملاحظات المراجع (اختياري)';
-
-  @override
-  String get labelProposedPrice => 'السعر المقترح';
-
-  @override
-  String get labelSuggestedBy => 'مقترح بواسطة';
-
-  @override
-  String labelReviewerNotes(String notes) {
-    return 'ملاحظات المراجع: $notes';
-  }
-
-  @override
-  String get hintSearchSuggestions => 'البحث في الاقتراحات (* للكل)...';
-
-  @override
-  String titleBuyProduct(String name, String volume) {
-    return 'شراء $name ($volume)';
-  }
-
-  @override
-  String labelTotalCoins(String amount) {
-    return 'الإجمالي: $amount عملة';
-  }
-
-  @override
-  String get titleExcessFollowUp => 'متابعة الزيادات';
-
-  @override
-  String get msgNoFulfilledExcesses => 'لا توجد زيادات مكتملة';
-
-  @override
-  String get msgNoPendingExcesses => 'لا توجد زيادات معلقة';
-
-  @override
-  String get msgNoAvailableExcesses => 'لا توجد زيادات متاحة';
-
-  @override
-  String get msgActionCompletedLocked => 'هذا الإجراء مكتمل ومغلق.';
-
-  @override
-  String get msgCannotDeleteTakenExcess =>
-      'لا يمكن حذف الزيادة التي تم سحب مخزون منها بالفعل.';
-
-  @override
-  String get labelConfirmDelete => 'تأكيد الحذف';
-
-  @override
-  String get msgConfirmDeleteExcess => 'هل أنت متأكد أنك تريد حذف هذه الزيادة؟';
-
-  @override
   String get msgConfirmDeleteExcessAvailable =>
       'هل أنت متأكد أنك تريد حذف هذه الزيادة المتاحة؟';
 
@@ -1748,5 +1620,303 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelNewPrice => 'سعر جديد';
 
   @override
+  String get priceLabel => 'السعر';
+
+  @override
+  String get quantityLabel => 'الكمية';
+
+  @override
+  String get expiryLabel => 'تاريخ الانتهاء';
+
+  @override
   String get labelOff => 'خصم';
+
+  @override
+  String get titleConfirmDelete => 'تأكيد الحذف';
+
+  @override
+  String get msgConfirmReversePayment =>
+      'هل أنت متأكد؟ سيؤدي هذا إلى عكس عملية الدفع.';
+
+  @override
+  String get actionRecord => 'تسجيل';
+
+  @override
+  String get msgPaymentDeleted => 'تم حذف وعكس عملية الدفع';
+
+  @override
+  String get titleFollowUpTransactions => 'متابعة المعاملات';
+
+  @override
+  String get labelAll => 'الكل';
+
+  @override
+  String labelBuyer(Object name) {
+    return 'المشتري: $name';
+  }
+
+  @override
+  String labelSeller(Object name) {
+    return 'البائع: $name';
+  }
+
+  @override
+  String get labelSellers => 'البائعون:';
+
+  @override
+  String labelTotalQty(Object count) {
+    return 'إجمالي الكمية: $count';
+  }
+
+  @override
+  String labelTotalValue(Object amount) {
+    return 'إجمالي القيمة: $amount عملة';
+  }
+
+  @override
+  String labelDelivery(Object name) {
+    return 'التوصيل: $name';
+  }
+
+  @override
+  String get dialogConfirmAccept => 'تأكيد القبول';
+
+  @override
+  String get msgConfirmAcceptTransaction =>
+      'هل أنت متأكد أنك تريد قبول هذه المعاملة؟';
+
+  @override
+  String get actionAccept => 'قبول';
+
+  @override
+  String get actionYesAccept => 'نعم، قبول';
+
+  @override
+  String get dialogConfirmComplete => 'تأكيد الإكمال';
+
+  @override
+  String get msgConfirmCompleteTransaction =>
+      'هل أنت متأكد أنك تريد تحديد هذه المعاملة كمكتملة؟';
+
+  @override
+  String get actionComplete => 'إكمال';
+
+  @override
+  String get actionYesComplete => 'نعم، إكمال';
+
+  @override
+  String get dialogConfirmCancel => 'تأكيد الإلغاء';
+
+  @override
+  String get msgConfirmCancelTransaction =>
+      'هل أنت متأكد أنك تريد إلغاء هذه المعاملة؟ سيتم إرجاع جميع الكميات إلى صيدلياتها المعنية.';
+
+  @override
+  String get actionYesCancel => 'نعم، إلغاء';
+
+  @override
+  String get labelEdit => 'تعديل';
+
+  @override
+  String get labelEditRatios => 'تعديل النسب';
+
+  @override
+  String get dialogDetachDelivery => 'فصل التوصيل';
+
+  @override
+  String get msgDetachDelivery =>
+      'هذا سيزيل عامل التوصيل المعين. ستصبح المعاملة متاحة للتعيين مرة أخرى.';
+
+  @override
+  String get actionDetach => 'فصل';
+
+  @override
+  String get msgDeliveryDetached => 'تم فصل عامل التوصيل';
+
+  @override
+  String get actionRevertTransaction => 'عكس المعاملة';
+
+  @override
+  String get actionViewEditTicket => 'عرض/تعديل التذكرة';
+
+  @override
+  String labelRefundStatus(Object status) {
+    return 'تم تحديث الحالة إلى $status';
+  }
+
+  @override
+  String labelRef(Object ref) {
+    return 'المرجع: $ref';
+  }
+
+  @override
+  String get labelBuyerCommPercentage => 'نسبة عمولة المشتري (توفير العجز)';
+
+  @override
+  String get labelSellerRewardPercentage => 'نسبة مكافأة البائع (توفير العجز)';
+
+  @override
+  String get labelDescriptionReason => 'الوصف / السبب';
+
+  @override
+  String get actionUpdateTicket => 'تحديث التذكرة';
+
+  @override
+  String get actionConfirmReversion => 'تأكيد العكس';
+
+  @override
+  String get titleReversalExpenses => 'عكس المعاملة والمصاريف';
+
+  @override
+  String get titleEditReversalTicket => 'تعديل تذكرة العكس';
+
+  @override
+  String get labelAutomaticReversalSummary => 'ملخص العكس التلقائي:';
+
+  @override
+  String get labelInvolvedParties => 'الأطراف المعنية (اختر لإضافة مصاريف):';
+
+  @override
+  String get labelAddExpense => 'إضافة مصاريف';
+
+  @override
+  String get labelAmountEgp => 'المبلغ (ج.م):';
+
+  @override
+  String get actionNo => 'لا';
+
+  @override
+  String get actionYes => 'نعم';
+
+  @override
+  String get msgNoData => 'لا توجد بيانات.';
+
+  @override
+  String get titleProductSuggestions => 'مقترحات الأدوية';
+
+  @override
+  String get hintSearchSuggestions => 'البحث في المقترحات...';
+
+  @override
+  String get msgNoSuggestionsFound => 'لم يتم العثور على مقترحات أدوية.';
+
+  @override
+  String get labelProposedPrice => 'السعر المقترح';
+
+  @override
+  String get labelSuggestedBy => 'مقترح بواسطة';
+
+  @override
+  String labelReviewerNotes(String notes) {
+    return 'ملاحظات المراجع: $notes';
+  }
+
+  @override
+  String get msgSettingsUpdated => 'تم تحديث الإعدادات بنجاح!';
+
+  @override
+  String get msgFailedUpdateSettings => 'فشل تحديث الإعدادات.';
+
+  @override
+  String get labelCommissionRatios => 'نسب العمولات';
+
+  @override
+  String get labelMinComm => 'الحد الأدنى للعمولة (%)';
+
+  @override
+  String get helperMinComm => 'الحد الأدنى لنسبة الخصم من المعاملات';
+
+  @override
+  String get msgPleaseEnterValue => 'يرجى إدخال قيمة';
+
+  @override
+  String get msgEnterNumberBetween0And20 => 'يرجى إدخال رقم بين 0 و 20';
+
+  @override
+  String get labelShortageComm => 'عمولة النواقص (عملات)';
+
+  @override
+  String get helperShortageComm => 'العملات المخصومة لكل وحدة لتلبية النواقص';
+
+  @override
+  String get msgEnterPositiveNumber => 'يرجى إدخال رقم موجب';
+
+  @override
+  String get labelShortageSellerRewardField => 'مكافأة بائع النواقص (عملات)';
+
+  @override
+  String get helperShortageSellerReward =>
+      'العملات التي يتم مكافأة البائع بها لكل وحدة';
+
+  @override
+  String get titleFeedbackComplaints => 'الآراء والشكاوى';
+
+  @override
+  String get labelUnknownPharmacy => 'صيدلية غير معروفة';
+
+  @override
+  String labelUserPrefix(String user) {
+    return 'المستخدم: $user';
+  }
+
+  @override
+  String get titleFeedbackDetails => 'تفاصيل الرأي';
+
+  @override
+  String labelFromPrefix(String from) {
+    return 'من: $from';
+  }
+
+  @override
+  String get msgConfirmDeleteExcess =>
+      'هل أنت متأكد من حذف هذه البضاعة الزائدة؟';
+
+  @override
+  String get msgNoAvailableExcesses => 'لا توجد بضائع زائدة متاحة حالياً.';
+
+  @override
+  String get msgCannotDeleteTakenExcess =>
+      'لا يمكن حذف بضاعة زائدة يتم استخدامها بالفعل في معاملة.';
+
+  @override
+  String get labelConfirmDelete => 'تأكيد الحذف';
+
+  @override
+  String titleSuggestionAction(String action) {
+    return '$action الاقتراح';
+  }
+
+  @override
+  String msgConfirmSuggestionAction(String action) {
+    return 'هل أنت متأكد من أنك تريد $action هذا الاقتراح؟';
+  }
+
+  @override
+  String get labelReviewerNotesOptional => 'ملاحظات المراجع (اختياري)';
+
+  @override
+  String titleBuyProduct(String product, String volume) {
+    return 'شراء $product ($volume)';
+  }
+
+  @override
+  String labelTotalCoins(String coins) {
+    return 'الإجمالي: $coins عملة';
+  }
+
+  @override
+  String get msgNoContentProvided => 'لم يتم تقديم أي محتوى.';
+
+  @override
+  String get titleExcessFollowUp => 'متابعة البضائع الزائدة';
+
+  @override
+  String get msgNoFulfilledExcesses => 'لم يتم العثور على بضائع زائدة ملباة.';
+
+  @override
+  String get msgActionCompletedLocked =>
+      'هذا الإجراء مغلق لأن المعاملة مكتملة بالفعل.';
+
+  @override
+  String get msgNoPendingExcesses => 'لم يتم العثور على بضائع زائدة معلقة.';
 }
