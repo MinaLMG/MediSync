@@ -33,10 +33,11 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
         throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
     }
 
+    const isShortageFulfillment = shortage_fulfillment === true;
     let finalSalePercentage = 0;
     let finalSaleAmount = 0;
 
-    if (shortage_fulfillment === false) {
+    if (!isShortageFulfillment) {
         finalSalePercentage = salePercentage || 0;
         finalSaleAmount = (selectedPrice * finalSalePercentage) / 100;
     }
@@ -58,7 +59,7 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
         selectedPrice,
         salePercentage: finalSalePercentage,
         saleAmount: finalSaleAmount,
-        shortage_fulfillment: shortage_fulfillment !== false,
+        shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
         status: 'pending'
     });

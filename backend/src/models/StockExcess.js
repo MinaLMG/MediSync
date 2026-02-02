@@ -6,7 +6,6 @@
  * partially_fulfilled: Some stock taken or reserved, but remainingQuantity > 0. Edit Sale & Quantity (Decrease only) allowed.
  * reserved: All stock reserved (remainingQuantity == 0), but some transactions are still pending/accepted. Edit Sale ONLY.
  * fulfilled: All stock matched and transitions finished. Bridge status or terminal. Edit Sale ONLY.
- * sold: Terminal state. All transactions completed. LOCKED.
  * rejected: Denied by admin. LOCKED.
  * expired: Expired by date. LOCKED.
  */

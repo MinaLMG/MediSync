@@ -100,7 +100,12 @@ exports.getGlobalActiveShortages = async (req, res) => {
 // Get fulfilled shortages (Admin)
 exports.getFulfilledShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ remainingQuantity: 0 })
+        const shortages = await StockShortage.find({ 
+            $or: [
+                { status: 'cancelled' },
+                { remainingQuantity: 0 }
+            ]
+        })
             .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
             .populate('volume', 'name')

@@ -167,7 +167,9 @@ exports.getAvailableExcesses = async (req, res) => {
 
 exports.getFulfilledExcesses = async (req, res) => {
     try {
-        const excesses = await StockExcess.find({ status: 'fulfilled' })
+        const excesses = await StockExcess.find({ 
+            status: { $in: ['fulfilled', 'rejected', 'expired'] } 
+        })
             .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
             .populate('volume', 'name')
