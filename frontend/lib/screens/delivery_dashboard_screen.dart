@@ -8,6 +8,7 @@ import '../providers/notification_provider.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import '../utils/ui_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -79,18 +80,20 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
     if (!context.mounted) return;
 
     if (success) {
+      final l10n = AppLocalizations.of(context)!;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Request for ${type == 'accept' ? 'Acceptance' : 'Completion'} sent!',
+            '${l10n.msgRequestSent} (${type == 'accept' ? l10n.labelDeposit : l10n.labelWithdrawal})',
           ),
         ),
       );
       transProvider.fetchTransactions();
     } else {
+      final l10n = AppLocalizations.of(context)!;
       final error = dripProvider.errorMessage;
       messenger.showSnackBar(
-        SnackBar(content: Text(error ?? 'Failed to send request')),
+        SnackBar(content: Text(error ?? l10n.loginFailed)), // Generic failure
       );
     }
   }
@@ -132,10 +135,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
       messenger.hideCurrentSnackBar();
 
       if (success) {
+        final l10n = AppLocalizations.of(context)!;
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              'Success! Transaction #${transactionId.substring(transactionId.length - 6)} assigned.',
+              '${l10n.msgAssignmentSuccess} (#${transactionId.substring(transactionId.length - 6)})',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
@@ -150,12 +154,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
 
         if (!mounted) return;
 
+        final l10n = AppLocalizations.of(context)!;
         final error = transProvider.errorMessage;
         messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              error ?? 'Assignment failed. Check if it\'s still available.',
-            ),
+            content: Text(error ?? l10n.msgAssignmentFailed),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -177,7 +180,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Delivery Dashboard'),
+        title: Text(AppLocalizations.of(context)!.deliveryDashboardTitle),
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
         leading: Padding(
@@ -204,10 +207,19 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
             fontWeight: FontWeight.normal,
             fontSize: 13,
           ),
-          tabs: const [
-            Tab(icon: Icon(Icons.list_alt), text: 'AVAILABLE'),
-            Tab(icon: Icon(Icons.my_library_books), text: 'MY TASKS'),
-            Tab(icon: Icon(Icons.history), text: 'HISTORY'),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.list_alt),
+              text: AppLocalizations.of(context)!.tabAvailable,
+            ),
+            Tab(
+              icon: const Icon(Icons.my_library_books),
+              text: AppLocalizations.of(context)!.tabMyTasks,
+            ),
+            Tab(
+              icon: const Icon(Icons.history),
+              text: AppLocalizations.of(context)!.tabHistory,
+            ),
           ],
         ),
         actions: [
@@ -348,13 +360,14 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
     bool isHistoryTab = false,
   }) {
     if (transactions.isEmpty) {
+      final l10n = AppLocalizations.of(context)!;
       return Center(
         child: Text(
           isAvailableTab
-              ? 'No available transactions.'
+              ? l10n.msgNoAvailableTransactions
               : (isHistoryTab
-                    ? 'No history found.'
-                    : 'No tasks assigned to you.'),
+                    ? l10n.msgNoHistoryFound
+                    : l10n.msgNoTasksAssigned),
           style: const TextStyle(color: Colors.grey),
         ),
       );
@@ -405,7 +418,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Transaction #${tx['serial'] ?? tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
+                            '${AppLocalizations.of(context)!.labelTransactionHash}${tx['serial'] ?? tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           if (orderSerial != null)
@@ -423,7 +436,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                                 ),
                               ),
                               child: Text(
-                                'Order #$orderSerial',
+                                '${AppLocalizations.of(context)!.labelOrderHash}$orderSerial',
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: Colors.blue[800],
@@ -460,7 +473,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                               ),
                             ),
                             Text(
-                              'Volume: ${tx['stockShortage']['shortage']['volume']?['name'] ?? 'N/A'}',
+                              '${AppLocalizations.of(context)!.labelVolumePrefix}${tx['stockShortage']['shortage']['volume']?['name'] ?? AppLocalizations.of(context)!.labelNotAvailable}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -489,7 +502,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                               ),
                             ),
                             Text(
-                              'UNITS',
+                              AppLocalizations.of(
+                                context,
+                              )!.labelUnitsSuffix.trim(),
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: FontWeight.bold,
@@ -503,9 +518,12 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                   ),
                   const SizedBox(height: 12),
                   const Divider(),
-                  const Text(
-                    'Excess Pharmacy:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  Text(
+                    AppLocalizations.of(context)!.labelExcessPharmacy,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   ...excessSources.map((source) {
                     final eph = source['stockExcess']?['pharmacy'] ?? {};
@@ -544,9 +562,12 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                     );
                   }),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Shortage Pharmacy:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  Text(
+                    AppLocalizations.of(context)!.labelShortagePharmacy,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -566,7 +587,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                         ElevatedButton.icon(
                           onPressed: () => _assignAction(tx['_id']),
                           icon: const Icon(Icons.add_task),
-                          label: const Text('Assign to Me'),
+                          label: Text(
+                            AppLocalizations.of(context)!.actionAssignToMe,
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
                             foregroundColor: Colors.white,
@@ -594,7 +617,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                                   ),
                                 )
                               : const Icon(Icons.check),
-                          label: const Text('Request Acceptance'),
+                          label: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.actionRequestAcceptance,
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
@@ -622,15 +649,21 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen>
                                   ),
                                 )
                               : const Icon(Icons.done_all),
-                          label: const Text('Request Completion'),
+                          label: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.actionRequestCompletion,
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                           ),
                         ),
                       if (!isAvailableTab && !isHistoryTab && hasPendingRequest)
-                        const Chip(
-                          label: Text('Request Pending...'),
+                        Chip(
+                          label: Text(
+                            AppLocalizations.of(context)!.labelRequestPending,
+                          ),
                           backgroundColor: Colors.amber,
                         ),
                     ],

@@ -4,6 +4,7 @@ import '../providers/transaction_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/order_provider.dart';
 import '../utils/ui_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminOrderFulfillmentScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -115,11 +116,10 @@ class _AdminOrderFulfillmentScreenState
     }
 
     if (!hasSelections) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one excess to fulfill'),
-        ),
-      );
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.msgSelectExcessToFulfill)));
       return;
     }
 
@@ -177,11 +177,14 @@ class _AdminOrderFulfillmentScreenState
       }
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         if (successCount > 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Successfully fulfilled $successCount item(s)${failCount > 0 ? ', $failCount failed' : ''}',
+                failCount > 0
+                    ? l10n.msgFulfillPartialFail(successCount, failCount)
+                    : l10n.msgFulfillSuccess(successCount),
               ),
               backgroundColor: failCount > 0 ? Colors.orange : Colors.green,
             ),
@@ -197,9 +200,10 @@ class _AdminOrderFulfillmentScreenState
           // Refresh matches
           await _fetchAllMatches();
         } else {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('All fulfillments failed'),
+            SnackBar(
+              content: Text(l10n.msgAllFulfillmentsFailed),
               backgroundColor: Colors.red,
             ),
           );
@@ -218,9 +222,10 @@ class _AdminOrderFulfillmentScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.order['serial']}'),
+        title: Text('${l10n.labelOrderHash}${widget.order['serial']}'),
         actions: [
           if (_getTotalSelectedOverall() > 0)
             Padding(
@@ -236,7 +241,7 @@ class _AdminOrderFulfillmentScreenState
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Selected: ${_getTotalSelectedOverall()} units',
+                    l10n.labelSelectedUnits(_getTotalSelectedOverall()),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -256,10 +261,12 @@ class _AdminOrderFulfillmentScreenState
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${_items.length} Items',
+                        l10n.labelItemsCount(_items.length),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      Text('Status: ${widget.order['status']}'),
+                      Text(
+                        '${l10n.labelStatus}: ${_getLocalizedStatus(context, widget.order['status'])}',
+                      ),
                     ],
                   ),
                 ),
@@ -301,7 +308,7 @@ class _AdminOrderFulfillmentScreenState
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Volume: ${item['volume']['name']} | Price: ${item['targetPrice']} coins',
+                                          '${l10n.labelVolumePrefix} ${item['volume']['name']} | ${l10n.labelPricePrefix} ${item['targetPrice']} ${l10n.coinsSuffix}',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[600],
@@ -314,7 +321,9 @@ class _AdminOrderFulfillmentScreenState
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        'Need: ${item['remainingQuantity']}',
+                                        l10n.labelNeed(
+                                          item['remainingQuantity'],
+                                        ),
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: Colors.blue,
@@ -322,7 +331,9 @@ class _AdminOrderFulfillmentScreenState
                                       ),
                                       if (_getTotalSelectedForItem(itemId) > 0)
                                         Text(
-                                          'Selected: ${_getTotalSelectedForItem(itemId)}',
+                                          l10n.labelSelectedUnitsShort(
+                                            _getTotalSelectedForItem(itemId),
+                                          ),
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Colors.green,
@@ -342,7 +353,7 @@ class _AdminOrderFulfillmentScreenState
                                     vertical: 8,
                                   ),
                                   child: Text(
-                                    'No matching excesses available',
+                                    l10n.msgNoMatchingExcesses,
                                     style: TextStyle(
                                       color: Colors.grey[600],
                                       fontStyle: FontStyle.italic,
@@ -394,7 +405,7 @@ class _AdminOrderFulfillmentScreenState
                                                 ),
                                               ),
                                               Text(
-                                                'Available: $maxQty units',
+                                                '${l10n.labelAvailableUnitsPrefix} $maxQty ${l10n.labelUnitsSuffix}',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
@@ -415,7 +426,7 @@ class _AdminOrderFulfillmentScreenState
                                                           : settings
                                                                 .minimumCommission);
                                                   return Text(
-                                                    'Sale Ratio: ${effectiveSale}%',
+                                                    '${l10n.labelSaleRatioPrefix} ${effectiveSale}%',
                                                     style: TextStyle(
                                                       fontSize: 12,
                                                       fontWeight:
@@ -427,7 +438,7 @@ class _AdminOrderFulfillmentScreenState
                                               ),
                                               if (excess['expiryDate'] != null)
                                                 Text(
-                                                  'Expiry: ${excess['expiryDate']}',
+                                                  '${l10n.labelExpiryPrefix} ${excess['expiryDate']}',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.bold,
@@ -546,9 +557,9 @@ class _AdminOrderFulfillmentScreenState
                                                         });
                                                       }
                                                     : null,
-                                                child: const Text(
-                                                  'Max',
-                                                  style: TextStyle(
+                                                child: Text(
+                                                  l10n.actionMax,
+                                                  style: const TextStyle(
                                                     fontSize: 12,
                                                   ),
                                                 ),
@@ -599,8 +610,10 @@ class _AdminOrderFulfillmentScreenState
                           : const Icon(Icons.check_circle),
                       label: Text(
                         _isLoading
-                            ? 'Processing...'
-                            : 'Submit Order Fulfillment (${_getTotalSelectedOverall()} units)',
+                            ? l10n.msgProcessing
+                            : l10n.actionSubmitFulfillment(
+                                _getTotalSelectedOverall(),
+                              ),
                         style: const TextStyle(fontSize: 16),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -656,5 +669,31 @@ class _AdminOrderFulfillmentScreenState
     final now = DateTime.now();
     final difference = expiry.difference(now).inDays;
     return difference < (6 * 30);
+  }
+
+  String _getLocalizedStatus(BuildContext context, String status) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return l10n.statusPending;
+      case 'available':
+        return l10n.statusAvailable;
+      case 'active':
+        return l10n.statusActive;
+      case 'fulfilled':
+        return l10n.statusFulfilled;
+      case 'partially_fulfilled':
+        return l10n.statusPartiallyFulfilled;
+      case 'sold':
+        return l10n.statusSold;
+      case 'expired':
+        return l10n.statusExpired;
+      case 'cancelled':
+        return l10n.statusCancelled;
+      case 'rejected':
+        return l10n.statusRejected;
+      default:
+        return status.toUpperCase();
+    }
   }
 }

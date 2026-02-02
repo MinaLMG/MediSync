@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminEditTransactionScreen extends StatefulWidget {
   final Map<String, dynamic> transaction;
@@ -78,9 +79,10 @@ class _AdminEditTransactionScreenState
   Future<void> _saveChanges() async {
     final totalSelected = _getTotalSelected();
     if (totalSelected == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Total quantity cannot be zero')),
-      );
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.msgTotalQtyCannotBeZero)));
       return;
     }
 
@@ -104,7 +106,11 @@ class _AdminEditTransactionScreenState
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Transaction updated successfully')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.msgTransactionUpdated,
+              ),
+            ),
           );
           Navigator.pop(context, true);
         } else {
@@ -115,7 +121,7 @@ class _AdminEditTransactionScreenState
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Failed to update transaction',
+                    AppLocalizations.of(context)!.msgFailedUpdateTransaction,
               ),
             ),
           );
@@ -138,6 +144,7 @@ class _AdminEditTransactionScreenState
     final bool isOrder = shortage['order'] != null;
 
     // Original available = remaining + current portion in this tx
+    final l10n = AppLocalizations.of(context)!;
     final int currentTxQty =
         widget.transaction['stockShortage']['quantityTaken'];
     final int remainingNeeded = shortage['remainingQuantity'] ?? 0;
@@ -145,7 +152,11 @@ class _AdminEditTransactionScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Transaction #${widget.transaction['serial'] ?? ''}'),
+        title: Text(
+          l10n.titleEditTransaction(
+            widget.transaction['serial']?.toString() ?? '',
+          ),
+        ),
       ),
       body: _isLoading && _matches.isEmpty
           ? const Center(child: CircularProgressIndicator())
@@ -186,9 +197,9 @@ class _AdminEditTransactionScreenState
                                 color: Colors.blue[100],
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text(
-                                'ORDER',
-                                style: TextStyle(
+                              child: Text(
+                                l10n.labelOrderBadge,
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue,
@@ -208,17 +219,17 @@ class _AdminEditTransactionScreenState
                         child: Column(
                           children: [
                             _buildInfoRow(
-                              'Total Original Needed:',
-                              '${shortage['quantity']} units',
+                              l10n.labelTotalOriginalNeeded,
+                              '${shortage['quantity']} ${l10n.labelUnitsShort}',
                             ),
                             _buildInfoRow(
-                              'Available (Original Available):',
-                              '$maxAllowed units',
+                              l10n.labelAvailableOriginal,
+                              '$maxAllowed ${l10n.labelUnitsShort}',
                             ),
                             const Divider(),
                             _buildInfoRow(
-                              'Total Distribution:',
-                              '${_getTotalSelected()} units',
+                              l10n.labelTotalDistribution,
+                              '${_getTotalSelected()} ${l10n.labelUnitsShort}',
                               valueColor: _getTotalSelected() > maxAllowed
                                   ? Colors.red
                                   : Colors.green,
@@ -278,14 +289,14 @@ class _AdminEditTransactionScreenState
                                           ),
                                         ),
                                         Text(
-                                          'Available (Original Available): $totalAvailableFromExcess units',
+                                          '${l10n.labelAvailableOriginal} $totalAvailableFromExcess ${l10n.labelUnitsShort}',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[600],
                                           ),
                                         ),
                                         Text(
-                                          'Price: ${excess['selectedPrice']} coins',
+                                          '${l10n.labelPrice}: ${excess['selectedPrice']} ${l10n.labelCoins}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
@@ -349,7 +360,9 @@ class _AdminEditTransactionScreenState
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Portion in this transaction: $originalPortionInTx',
+                                        l10n.labelPortionInTx(
+                                          originalPortionInTx,
+                                        ),
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontStyle: FontStyle.italic,
@@ -400,7 +413,9 @@ class _AdminEditTransactionScreenState
                             )
                           : const Icon(Icons.save),
                       label: Text(
-                        _isLoading ? 'Executing...' : 'Update Transaction',
+                        _isLoading
+                            ? l10n.msgExecuting
+                            : l10n.actionUpdateTransaction,
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[700],

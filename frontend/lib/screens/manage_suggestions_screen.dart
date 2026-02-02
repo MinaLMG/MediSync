@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../utils/search_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ManageSuggestionsScreen extends StatefulWidget {
   const ManageSuggestionsScreen({super.key});
@@ -29,21 +30,24 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
     final notesController = TextEditingController();
     final provider = Provider.of<ProductProvider>(context, listen: false);
 
+    final l10n = AppLocalizations.of(context)!;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          '${status[0].toUpperCase()}${status.substring(1)} Suggestion',
+          l10n.titleSuggestionAction(
+            '${status[0].toUpperCase()}${status.substring(1)}',
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Are you sure you want to $status this suggestion?'),
+            Text(l10n.msgConfirmSuggestionAction(status)),
             const SizedBox(height: 16),
             TextField(
               controller: notesController,
-              decoration: const InputDecoration(
-                labelText: 'Reviewer Notes (Optional)',
+              decoration: InputDecoration(
+                labelText: l10n.labelReviewerNotesOptional,
               ),
             ),
           ],
@@ -51,7 +55,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -75,24 +79,25 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = Provider.of<ProductProvider>(context);
 
     final filteredSuggestions = provider.suggestions.where((s) {
       return SearchUtils.matches(s['name'], _searchQuery) ||
-          SearchUtils.matches(s['suggestedBy']['name'], _searchQuery);
+          SearchUtils.matches(s['suggestedBy']['name'] ?? '', _searchQuery);
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('New Product Suggestions')),
+      appBar: AppBar(title: Text(l10n.titleProductSuggestions)),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search suggestions (* for wildcard)...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: l10n.hintSearchSuggestions,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (v) => setState(() => _searchQuery = v),
             ),
@@ -101,7 +106,7 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
             child: provider.isLoading && provider.suggestions.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : filteredSuggestions.isEmpty
-                ? const Center(child: Text('No suggestions found.'))
+                ? Center(child: Text(l10n.msgNoSuggestionsFound))
                 : ListView.builder(
                     itemCount: filteredSuggestions.length,
                     itemBuilder: (context, index) {
@@ -134,18 +139,18 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                               ),
                               const SizedBox(height: 8),
                               _InfoRow(
-                                label: 'Proposed Price',
-                                value: '${s['price']} coins',
+                                label: l10n.labelProposedPrice,
+                                value: '${s['price']} ${l10n.labelCoins}',
                               ),
                               const Divider(),
                               _InfoRow(
-                                label: 'Suggested By',
-                                value: s['suggestedBy']['name'],
+                                label: l10n.labelSuggestedBy,
+                                value: s['suggestedBy']['name'] ?? 'Unknown',
                               ),
                               if (s['adminNotes'] != null) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Reviewer Notes: ${s['adminNotes']}',
+                                  l10n.labelReviewerNotes(s['adminNotes']),
                                   style: const TextStyle(
                                     fontStyle: FontStyle.italic,
                                     color: Colors.grey,
@@ -167,7 +172,9 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red,
                                         ),
-                                        child: const Text('REJECT'),
+                                        child: Text(
+                                          l10n.actionReject.toUpperCase(),
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -193,9 +200,10 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                                       strokeWidth: 2,
                                                     ),
                                               )
-                                            : const Center(
+                                            : Center(
                                                 child: Text(
-                                                  'APPROVE',
+                                                  l10n.actionApprove
+                                                      .toUpperCase(),
                                                   textAlign: TextAlign.center,
                                                 ),
                                               ),

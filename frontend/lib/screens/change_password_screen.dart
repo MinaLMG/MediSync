@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -24,6 +25,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.changePassword(
@@ -36,8 +38,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           SnackBar(
             content: Text(
               success
-                  ? 'Password changed successfully!'
-                  : (authProvider.errorMessage ?? 'Failed to change password'),
+                  ? l10n.msgPasswordChangedSuccess
+                  : (authProvider.errorMessage ?? l10n.msgPasswordChangeFailed),
             ),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
@@ -52,10 +54,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Change Password'),
+        title: Text(l10n.menuResetPassword),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
@@ -66,49 +69,54 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Update your security details',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l10n.labelUpdateSecurityDetails,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Ensure your new password is at least 8 characters long.',
-                style: TextStyle(color: Colors.grey),
+              Text(
+                l10n.labelPasswordLengthHint,
+                style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
               TextFormField(
                 controller: _oldPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'Current Password',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.labelCurrentPassword,
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? l10n.labelRequired : null,
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _newPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'New Password',
-                  prefixIcon: Icon(Icons.lock_reset),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.labelNewPassword,
+                  prefixIcon: const Icon(Icons.lock_reset),
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
-                validator: (v) =>
-                    v == null || v.length < 8 ? 'Min 8 characters' : null,
+                validator: (v) => v == null || v.length < 8
+                    ? l10n.passwordMinLengthError
+                    : null,
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _confirmPasswordController,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm New Password',
-                  prefixIcon: Icon(Icons.check_circle_outline),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.labelConfirmNewPassword,
+                  prefixIcon: const Icon(Icons.check_circle_outline),
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
                 validator: (v) => v != _newPasswordController.text
-                    ? 'Passwords do not match'
+                    ? l10n.msgPasswordsDoNotMatch
                     : null,
               ),
               const SizedBox(height: 40),
@@ -126,9 +134,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   child: authProvider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Reset My Password',
-                          style: TextStyle(
+                      : Text(
+                          l10n.menuResetPassword,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

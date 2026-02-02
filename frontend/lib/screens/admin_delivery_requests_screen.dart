@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/delivery_request_provider.dart';
 import '../providers/app_suggestion_provider.dart';
 import '../utils/ui_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminDeliveryRequestsScreen extends StatefulWidget {
   const AdminDeliveryRequestsScreen({super.key});
@@ -37,7 +38,9 @@ class _AdminDeliveryRequestsScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Request ${status == 'approved' ? 'Approved' : 'Rejected'}',
+              status == 'approved'
+                  ? AppLocalizations.of(context)!.msgRequestApproved
+                  : AppLocalizations.of(context)!.msgRequestRejected,
             ),
           ),
         );
@@ -52,7 +55,11 @@ class _AdminDeliveryRequestsScreenState
           listen: false,
         ).errorMessage;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error ?? 'Failed to review request')),
+          SnackBar(
+            content: Text(
+              error ?? AppLocalizations.of(context)!.msgFailedReviewRequest,
+            ),
+          ),
         );
       }
     }
@@ -66,23 +73,26 @@ class _AdminDeliveryRequestsScreenState
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Old requests cleaned up (older than 1 month)'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.msgCleanupOldRequests),
           ),
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Cleanup failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.msgCleanupFailed),
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Delivery Requests'),
+        title: Text(l10n.labelAdminDeliveryRequests),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -93,19 +103,17 @@ class _AdminDeliveryRequestsScreenState
           ),
           IconButton(
             icon: const Icon(Icons.cleaning_services),
-            tooltip: 'Cleanup old requests',
+            tooltip: l10n.labelCleanup,
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Cleanup'),
-                  content: const Text(
-                    'Delete all approved/rejected requests older than 1 month?',
-                  ),
+                  title: Text(l10n.labelCleanup),
+                  content: Text(l10n.msgConfirmCleanup),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.actionCancel),
                     ),
                     StatefulBuilder(
                       builder: (context, setDialogState) {
@@ -125,7 +133,7 @@ class _AdminDeliveryRequestsScreenState
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Delete'),
+                              : Text(l10n.actionDelete),
                         );
                       },
                     ),
@@ -143,7 +151,7 @@ class _AdminDeliveryRequestsScreenState
           }
 
           if (provider.pendingRequests.isEmpty) {
-            return const Center(child: Text('No pending delivery requests.'));
+            return Center(child: Text(l10n.msgNoPendingDeliveryRequests));
           }
 
           return RefreshIndicator(
@@ -193,7 +201,7 @@ class _AdminDeliveryRequestsScreenState
                           ],
                         ),
                         Text(
-                          'Phone: ${delivery['phone']}',
+                          '${l10n.phoneLabel}: ${delivery['phone']}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 12),
@@ -207,7 +215,7 @@ class _AdminDeliveryRequestsScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Transaction: ${tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
+                                '${l10n.labelTransactionHash}${tx['_id'].toString().substring(tx['_id'].toString().length - 6)}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -220,7 +228,7 @@ class _AdminDeliveryRequestsScreenState
                                     shortagePh,
                                   ),
                                   child: Text(
-                                    'Shortage: ${shortagePh['name']}',
+                                    '${l10n.labelShortagePharmacy} ${shortagePh['name']}',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.blue,
@@ -234,7 +242,7 @@ class _AdminDeliveryRequestsScreenState
                                     excessPh,
                                   ),
                                   child: Text(
-                                    'Excess: ${excessPh['name']}',
+                                    '${l10n.labelExcessPharmacy} ${excessPh['name']}',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.blue,
@@ -242,7 +250,7 @@ class _AdminDeliveryRequestsScreenState
                                   ),
                                 ),
                               Text(
-                                'Product: ${tx['stockShortage']?['shortage']?['product']?['name'] ?? 'Unknown'}',
+                                '${l10n.labelProduct}: ${tx['stockShortage']?['shortage']?['product']?['name'] ?? 'Unknown'}',
                                 style: const TextStyle(fontSize: 11),
                               ),
                             ],
@@ -262,7 +270,7 @@ class _AdminDeliveryRequestsScreenState
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
-                              child: const Text('Reject'),
+                              child: Text(l10n.actionReject),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
@@ -285,7 +293,7 @@ class _AdminDeliveryRequestsScreenState
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text('Approve'),
+                                  : Text(l10n.actionApprove),
                             ),
                           ],
                         ),

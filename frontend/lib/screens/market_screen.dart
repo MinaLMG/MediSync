@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -32,18 +33,24 @@ class _MarketScreenState extends State<MarketScreen> {
     int quantity = 1;
     final maxQty = item['totalQuantity'];
 
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Buy ${item['product']['name']} (${item['volume']['name']})',
+          l10n.titleBuyProduct(
+            item['product']['name'] ?? '',
+            item['volume']['name'] ?? '',
+          ),
         ),
         content: StatefulBuilder(
           builder: (context, setState) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Price: \$${item['price']}'),
-              Text('Available: ${item['totalQuantity']}'),
+              Text('${l10n.labelPrice}: ${item['price']} ${l10n.labelCoins}'),
+              Text(
+                '${l10n.labelAvailableOriginal} ${item['totalQuantity']} ${l10n.labelUnitsShort}',
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -69,14 +76,18 @@ class _MarketScreenState extends State<MarketScreen> {
                   ),
                 ],
               ),
-              Text('Total: \$${(quantity * item['price']).toStringAsFixed(2)}'),
+              Text(
+                l10n.labelTotalCoins(
+                  (quantity * item['price']).toStringAsFixed(2),
+                ),
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           ElevatedButton(
             onPressed: () async {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class UIUtils {
   static void showPharmacyInfo(BuildContext context, dynamic pharmacy) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -9,7 +11,7 @@ class UIUtils {
           children: [
             const Icon(Icons.local_pharmacy, color: Colors.blue),
             const SizedBox(width: 8),
-            Expanded(child: Text(pharmacy['name'] ?? 'Pharmacy Info')),
+            Expanded(child: Text(pharmacy['name'] ?? l10n.labelPharmacyInfo)),
           ],
         ),
         content: Column(
@@ -18,20 +20,20 @@ class UIUtils {
           children: [
             _infoRow(
               Icons.location_on,
-              pharmacy['address'] ?? 'No address provided',
+              pharmacy['address'] ?? l10n.msgNoAddress,
             ),
             const SizedBox(height: 12),
-            _infoRow(Icons.phone, pharmacy['phone'] ?? 'No phone provided'),
+            _infoRow(Icons.phone, pharmacy['phone'] ?? l10n.msgNoPhone),
             if (pharmacy['ownerName'] != null) ...[
               const SizedBox(height: 12),
-              _infoRow(Icons.person, 'Owner: ${pharmacy['ownerName']}'),
+              _infoRow(Icons.person, l10n.labelOwner(pharmacy['ownerName'])),
             ],
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(l10n.actionClose),
           ),
         ],
       ),

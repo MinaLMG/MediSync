@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -57,7 +58,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings updated successfully')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.msgSettingsUpdated),
+          ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +70,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     context,
                     listen: false,
                   ).errorMessage ??
-                  'Failed to update settings',
+                  AppLocalizations.of(context)!.msgFailedUpdateSettings,
             ),
           ),
         );
@@ -77,9 +80,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('System Settings'),
+        title: Text(l10n.menuSystemSettings),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
@@ -96,9 +100,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Commission Ratios (%)',
-                        style: TextStyle(
+                      Text(
+                        l10n.labelCommissionRatios,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -106,20 +110,19 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _minCommController,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum Commission (%)',
-                          helperText:
-                              'Default commission for real excess rebalance.',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.labelMinComm,
+                          helperText: l10n.helperMinComm,
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter a value';
+                            return l10n.msgPleaseEnterValue;
                           }
                           final n = double.tryParse(value);
                           if (n == null || n < 0 || n > 20) {
-                            return 'Enter a number between 0 and 20';
+                            return l10n.msgEnterNumberBetween0And20;
                           }
                           return null;
                         },
@@ -127,20 +130,19 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _shortageCommController,
-                        decoration: const InputDecoration(
-                          labelText: 'Shortage Commission (%)',
-                          helperText:
-                              'Default commission for shortage fulfillment.',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.labelShortageComm,
+                          helperText: l10n.helperShortageComm,
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter a value';
+                            return l10n.msgPleaseEnterValue;
                           }
                           final n = double.tryParse(value);
                           if (n == null || n < 0) {
-                            return 'Enter a positive number';
+                            return l10n.msgEnterPositiveNumber;
                           }
                           return null;
                         },
@@ -148,20 +150,19 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _shortageSellerRewardController,
-                        decoration: const InputDecoration(
-                          labelText: 'Shortage Seller Reward (%)',
-                          helperText:
-                              'Default reward for shortage fulfillment provider.',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.labelShortageSellerRewardField,
+                          helperText: l10n.helperShortageSellerReward,
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter a value';
+                            return l10n.msgPleaseEnterValue;
                           }
                           final n = double.tryParse(value);
                           if (n == null || n < 0) {
-                            return 'Enter a positive number';
+                            return l10n.msgEnterPositiveNumber;
                           }
                           return null;
                         },
@@ -182,9 +183,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 ),
                 child: Provider.of<SettingsProvider>(context).isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Save Settings',
-                        style: TextStyle(fontSize: 16),
+                    : Text(
+                        l10n.actionSaveSettings,
+                        style: const TextStyle(fontSize: 16),
                       ),
               ),
             ],

@@ -33,9 +33,10 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Balance History'),
+        title: Text(l10n.menuBalanceHistory),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
@@ -50,7 +51,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
           }
 
           if (provider.history.isEmpty) {
-            return const Center(child: Text('No balance history found.'));
+            return Center(child: Text(l10n.msgNoBalanceHistory));
           }
 
           return ListView.builder(
@@ -66,6 +67,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> item) {
+    final l10n = AppLocalizations.of(context)!;
     final amount = (item['amount'] is int)
         ? (item['amount'] as int).toDouble()
         : (item['amount'] as double? ?? 0.0);
@@ -100,7 +102,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
       child: ListTile(
         leading: Icon(icon, color: color, size: 32),
         title: Text(
-          item['description'] ?? 'Balance Update',
+          item['description'] ?? l10n.labelBalanceUpdate,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
@@ -109,7 +111,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
             Text(formattedDate),
             const SizedBox(height: 4),
             Text(
-              '${AppLocalizations.of(context)!.labelBalance}: ${item['previousBalance']?.toStringAsFixed(2)} → ${item['newBalance']?.toStringAsFixed(2)}',
+              '${l10n.labelBalance}: ${item['previousBalance']?.toStringAsFixed(2)} → ${item['newBalance']?.toStringAsFixed(2)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
@@ -130,6 +132,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
   }
 
   void _showDetailsDialog(Map<String, dynamic> item) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) {
@@ -137,47 +140,42 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
 
         return AlertDialog(
           title: Text(
-            AppLocalizations.of(
-              context,
-            )!.ticketTitle(item['_id']?.toString().substring(0, 6) ?? '...'),
+            l10n.ticketTitle(item['_id']?.toString().substring(0, 6) ?? '...'),
           ),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                _detailRow(l10n.labelName, item['description']),
                 _detailRow(
-                  'Description',
-                  item['description'],
-                ), // Could localize 'Description' label if needed
-                _detailRow(
-                  'Type',
+                  l10n.labelType,
                   item['type'].toString().replaceAll('_', ' ').toUpperCase(),
                 ),
                 _detailRow(
-                  'Date',
+                  l10n.labelDate,
                   DateFormat(
                     'yyyy-MM-dd HH:mm:ss',
                   ).format(DateTime.parse(item['createdAt']).toLocal()),
                 ),
                 const Divider(),
                 _detailRow(
-                  AppLocalizations.of(context)!.amountLabel,
+                  l10n.amountLabel,
                   item['amount']?.toStringAsFixed(2),
                 ),
                 _detailRow(
-                  'Prev Balance', // Add key if strict
+                  l10n.labelPrevBalance,
                   item['previousBalance']?.toStringAsFixed(2),
                 ),
                 _detailRow(
-                  'New Balance', // Add key if strict
+                  l10n.labelNewBalance,
                   item['newBalance']?.toStringAsFixed(2),
                 ),
                 if (details.isNotEmpty) ...[
                   const Divider(),
-                  const Text(
-                    'Breakdown:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.labelBreakdown,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   ...details.entries.map(
@@ -190,9 +188,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                AppLocalizations.of(context)!.actionDone,
-              ), // reusing Done or Close
+              child: Text(l10n.actionDone),
             ),
           ],
         );
@@ -201,6 +197,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
   }
 
   Widget _detailRow(String label, String? value) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -214,7 +211,10 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
             ),
           ),
           Expanded(
-            child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 13)),
+            child: Text(
+              value ?? l10n.labelNotAvailable,
+              style: const TextStyle(fontSize: 13),
+            ),
           ),
         ],
       ),

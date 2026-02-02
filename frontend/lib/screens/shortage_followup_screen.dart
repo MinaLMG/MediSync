@@ -35,9 +35,10 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Follow-up Shortages'),
+        title: Text(l10n.titleShortageFollowup),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -58,8 +59,8 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: AppLocalizations.of(context)!.tabActive),
-            Tab(text: AppLocalizations.of(context)!.tabFulfilled),
+            Tab(text: l10n.tabActive),
+            Tab(text: l10n.tabFulfilled),
           ],
         ),
       ),
@@ -71,6 +72,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
   }
 
   Widget _buildActiveList() {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer<ShortageProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading && provider.activeShortages.isEmpty) {
@@ -78,7 +80,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
         }
 
         if (provider.activeShortages.isEmpty) {
-          return const Center(child: Text('No active shortages'));
+          return Center(child: Text(l10n.msgNoActiveShortages));
         }
 
         return RefreshIndicator(
@@ -115,17 +117,23 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                         onTap: () =>
                             UIUtils.showPharmacyInfo(context, item['pharmacy']),
                         child: Text(
-                          'Pharmacy: ${item['pharmacy']?['name']}',
+                          l10n.labelPharmacy(
+                            item['pharmacy']?['name'] ?? '...',
+                          ),
                           style: const TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      Text('Volume: ${item['volume']?['name']}'),
+                      Text('${l10n.labelVolume}: ${item['volume']?['name']}'),
                       const SizedBox(height: 8),
-                      Text('Quantity Needed: ${item['quantity']}'),
-                      Text('Remaining Quantity: ${item['remainingQuantity']}'),
+                      Text(l10n.labelQuantityNeeded(item['quantity'] ?? 0)),
+                      Text(
+                        l10n.labelRemainingQuantity(
+                          item['remainingQuantity'] ?? 0,
+                        ),
+                      ),
                       const Divider(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -137,9 +145,9 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                                   item['remainingQuantity'] ?? 0;
                               if (total - remaining > 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Cannot delete shortage that has already been partially fulfilled.',
+                                      l10n.msgCannotDeleteFulfilledShortage,
                                     ),
                                   ),
                                 );
@@ -148,14 +156,14 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Confirm Delete'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this shortage?',
+                                  title: Text(l10n.dialogConfirmDelete),
+                                  content: Text(
+                                    l10n.dialogConfirmDeleteShortage,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
+                                      child: Text(l10n.actionCancel),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -165,7 +173,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.red,
                                       ),
-                                      child: const Text('Delete'),
+                                      child: Text(l10n.actionDelete),
                                     ),
                                   ],
                                 ),
@@ -174,7 +182,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
                             ),
-                            child: const Text('Delete'),
+                            child: Text(l10n.actionDelete),
                           ),
                         ],
                       ),
@@ -190,6 +198,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
   }
 
   Widget _buildFulfilledList() {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer<ShortageProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading && provider.fulfilledShortages.isEmpty) {
@@ -197,7 +206,7 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
         }
 
         if (provider.fulfilledShortages.isEmpty) {
-          return const Center(child: Text('No fulfilled shortages'));
+          return Center(child: Text(l10n.msgNoFulfilledShortages));
         }
 
         return RefreshIndicator(
@@ -237,17 +246,17 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                               ),
                             ),
                           ),
-                          const Chip(
+                          Chip(
                             label: Text(
-                              'Fulfilled',
-                              style: TextStyle(
+                              l10n.tabFulfilled,
+                              style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.blueGrey,
                               ),
                             ),
                             backgroundColor: Colors.white,
                             padding: EdgeInsets.zero,
-                            avatar: Icon(
+                            avatar: const Icon(
                               Icons.check_circle,
                               color: Colors.blueGrey,
                               size: 14,
@@ -259,20 +268,22 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                         onTap: () =>
                             UIUtils.showPharmacyInfo(context, item['pharmacy']),
                         child: Text(
-                          'Pharmacy: ${item['pharmacy']?['name']}',
+                          l10n.labelPharmacy(
+                            item['pharmacy']?['name'] ?? '...',
+                          ),
                           style: const TextStyle(
                             color: Colors.blueGrey,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      Text('Volume: ${item['volume']?['name']}'),
+                      Text('${l10n.labelVolume}: ${item['volume']?['name']}'),
                       const SizedBox(height: 8),
-                      Text('Quantity Fulfilled: ${item['quantity']}'),
+                      Text(l10n.labelQuantityFulfilled(item['quantity'] ?? 0)),
                       const Divider(),
-                      const Text(
-                        'This requirement is completed.',
-                        style: TextStyle(
+                      Text(
+                        l10n.msgShortageRequirementCompleted,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                           color: Colors.grey,

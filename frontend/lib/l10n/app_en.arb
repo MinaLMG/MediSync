@@ -10,6 +10,10 @@
   "passwordLabel": "Password",
   "passwordRequiredError": "Please enter your password",
   "loginButton": "Login",
+  "actionAdd": "Add",
+  "actionEdit": "Edit",
+  "actionCreate": "Create",
+  "actionDelete": "Delete",
   "loginFailed": "Login failed",
   "signUpPrompt": "Don't have an account? Sign up",
   "createAccountTitle": "Create Account",
@@ -151,6 +155,14 @@
   "tooltipActivate": "Activate",
   "statusActive": "ACTIVE",
   "statusInactive": "INACTIVE",
+  "statusPending": "PENDING",
+  "statusAvailable": "AVAILABLE",
+  "statusFulfilled": "FULFILLED",
+  "statusPartiallyFulfilled": "PARTIALLY FULFILLED",
+  "statusSold": "SOLD",
+  "statusExpired": "EXPIRED",
+  "statusCancelled": "CANCELLED",
+  "statusRejected": "REJECTED",
   "managePharmaciesTitle": "Manage Pharmacies",
   "searchPharmaciesHint": "Search pharmacies...",
   "noPharmaciesFound": "No pharmacies found.",
@@ -164,15 +176,19 @@
   "noReversalTickets": "No pending reversal tickets",
   "ticketTitle": "Ticket #{id}",
   "@ticketTitle": {
-      "placeholders": {
-          "id": { "type": "String" }
+    "placeholders": {
+      "id": {
+        "type": "String"
       }
+    }
   },
   "transactionSerial": "Transaction Serial: {serial}",
   "@transactionSerial": {
-      "placeholders": {
-          "serial": { "type": "String" }
+    "placeholders": {
+      "serial": {
+        "type": "String"
       }
+    }
   },
   "expensesLabel": "Expenses",
   "userLabel": "User",
@@ -191,5 +207,694 @@
   "tabPending": "Pending",
   "tabAvailable": "Available",
   "tabFulfilled": "Fulfilled",
-  "tabActive": "Active"
+  "tabActive": "Active",
+  "actionClose": "Close",
+  "actionRetry": "Retry",
+  "actionSubmit": "Submit",
+  "actionBack": "Back",
+  "actionLogout": "Log out",
+  "actionEdit": "Edit",
+  "actionDelete": "Delete",
+  "labelVolume": "Volume",
+  "labelQuantity": "Quantity",
+  "labelPrice": "Price",
+  "labelNotes": "Notes",
+  "labelExpiry": "Expiry",
+  "noResultsFound": "No results found",
+  "msgDeletedSuccessfully": "Deleted successfully",
+  "msgSubmittedSuccessfully": "Submitted successfully",
+  "titleSuggestProduct": "Suggest New Product",
+  "titleSuggestionsComplaints": "Suggestions & Complaints",
+  "titleSubscriptionPlans": "Subscription Plans",
+  "titleNotifications": "Notifications",
+  "labelArabic": "Arabic",
+  "labelEnglish": "English",
+  "labelAppLanguage": "App Language",
+  "labelPriceWithAmount": "Price: {amount}",
+  "@labelPriceWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tooltipMarkAllAsSeen": "Mark all as seen",
+  "msgNoNotifications": "No notifications yet",
+  "titlePharmacyDetails": "Pharmacy Details",
+  "labelSubmitDocumentation": "Submit Documentation",
+  "msgProvideInformation": "Please provide the following information as written in your official documents.",
+  "labelPharmacyNameWithHint": "Pharmacy Name (اسم الصيدلية)",
+  "labelOwnerNameWithHint": "Owner's Name (اسم صاحب الصيدلية كما مدون في الرخصه)",
+  "labelNationalIdWithHint": "National ID (بطاقة رقم قومي)",
+  "msgMustBe14Digits": "Must be exactly 14 digits",
+  "errorNationalIdRequired": "National ID is required",
+  "errorNationalIdInvalid": "National ID must be exactly 14 digits",
+  "labelDetailedAddress": "Detailed Address",
+  "labelDetailedAddressWithHint": "Detailed Address (العنوان بالتفصيل)",
+  "hintDetailedAddress": "e.g. 123 Madinet Nasr, Cairo, Egypt",
+  "actionSubmitForApproval": "Submit for Approval",
+  "actionChange": "Change",
+  "actionUpload": "Upload",
+  "msgSubmissionFailed": "Submission failed",
+  "dialogConfirmLogout": "Confirm Log out",
+  "dialogConfirmLogoutMsg": "Are you sure you want to log out?",
+  "msgPleaseEnterValidPrice": "Please enter a valid price",
+  "msgPleaseUploadAllDocs": "Please upload all 4 documents",
+  "labelFeedbackDescription": "We value your feedback. Please let us know if you have any suggestions for improvement or any complaints regarding the system.",
+  "labelFeedbackPlaceholder": "Type your message here...",
+  "labelFeedbackTitle": "Your Feedback",
+  "msgFeedbackSuccess": "Thank you for your feedback!",
+  "msgGenericError": "An error occurred. Please try again.",
+  "labelRequired": "Required",
+  "msgComingSoon": "Coming Soon!",
+  "msgSubscriptionDescription": "We are working on exclusive premium features and subscription plans to help you grow your pharmacy business.",
+  "labelUserName": "User Name",
+  "labelUserEmailPlaceholder": "email@example.com",
+  "menuMyAccount": "My Account",
+  "subtitleMyAccount": "View and edit your personal data",
+  "menuHelp": "Help",
+  "subtitleHelp": "FAQs and app usage guide",
+  "subtitleSubscription": "Explore premium features",
+  "menuResetPassword": "Reset My Password",
+  "subtitleResetPassword": "Securely update your password",
+  "dialogLogoutMsg": "Are you sure you want to log out of your account?",
+  "titleShortageFollowup": "Follow-up Shortages",
+  "titleRequestsHistory": "Requests History",
+  "dialogConfirmDelete": "Confirm Delete",
+  "dialogConfirmDeleteMsg": "Are you sure you want to delete this item?",
+  "msgNoActiveShortages": "No active shortages",
+  "msgNoFulfilledShortages": "No fulfilled shortages",
+  "msgNoHistoryFound": "No history found",
+  "labelPharmacy": "Pharmacy: {name}",
+  "@labelPharmacy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelQuantityNeeded": "Quantity Needed: {count}",
+  "@labelQuantityNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelRemainingQuantity": "Remaining Quantity: {count}",
+  "@labelRemainingQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelQuantityFulfilled": "Quantity Fulfilled: {count}",
+  "@labelQuantityFulfilled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgCannotDeleteFulfilledShortage": "Cannot delete shortage that has already been partially fulfilled.",
+  "dialogConfirmDeleteShortage": "Are you sure you want to delete this shortage?",
+  "msgShortageRequirementCompleted": "This requirement is completed.",
+  "labelExcessOffer": "Excess Offer",
+  "labelShortageRequest": "Shortage Request",
+  "labelType": "Type",
+  "labelTotalQuantity": "Total Quantity",
+  "labelRemaining": "Remaining",
+  "labelDiscount": "Discount",
+  "labelDiscountAmount": "Discount Amount",
+  "labelFinalPrice": "Final Price",
+  "labelRejectionReason": "REJECTION REASON:",
+  "labelCreated": "Created: {date}",
+  "@labelCreated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "msgCannotDeleteFulfilledItem": "Cannot delete {item} that has already been {action}.",
+  "@msgCannotDeleteFulfilledItem": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      },
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "labelExcess": "Excess",
+  "labelShortage": "Shortage",
+  "labelTaken": "taken",
+  "labelFulfilled": "fulfilled",
+  "labelOffer": "offer",
+  "labelRequest": "request",
+  "titleMatchProduct": "Match: {product}",
+  "@titleMatchProduct": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "labelShortages": "Shortages",
+  "labelExcesses": "Excesses",
+  "labelTime": "Time",
+  "labelSalePercentage": "Sale %",
+  "msgSelectShortageFirst": "Please select a shortage first",
+  "msgShortageFulfilled": "Shortage quantity already fulfilled",
+  "labelShortageFulfillment": "Shortage Fulfillment",
+  "labelVol": "Vol: {name}",
+  "@labelVol": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelNeeded": "Needed: {count}",
+  "@labelNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelSaleRatio": "Sale Ratio: {ratio}%",
+  "@labelSaleRatio": {
+    "placeholders": {
+      "ratio": {
+        "type": "num"
+      }
+    }
+  },
+  "labelAllocated": "Allocated: {current} / {total}",
+  "@labelAllocated": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "msgOverLimit": "OVER LIMIT!",
+  "labelAdminOverrides": "Admin Overrides (Optional)",
+  "labelBuyerComm": "Buyer Comm %",
+  "labelSellerRew": "Seller Rew %",
+  "hintShFulfill": "Sh. Fulfill",
+  "actionSubmitTransaction": "SUBMIT TRANSACTION",
+  "msgTransactionCreated": "Transaction created successfully",
+  "labelPersonalInformation": "Personal Information",
+  "labelFullName": "Full Name",
+  "labelEmailAddress": "Email Address",
+  "labelPhoneNumber": "Phone Number",
+  "labelPharmacyInformation": "Pharmacy Information",
+  "labelPharmacyPhone": "Pharmacy Phone",
+  "labelPharmacyAddress": "Pharmacy Address",
+  "actionSaveChanges": "Save Changes",
+  "msgUpdateRequested": "Update request sent to Admin!",
+  "msgUpdateFailed": "Failed to send request",
+  "msgPendingUpdateInfo": "Awaiting approval for your previous update request. New edits will replace the pending one.",
+  "labelPharmacyInfo": "Pharmacy Info",
+  "msgNoAddress": "No address provided",
+  "msgNoPhone": "No phone provided",
+  "labelOwner": "Owner: {name}",
+  "@labelOwner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "titleShoppingTour": "Shopping Tour",
+  "labelSelectQuantitiesByPrice": "Select quantities by price:",
+  "labelAvailableCount": "Available: {count}",
+  "@labelAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelSubtotalAmount": "Subtotal: {amount} coins",
+  "@labelSubtotalAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "labelTotalQuantity": "Total Quantity:",
+  "labelTotalCost": "Total Cost:",
+  "labelUnitsCount": "{count} units",
+  "@labelUnitsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "actionUpdateCart": "Update Cart",
+  "msgRemovedFromCart": "Removed from cart",
+  "msgCartUpdated": "Cart updated!",
+  "titleShoppingCart": "Shopping Cart",
+  "msgCartEmpty": "Your cart is empty",
+  "labelOrderNotesOptional": "Order Notes (Optional)",
+  "hintAddSpecialInstructions": "Add special instructions...",
+  "actionPlaceOrder": "Place Order",
+  "msgPlacingOrder": "Placing Order...",
+  "msgOrderPlaced": "Order placed successfully!",
+  "msgOrderFailed": "Failed to place order",
+  "hintSearchProducts": "Search products...",
+  "msgNoMarketItems": "No items available in the market",
+  "msgNoSearchMatches": "No items match your search",
+  "labelAvailableUnits": "{count} available",
+  "@labelAvailableUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelPriceOptions": "{count} prices",
+  "@labelPriceOptions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "titleEditExcess": "Edit Excess Stock",
+  "titleAddExcess": "Add Excess Stock",
+  "labelSelectExpiryMonthYear": "Select Expiry (Month/Year)",
+  "msgSelectExpiryDate": "Please select expiry date",
+  "msgSelectProductVolume": "Please select product and volume",
+  "msgInvalidSalePercentage": "Invalid sale percentage",
+  "msgEnterValidQuantity": "Please enter a valid quantity",
+  "labelProductWithName": "Product: {name}",
+  "@labelProductWithName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelVolumeWithName": "Volume: {name}",
+  "@labelVolumeWithName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLoading": "Loading...",
+  "hintSelectVolume": "Select volume",
+  "labelPriceCoins": "Price (coins)",
+  "labelSelectPrice": "Select Price",
+  "actionEnterManualPrice": "Enter Manual Price",
+  "labelManualPrice": "Manual Price",
+  "msgInvalidQuantity": "Invalid quantity",
+  "msgTooHigh": "Too high",
+  "msgTooLow": "Too low",
+  "labelExpiryDateMMYY": "Expiry Date (MM/YY)",
+  "hintSelectExpiryDate": "Select Expiry Date",
+  "labelRequestType": "Request Type",
+  "labelRealExcess": "Real Excess",
+  "labelPercentageValue": "Percentage Value (%)",
+  "actionUpdateExcess": "Update Excess",
+  "actionSubmitExcess": "Submit Excess",
+  "msgErrorLoadingVolumes": "Error loading volumes",
+  "titleEditShortage": "Edit Shortage",
+  "titleAddShortage": "Add Shortage",
+  "msgShortageUpdated": "Shortage updated successfully",
+  "msgShortageAdded": "Shortage added successfully",
+  "msgErrorProcessingRequest": "Error processing request",
+  "labelQuantityNeededField": "Quantity Needed",
+  "msgQuantityDecreaseOnly": "Quantity can only be decreased",
+  "msgCannotBeLessThan": "Cannot be less than {count}",
+  "@msgCannotBeLessThan": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "actionUpdateShortage": "Update Shortage",
+  "actionSubmitShortage": "Submit Shortage",
+  "labelUpdateSecurityDetails": "Update your security details",
+  "labelPasswordLengthHint": "Ensure your new password is at least 8 characters long.",
+  "labelCurrentPassword": "Current Password",
+  "labelNewPassword": "New Password",
+  "labelConfirmNewPassword": "Confirm New Password",
+  "msgPasswordChangedSuccess": "Password changed successfully!",
+  "msgPasswordChangeFailed": "Failed to change password",
+  "msgPasswordsDoNotMatch": "Passwords do not match",
+  "msgNoBalanceHistory": "No balance history found.",
+  "labelBalanceUpdate": "Balance Update",
+  "labelDate": "Date",
+  "labelPrevBalance": "Prev Balance",
+  "labelNewBalance": "New Balance",
+  "labelBreakdown": "Breakdown:",
+  "labelNotAvailable": "N/A",
+  "manageOrdersTitle": "Manage Orders",
+  "manageUsersTitle": "Manage Users",
+  "labelActiveUsers": "Active Users",
+  "labelAccountStatus": "Account Status",
+  "labelUnknown": "UNKNOWN",
+  "actionSimulate": "Simulate",
+  "actionCompensation": "Compensation",
+  "actionHistory": "History",
+  "actionPayment": "Payment",
+  "actionPayments": "Payments",
+  "dialogConfirmDeleteAdjustment": "Confirm Delete",
+  "msgConfirmDeleteAdjustment": "Are you sure? This will REVERT the adjustment.",
+  "actionDeleteRevert": "Delete & Revert",
+  "msgAdjustmentReverted": "Adjustment reverted successfully",
+  "dialogEditPayment": "Edit Payment",
+  "dialogRecordPayment": "Record Payment - {name}",
+  "@dialogRecordPayment": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelPaymentType": "Type",
+  "labelDeposit": "💰 Deposit",
+  "labelWithdrawal": "💸 Withdrawal",
+  "labelAdjustmentAmount": "Amount",
+  "labelPaymentMethod": "Method",
+  "labelCash": "Cash",
+  "labelBankTransfer": "Bank Transfer",
+  "labelCheque": "Cheque",
+  "labelOther": "Other",
+  "labelReferenceNumber": "Reference Number",
+  "labelAdminNote": "Admin Note",
+  "msgInvalidAmount": "Invalid amount",
+  "msgPaymentUpdated": "Payment updated",
+  "msgPaymentRecorded": "Payment recorded",
+  "labelNewPayment": "New Payment",
+  "labelOrderNumber": "Order #{number}",
+  "@labelOrderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "labelPharmacyPrefix": "Pharmacy:",
+  "labelTotalAmountPrefix": "Total Amount: {amount} coins",
+  "@labelTotalAmountPrefix": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "labelStatusPrefix": "Status:",
+  "labelProgressPrefix": "Progress: {fulfilled} / {total} items",
+  "@labelProgressPrefix": {
+    "placeholders": {
+      "fulfilled": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "msgSelectExcessToFulfill": "Please select at least one excess to fulfill",
+  "msgFulfillSuccess": "Successfully fulfilled {count} item(s)",
+  "@msgFulfillSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgFulfillPartialFail": "Successfully fulfilled {success} item(s), {fail} failed",
+  "@msgFulfillPartialFail": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "fail": {
+        "type": "int"
+      }
+    }
+  },
+  "msgAllFulfillmentsFailed": "All fulfillments failed",
+  "labelSelectedUnits": "Selected: {count} units",
+  "@labelSelectedUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelItemsCount": "{count} Items",
+  "labelVolumePrefix": "Volume:",
+  "labelPricePrefix": "Price:",
+  "labelNeed": "Need: {count}",
+  "@labelNeed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgNoMatchingExcesses": "No matching excesses available",
+  "labelSaleRatioPrefix": "Sale Ratio:",
+  "labelExpiryPrefix": "Expiry:",
+  "actionMax": "Max",
+  "actionSubmitFulfillment": "Submit Order Fulfillment ({count} units)",
+  "@actionSubmitFulfillment": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgAssignmentFailed": "Assignment failed. Check if it's still available.",
+  "msgNoAvailableTransactions": "No available transactions.",
+  "msgNoTasksAssigned": "No tasks assigned to you.",
+  "labelSelectedUnitsShort": "Selected: {count}",
+  "@labelSelectedUnitsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelAvailableUnitsPrefix": "Available:",
+  "msgProcessing": "Processing...",
+  "labelOrderHash": "Order #",
+  "labelTransactionHash": "Transaction #",
+  "labelUnitsSuffix": "UNITS",
+  "labelExcessPharmacy": "Excess Pharmacy:",
+  "labelShortagePharmacy": "Shortage Pharmacy:",
+  "actionAssignToMe": "Assign to Me",
+  "actionRequestAcceptance": "Request Acceptance",
+  "actionRequestCompletion": "Request Completion",
+  "labelRequestPending": "Request Pending...",
+  "labelStatus": "Status",
+  "labelTransactionNumber": "Transaction #{id}",
+  "@labelTransactionNumber": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "labelOrderPrefix": "Order #",
+  "helpSupportTitle": "Help & Support",
+  "catStockInventory": "📦 Stock & Inventory",
+  "qHowToAddExcess": "How can I add an excess?",
+  "aHowToAddExcess": "Go to the Home tab and click on \"Add Excess Product\". Fill in the product details, expiry date, and discount. Once submitted, other pharmacies can see and request it.",
+  "qWhatIsShortage": "What is a \"Shortage Request\"?",
+  "aWhatIsShortage": "If you need a product that is not available in your stock, you can create a \"Shortage Request\". Other pharmacies with excess of that product can then fulfill your request.",
+  "catBalanceFinance": "💰 Balance & Financials",
+  "qHowToGetBalance": "How can I get my balance?",
+  "aHowToGetBalance": "Your current balance is displayed at the top of the Home tab. You can also view a detailed breakdown in your \"Transaction History\".",
+  "qHowCommissionWorks": "How does the commission work?",
+  "aHowCommissionWorks": "MediSync charges a small commission on successful matches between pharmacies. This helps us maintain the platform and provide delivery services.",
+  "catTransactionsHistory": "🔄 Transactions & History",
+  "qWhereIsHistory": "Where is my requests history?",
+  "aWhereIsHistory": "All your past transactions and current stock requests can be found in the \"History\" tab at the bottom of the dashboard.",
+  "qHowToTrackDelivery": "How do I track a delivery?",
+  "aHowToTrackDelivery": "Once a match is confirmed and a delivery person is assigned, you can view the live status in the \"Delivery Tracking\" section of your active order.",
+  "tabOverview": "Overview",
+  "tabRequests": "Requests",
+  "tabLedger": "Ledger",
+  "labelCurrentBalance": "Current Balance",
+  "labelPharmacyInformation": "Pharmacy Information",
+  "labelOwnerInformation": "Owner Information",
+  "msgFailedToLoadDetails": "Failed to load details",
+  "msgNoRequestHistoryFound": "No request history found.",
+  "msgNoFinancialHistoryFound": "No financial history found.",
+  "deliveryDashboardTitle": "Delivery Dashboard",
+  "tabAvailable": "AVAILABLE",
+  "tabMyTasks": "MY TASKS",
+  "tabHistory": "HISTORY",
+  "msgAssigningToYou": "Assigning to you...",
+  "msgAssignmentSuccess": "Success! Transaction assigned.",
+  "msgRequestSent": "Request sent!",
+  "catAccountManagement": "⚙️ Account Management",
+  "qHowToEditProfile": "How do I edit my pharmacy data?",
+  "aHowToEditProfile": "Go to \"Account\" -> \"My Account\" and click the \"Edit\" button. Update your info and submit. Your request will be processed shortly.",
+  "qCanIChangePassword": "Can I change my password?",
+  "aCanIChangePassword": "Yes! Use the \"Reset My Password\" option in the Account menu. You will need your current password to set a new one.",
+  "labelAdminDeliveryRequests": "Delivery Requests",
+  "actionSaveSettings": "Save Settings",
+  "statusUnknown": "Unknown",
+  "labelShortagePharmacy": "Shortage:",
+  "labelExcessPharmacy": "Excess:",
+  "labelProduct": "Product",
+  "labelUnitsShort": "units",
+  "labelCoins": "coins",
+  "labelPrice": "Price",
+  "labelVolume": "Volume",
+  "actionUpdateTransaction": "Update Transaction",
+  "msgFailedUpdateTransaction": "Failed to update transaction",
+  "labelTransactionHash": "Transaction: ",
+  "actionApprove": "Approve",
+  "actionReject": "Reject",
+  "msgRequestApproved": "Request Approved",
+  "msgRequestRejected": "Request Rejected",
+  "msgFailedReviewRequest": "Failed to review request",
+  "msgCleanupOldRequests": "Old requests cleaned up (older than 1 month)",
+  "msgCleanupFailed": "Cleanup failed",
+  "labelCleanup": "Cleanup",
+  "msgConfirmCleanup": "Delete all approved/rejected requests older than 1 month?",
+  "actionDelete": "Delete",
+  "msgNoPendingDeliveryRequests": "No pending delivery requests.",
+  "titleEditTransaction": "Edit Transaction #{serial}",
+  "@titleEditTransaction": {
+    "placeholders": {
+      "serial": {
+        "type": "String"
+      }
+    }
+  },
+  "labelOrderBadge": "ORDER",
+  "labelTotalOriginalNeeded": "Total Original Needed:",
+  "labelAvailableOriginal": "Available (Original Available):",
+  "labelTotalDistribution": "Total Distribution:",
+  "msgTotalQtyCannotBeZero": "Total quantity cannot be zero",
+  "msgTransactionUpdated": "Transaction updated successfully",
+  "msgExecuting": "Executing...",
+  "labelPortionInTx": "Portion in this transaction: {count}",
+  "@labelPortionInTx": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelCommissionRatios": "Commission Ratios (%)",
+  "labelMinComm": "Minimum Commission (%)",
+  "helperMinComm": "Default commission for real excess rebalance.",
+  "labelShortageComm": "Shortage Commission (%)",
+  "helperShortageComm": "Default commission for shortage fulfillment.",
+  "labelShortageSellerRewardField": "Shortage Seller Reward (%)",
+  "helperShortageSellerReward": "Default reward for shortage fulfillment provider.",
+  "msgSettingsUpdated": "Settings updated successfully",
+  "msgFailedUpdateSettings": "Failed to update settings",
+  "msgPleaseEnterValue": "Please enter a value",
+  "msgEnterNumberBetween0And20": "Enter a number between 0 and 20",
+  "msgEnterPositiveNumber": "Enter a positive number",
+  "titleFeedbackComplaints": "Feedback & Complaints",
+  "msgNoSuggestionsFound": "No suggestions found.",
+  "labelUnknownPharmacy": "Unknown Pharmacy",
+  "labelUserPrefix": "User: {name}",
+  "@labelUserPrefix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelFromPrefix": "From: {name}",
+  "@labelFromPrefix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFeedbackDetails": "Feedback Details",
+  "msgNoContentProvided": "No content provided",
+  "titleProductSuggestions": "New Product Suggestions",
+  "titleSuggestionAction": "{status} Suggestion",
+  "@titleSuggestionAction": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "msgConfirmSuggestionAction": "Are you sure you want to {status} this suggestion?",
+  "@msgConfirmSuggestionAction": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "labelReviewerNotesOptional": "Reviewer Notes (Optional)",
+  "labelProposedPrice": "Proposed Price",
+  "labelSuggestedBy": "Suggested By",
+  "labelReviewerNotes": "Reviewer Notes: {notes}",
+  "@labelReviewerNotes": {
+    "placeholders": {
+      "notes": {
+        "type": "String"
+      }
+    }
+  },
+  "hintSearchSuggestions": "Search suggestions (* for wildcard)...",
+  "titleBuyProduct": "Buy {name} ({volume})",
+  "@titleBuyProduct": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "volume": {
+        "type": "String"
+      }
+    }
+  },
+  "labelTotalCoins": "Total: {amount} coins",
+  "@labelTotalCoins": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "titleExcessFollowUp": "Follow-up Excesses",
+  "msgNoFulfilledExcesses": "No fulfilled excesses",
+  "msgNoPendingExcesses": "No pending excesses",
+  "msgNoAvailableExcesses": "No available excesses",
+  "msgActionCompletedLocked": "This action is completed and locked.",
+  "msgCannotDeleteTakenExcess": "Cannot delete excess where stock has already been taken.",
+  "labelConfirmDelete": "Confirm Delete",
+  "msgConfirmDeleteExcess": "Are you sure you want to delete this excess?",
+  "msgConfirmDeleteExcessAvailable": "Are you sure you want to delete this available excess?",
+  "labelRejectExcessOffer": "Reject Excess Offer",
+  "hintRejectionReason": "e.g., Price too high, Expiry too near",
+  "labelConfirmApproval": "Confirm Approval",
+  "msgConfirmApproveExcess": "Are you sure you want to approve this excess and make it available for matches?",
+  "labelNewPrice": "New Price",
+  "labelPrice": "Price",
+  "labelQuantity": "Quantity",
+  "labelExpiry": "Expiry",
+  "labelOff": "Off"
 }

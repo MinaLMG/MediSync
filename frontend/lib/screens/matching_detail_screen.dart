@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/ui_utils.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class MatchingDetailScreen extends StatefulWidget {
   final String productId;
@@ -125,6 +126,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
   }
 
   void _submitTransaction() async {
+    final l10n = AppLocalizations.of(context)!;
     if (selectedShortage == null || selectedExcesses.isEmpty) return;
 
     final totalAllocated = selectedExcesses.values.fold(0, (sum, q) => sum + q);
@@ -137,7 +139,6 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
       }
     });
 
-    // Check if any selected excess is NOT shortage fulfillment
     final excesses =
         Provider.of<TransactionProvider>(
               context,
@@ -148,8 +149,6 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
         .where((e) => selectedExcesses.containsKey(e['_id']))
         .toList();
 
-    // The transaction-level shortage_fulfillment flag can be true if any of them are SF
-    // But the backend will now prioritize the excess-level flag for logic.
     final bool isAnySF = selectedExcessData.any(
       (e) => e['shortage_fulfillment'] == true,
     );
@@ -163,17 +162,15 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           'quantityTaken': totalAllocated,
           'excessSources': sources,
           'shortage_fulfillment': isAnySF,
-          // Ratios (Note: commissionRatio for RE is now handled by backend default if not sent,
-          // but we can still send the current value if desired. Here we follow user request to focus on the other two.)
           'buyerCommissionRatio': double.tryParse(_buyerCommController.text),
           'sellerBonusRatio': double.tryParse(_sellerRewardController.text),
         });
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction created successfully')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgTransactionCreated)));
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -183,7 +180,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                     context,
                     listen: false,
                   ).errorMessage ??
-                  'Error',
+                  l10n.msgGenericError,
             ),
           ),
         );
@@ -194,6 +191,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final tp = Provider.of<TransactionProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
     final shortages = getSortedList(
       tp.currentMatches['shortages'] ?? [],
       shortageSort,
@@ -208,7 +206,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text('Match: ${widget.productName}')),
+      appBar: AppBar(title: Text(l10n.titleMatchProduct(widget.productName))),
       body: tp.isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -219,7 +217,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       // Shortages Column
                       Expanded(
                         child: _buildColumn(
-                          title: 'Shortages',
+                          title: l10n.labelShortages,
                           color: Colors.red[50]!,
                           items: shortages,
                           currentSort: shortageSort,
@@ -232,7 +230,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       // Excesses Column
                       Expanded(
                         child: _buildColumn(
-                          title: 'Excesses',
+                          title: l10n.labelExcesses,
                           color: Colors.green[50]!,
                           items: excesses,
                           currentSort: excessSort,
@@ -280,7 +278,14 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                   children: [
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: currentSort,
+                        value: (isExcess && currentSort == 'Sale %')
+                            ? 'Sale %'
+                            : (currentSort == 'Time' ||
+                                      currentSort == 'Quantity' ||
+                                      currentSort == 'Balance' ||
+                                      currentSort == 'Expiry'
+                                  ? currentSort
+                                  : 'Time'),
                         isDense: true,
                         items:
                             (isExcess
@@ -296,7 +301,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                                   (e) => DropdownMenuItem(
                                     value: e,
                                     child: Text(
-                                      e,
+                                      _getLocalizedSort(e),
                                       style: const TextStyle(fontSize: 11),
                                     ),
                                   ),
@@ -355,8 +360,27 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
     );
   }
 
+  String _getLocalizedSort(String e) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (e) {
+      case 'Time':
+        return l10n.labelTime;
+      case 'Quantity':
+        return l10n.labelQuantity;
+      case 'Balance':
+        return l10n.labelBalance;
+      case 'Expiry':
+        return l10n.labelExpiry;
+      case 'Sale %':
+        return l10n.labelSalePercentage;
+      default:
+        return e;
+    }
+  }
+
   Widget _buildItemCard(dynamic item, bool isExcess, bool isSelected) {
     final remainingQty = item['remainingQuantity'] ?? 0;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: () {
@@ -364,7 +388,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           if (isExcess) {
             if (selectedShortage == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please select a shortage first')),
+                SnackBar(content: Text(l10n.msgSelectShortageFirst)),
               );
               return;
             }
@@ -379,9 +403,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
               int stillNeeded = shortageQuantityToFulfill - totalAllocated;
               if (stillNeeded <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Shortage quantity already fulfilled'),
-                  ),
+                  SnackBar(content: Text(l10n.msgShortageFulfilled)),
                 );
                 return;
               }
@@ -425,9 +447,9 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                     color: Colors.purple,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'Shortage Fulfillment',
-                    style: TextStyle(color: Colors.white, fontSize: 8),
+                  child: Text(
+                    l10n.labelShortageFulfillment,
+                    style: const TextStyle(color: Colors.white, fontSize: 8),
                   ),
                 ),
               Row(
@@ -457,7 +479,9 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      '${(item['pharmacy']['balance'] ?? 0).toStringAsFixed(0)} coins',
+                      l10n.priceCoins(
+                        (item['pharmacy']['balance'] ?? 0).toStringAsFixed(0),
+                      ),
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -468,11 +492,13 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 ],
               ),
               Text(
-                'Vol: ${item['volume']['name']}',
+                l10n.labelVol(item['volume']['name']),
                 style: const TextStyle(fontSize: 12),
               ),
               Text(
-                isExcess ? 'Qty: $remainingQty' : 'Needed: $remainingQty',
+                isExcess
+                    ? '${l10n.labelQuantity}: $remainingQty'
+                    : l10n.labelNeeded(remainingQty),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -480,7 +506,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
               ),
               if (isExcess)
                 Text(
-                  'Price: ${item['selectedPrice']}',
+                  l10n.labelPriceWithAmount(item['selectedPrice'].toString()),
                   style: const TextStyle(fontSize: 11),
                 ),
               if (isExcess)
@@ -493,7 +519,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                             ? settings.shortageCommission
                             : settings.minimumCommission);
                     return Text(
-                      'Sale Ratio: ${effectiveSale}%',
+                      l10n.labelSaleRatio(effectiveSale),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -504,7 +530,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 ),
               if (isExcess && item['expiryDate'] != null)
                 Text(
-                  'Expiry: ${item['expiryDate']}',
+                  '${l10n.labelExpiry}: ${item['expiryDate']}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -523,7 +549,10 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 const Divider(),
                 Row(
                   children: [
-                    const Text('Qty: ', style: TextStyle(fontSize: 12)),
+                    Text(
+                      '${l10n.labelQuantity}: ',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     Expanded(
                       child: TextFormField(
                         initialValue: isExcess
@@ -566,6 +595,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
   }
 
   Widget _buildSummaryBar(TransactionProvider tp) {
+    final l10n = AppLocalizations.of(context)!;
     final totalAllocated = selectedExcesses.values.fold(0, (sum, q) => sum + q);
     final isReady =
         totalAllocated > 0 && totalAllocated == shortageQuantityToFulfill;
@@ -595,11 +625,13 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Allocated: $totalAllocated / $shortageQuantityToFulfill'),
+              Text(
+                l10n.labelAllocated(totalAllocated, shortageQuantityToFulfill),
+              ),
               if (totalAllocated > shortageQuantityToFulfill)
-                const Text(
-                  'OVER LIMIT!',
-                  style: TextStyle(
+                Text(
+                  l10n.msgOverLimit,
+                  style: const TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
@@ -609,9 +641,9 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
           if (hasSF) ...[
             const SizedBox(height: 12),
             const Divider(),
-            const Text(
-              'Admin Overrides (Optional)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            Text(
+              l10n.labelAdminOverrides,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
             const SizedBox(height: 8),
             Row(
@@ -619,16 +651,16 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                 Expanded(
                   child: _ratioField(
                     controller: _buyerCommController,
-                    label: 'Buyer Comm %',
-                    hint: 'Sh. Fulfill',
+                    label: l10n.labelBuyerComm,
+                    hint: l10n.hintShFulfill,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _ratioField(
                     controller: _sellerRewardController,
-                    label: 'Seller Rew %',
-                    hint: 'Sh. Fulfill',
+                    label: l10n.labelSellerRew,
+                    hint: l10n.hintShFulfill,
                   ),
                 ),
               ],
@@ -651,7 +683,7 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Text('SUBMIT TRANSACTION'),
+                : Text(l10n.actionSubmitTransaction),
           ),
         ],
       ),

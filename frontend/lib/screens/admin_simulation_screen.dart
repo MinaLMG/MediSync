@@ -6,6 +6,8 @@ import '../providers/auth_provider.dart';
 import '../utils/config.dart';
 import 'package:intl/intl.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 class AdminSimulationScreen extends StatefulWidget {
   final String pharmacyId;
   final String pharmacyName;
@@ -78,15 +80,19 @@ class _AdminSimulationScreenState extends State<AdminSimulationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Simulating: ${widget.pharmacyName}'),
+        title: Text('${l10n.actionSimulate}: ${widget.pharmacyName}'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Overview', icon: Icon(Icons.info_outline)),
-            Tab(text: 'Requests', icon: Icon(Icons.swap_horiz)),
-            Tab(text: 'Ledger', icon: Icon(Icons.account_balance_wallet)),
+          tabs: [
+            Tab(text: l10n.tabOverview, icon: const Icon(Icons.info_outline)),
+            Tab(text: l10n.tabRequests, icon: const Icon(Icons.swap_horiz)),
+            Tab(
+              text: l10n.tabLedger,
+              icon: const Icon(Icons.account_balance_wallet),
+            ),
           ],
         ),
       ),
@@ -100,8 +106,9 @@ class _AdminSimulationScreenState extends State<AdminSimulationScreen>
   }
 
   Widget _buildOverview() {
+    final l10n = AppLocalizations.of(context)!;
     if (_pharmacy == null)
-      return const Center(child: Text('Failed to load details'));
+      return Center(child: Text(l10n.msgFailedToLoadDetails));
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -111,10 +118,13 @@ class _AdminSimulationScreenState extends State<AdminSimulationScreen>
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                const Text('Current Balance', style: TextStyle(fontSize: 16)),
+                Text(
+                  l10n.labelCurrentBalance,
+                  style: const TextStyle(fontSize: 16),
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  '${(_pharmacy!['balance'] ?? 0).toStringAsFixed(2)} coins',
+                  '${(_pharmacy!['balance'] ?? 0).toStringAsFixed(2)} ${l10n.coinsSuffix}',
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -126,23 +136,42 @@ class _AdminSimulationScreenState extends State<AdminSimulationScreen>
           ),
         ),
         const SizedBox(height: 16),
-        _sectionHeader('Pharmacy Information'),
-        _infoTile('Full Name', _pharmacy!['name']),
-        _infoTile('Address', _pharmacy!['address'] ?? 'N/A'),
-        _infoTile('Phone', _pharmacy!['phone'] ?? 'N/A'),
-        _infoTile('Email', _pharmacy!['email'] ?? 'N/A'),
+        _sectionHeader(l10n.labelPharmacyInformation),
+        _infoTile(l10n.labelName, _pharmacy!['name']),
+        _infoTile(
+          l10n.labelAddress,
+          _pharmacy!['address'] ?? l10n.labelNotAvailable,
+        ),
+        _infoTile(
+          l10n.labelPhone,
+          _pharmacy!['phone'] ?? l10n.labelNotAvailable,
+        ),
+        _infoTile(
+          l10n.labelEmail,
+          _pharmacy!['email'] ?? l10n.labelNotAvailable,
+        ),
         const Divider(),
-        _sectionHeader('Owner Information'),
-        _infoTile('Name', _pharmacy!['owner']?['name'] ?? 'N/A'),
-        _infoTile('User Email', _pharmacy!['owner']?['email'] ?? 'N/A'),
-        _infoTile('User Phone', _pharmacy!['owner']?['phone'] ?? 'N/A'),
+        _sectionHeader(l10n.labelOwnerInformation),
+        _infoTile(
+          l10n.labelName,
+          _pharmacy!['owner']?['name'] ?? l10n.labelNotAvailable,
+        ),
+        _infoTile(
+          l10n.labelEmail,
+          _pharmacy!['owner']?['email'] ?? l10n.labelNotAvailable,
+        ),
+        _infoTile(
+          l10n.labelPhone,
+          _pharmacy!['owner']?['phone'] ?? l10n.labelNotAvailable,
+        ),
       ],
     );
   }
 
   Widget _buildRequests() {
+    final l10n = AppLocalizations.of(context)!;
     if (_requests.isEmpty)
-      return const Center(child: Text('No request history found.'));
+      return Center(child: Text(l10n.msgNoRequestHistoryFound));
     return ListView.builder(
       itemCount: _requests.length,
       itemBuilder: (context, index) {
@@ -175,8 +204,9 @@ class _AdminSimulationScreenState extends State<AdminSimulationScreen>
   }
 
   Widget _buildLedger() {
+    final l10n = AppLocalizations.of(context)!;
     if (_ledger.isEmpty)
-      return const Center(child: Text('No financial history found.'));
+      return Center(child: Text(l10n.msgNoFinancialHistoryFound));
     return ListView.builder(
       itemCount: _ledger.length,
       itemBuilder: (context, index) {

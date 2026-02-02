@@ -8,6 +8,7 @@ import '../providers/shortage_provider.dart';
 import '../providers/requests_history_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class RequestsHistoryScreen extends StatefulWidget {
   const RequestsHistoryScreen({super.key});
@@ -82,11 +83,38 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
     }
   }
 
+  String _getLocalizedStatus(BuildContext context, String status) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return l10n.statusPending;
+      case 'available':
+        return l10n.statusAvailable;
+      case 'active':
+        return l10n.statusActive;
+      case 'fulfilled':
+        return l10n.statusFulfilled;
+      case 'partially_fulfilled':
+        return l10n.statusPartiallyFulfilled;
+      case 'sold':
+        return l10n.statusSold;
+      case 'expired':
+        return l10n.statusExpired;
+      case 'cancelled':
+        return l10n.statusCancelled;
+      case 'rejected':
+        return l10n.statusRejected;
+      default:
+        return status.toUpperCase();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Requests History'),
+        title: Text(l10n.titleRequestsHistory),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -104,7 +132,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
           }
 
           if (provider.history.isEmpty) {
-            return const Center(child: Text('No history found'));
+            return Center(child: Text(l10n.msgNoHistoryFound));
           }
 
           return RefreshIndicator(
@@ -176,8 +204,8 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   isExcess
-                                      ? 'Excess Offer'
-                                      : 'Shortage Request',
+                                      ? l10n.labelExcessOffer
+                                      : l10n.labelShortageRequest,
                                   style: TextStyle(
                                     color: isExcess
                                         ? Colors.green[700]
@@ -221,7 +249,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                               ),
                             ),
                             child: Text(
-                              status.toUpperCase(),
+                              _getLocalizedStatus(context, status),
                               style: TextStyle(
                                 color: _getStatusColor(status),
                                 fontSize: 10,
@@ -244,6 +272,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
 
   void _showDetailsDialog(BuildContext context, Map<String, dynamic> item) {
     final bool isExcess = item['type'] == 'excess';
+    final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
@@ -268,32 +297,38 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _detailRow('Type', isExcess ? 'Excess' : 'Shortage'),
-              _detailRow('Volume', item['volume']['name']),
               _detailRow(
-                'Total Quantity',
+                l10n.labelType,
+                isExcess ? l10n.labelExcess : l10n.labelShortage,
+              ),
+              _detailRow(l10n.labelVolume, item['volume']['name']),
+              _detailRow(
+                l10n.labelTotalQuantity,
                 (isExcess ? item['originalQuantity'] : item['quantity'])
                     .toString(),
               ),
               _detailRow(
-                'Remaining',
+                l10n.labelRemaining,
                 item['remainingQuantity'].toString(),
                 color: Colors.blue[800],
                 isBold: true,
               ),
               if (isExcess) ...[
-                _detailRow('Price', '${item['selectedPrice']} coins'),
-                _detailRow('Expiry Date', item['expiryDate'] ?? 'N/A'),
+                _detailRow(l10n.labelPrice, '${item['selectedPrice']} coins'),
+                _detailRow(l10n.labelExpiry, item['expiryDate'] ?? 'N/A'),
                 if (item['salePercentage'] != null) ...[
                   const Divider(),
-                  const Text(
-                    'Sale Offer',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.labelExcessOffer,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  _detailRow('Discount', '${item['salePercentage']}%'),
-                  _detailRow('Discount Amount', '${item['saleAmount']} coins'),
+                  _detailRow(l10n.labelDiscount, '${item['salePercentage']}%'),
                   _detailRow(
-                    'Final Price',
+                    l10n.labelDiscountAmount,
+                    '${item['saleAmount']} coins',
+                  ),
+                  _detailRow(
+                    l10n.labelFinalPrice,
                     '${(item['selectedPrice'] - (item['saleAmount'] ?? 0)).toStringAsFixed(2)} coins',
                     color: Colors.green[700],
                     isBold: true,
@@ -304,7 +339,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
               const Divider(),
               _detailRow(
                 'Status',
-                item['displayStatus'].toString().toUpperCase(),
+                _getLocalizedStatus(context, item['displayStatus']),
                 color: _getStatusColor(item['displayStatus']),
                 isBold: true,
               ),
@@ -322,9 +357,9 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'REJECTION REASON:',
-                        style: TextStyle(
+                      Text(
+                        l10n.labelRejectionReason,
+                        style: const TextStyle(
                           color: Colors.red,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -343,16 +378,20 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
               if (item['notes'] != null &&
                   item['notes'].toString().isNotEmpty) ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Notes:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  '${l10n.labelNotes}:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(item['notes']),
               ],
 
               const SizedBox(height: 8),
               Text(
-                'Created: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['createdAt']))}',
+                l10n.labelCreated(
+                  DateFormat(
+                    'yyyy-MM-dd HH:mm',
+                  ).format(DateTime.parse(item['createdAt'])),
+                ),
                 style: const TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ],
@@ -361,7 +400,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: Text(l10n.actionClose),
           ),
           if (item['displayStatus'] == 'pending' ||
               item['displayStatus'] == 'active' ||
@@ -390,7 +429,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                     }
                   });
                 },
-                child: const Text('Edit'),
+                child: Text(l10n.actionEdit),
               ),
             TextButton(
               onPressed: () {
@@ -402,7 +441,10 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Cannot delete ${isExcess ? 'offer' : 'request'} that has already been ${isExcess ? 'taken' : 'fulfilled'}.',
+                        l10n.msgCannotDeleteFulfilledItem(
+                          isExcess ? l10n.labelOffer : l10n.labelRequest,
+                          isExcess ? l10n.labelTaken : l10n.labelFulfilled,
+                        ),
                       ),
                     ),
                   );
@@ -411,7 +453,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                 _confirmDelete(context, item);
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
+              child: Text(l10n.actionDelete),
             ),
           ],
         ],
@@ -445,15 +487,16 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
   }
 
   void _confirmDelete(BuildContext context, Map<String, dynamic> item) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this item?'),
+        title: Text(l10n.dialogConfirmDelete),
+        content: Text(l10n.dialogConfirmDeleteMsg),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           StatefulBuilder(
             builder: (context, setDialogState) {
@@ -479,8 +522,8 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                             listen: false,
                           ).fetchRequestsHistory();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Deleted successfully'),
+                            SnackBar(
+                              content: Text(l10n.msgDeletedSuccessfully),
                             ),
                           );
                         }
@@ -492,7 +535,7 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Delete'),
+                    : Text(l10n.actionDelete),
               );
             },
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class SuggestProductScreen extends StatefulWidget {
   const SuggestProductScreen({super.key});
@@ -27,7 +28,11 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
       final price = double.tryParse(_priceController.text);
       if (price == null || price <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid price')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.msgPleaseEnterValidPrice,
+            ),
+          ),
         );
         return;
       }
@@ -36,13 +41,14 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
         context,
         listen: false,
       ).suggestProduct({'name': _nameController.text.trim(), 'price': price});
-      // ... rest of the method is unchanged but need context for tool
 
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Product suggestion submitted successfully!'),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.msgSubmittedSuccessfully,
+              ),
             ),
           );
           Navigator.pop(context);
@@ -54,7 +60,7 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error',
+                    AppLocalizations.of(context)!.msgGenericError,
               ),
             ),
           );
@@ -66,9 +72,10 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = Provider.of<ProductProvider>(context).isLoading;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Suggest New Product')),
+      appBar: AppBar(title: Text(l10n.titleSuggestProduct)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -77,23 +84,21 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Product Name',
+                decoration: InputDecoration(
+                  labelText: l10n.labelProductName,
                   helperText: 'e.g. Panadol 500mg',
                 ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                validator: (v) => v!.isEmpty ? l10n.labelRequired : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Customer Price (coins)',
-                ),
+                decoration: InputDecoration(labelText: l10n.labelCustomerPrice),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                validator: (v) => v!.isEmpty ? l10n.labelRequired : null,
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -110,7 +115,7 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Submit Suggestion'),
+                      : Text(l10n.actionSubmit),
                 ),
               ),
             ],

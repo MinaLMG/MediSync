@@ -56,7 +56,7 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen>
   Future<void> _fetchReversalTickets() async {
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     try {
-      final response = await http.get(
+      await http.get(
         Uri.parse(
           '${Constants.baseUrl}/transaction/reversal/tickets',
         ), // Assuming this endpoint exists or generic get

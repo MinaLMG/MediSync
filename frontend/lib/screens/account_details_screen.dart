@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AccountDetailsScreen extends StatefulWidget {
   const AccountDetailsScreen({super.key});
@@ -48,6 +49,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   }
 
   Future<void> _submitUpdate() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.requestProfileUpdate({
@@ -66,8 +68,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           SnackBar(
             content: Text(
               success
-                  ? 'Update request sent to Admin!'
-                  : (authProvider.errorMessage ?? 'Failed to send request'),
+                  ? l10n.msgUpdateRequested
+                  : (authProvider.errorMessage ?? l10n.msgUpdateFailed),
             ),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
@@ -82,10 +84,11 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
     final hasPending = user?['pendingUpdate'] != null;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Account'),
+        title: Text(l10n.menuMyAccount),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         actions: [
@@ -93,7 +96,10 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             TextButton.icon(
               onPressed: () => setState(() => _isEditing = true),
               icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-              label: const Text('Edit', style: TextStyle(color: Colors.white)),
+              label: Text(
+                l10n.actionEdit,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
         ],
       ),
@@ -108,15 +114,15 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  _buildSectionHeader('Personal Information'),
+                  _buildSectionHeader(l10n.labelPersonalInformation),
                   _isEditing
                       ? _buildTextField(
                           _nameController,
-                          'Full Name',
+                          l10n.labelFullName,
                           Icons.person,
                         )
                       : _buildReadOnlyItem(
-                          'Full Name',
+                          l10n.labelFullName,
                           user?['name'] ?? 'N/A',
                           Icons.person,
                         ),
@@ -124,11 +130,11 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   _isEditing
                       ? _buildTextField(
                           _emailController,
-                          'Email Address',
+                          l10n.labelEmailAddress,
                           Icons.email,
                         )
                       : _buildReadOnlyItem(
-                          'Email Address',
+                          l10n.labelEmailAddress,
                           user?['email'] ?? 'N/A',
                           Icons.email,
                         ),
@@ -136,25 +142,25 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   _isEditing
                       ? _buildTextField(
                           _phoneController,
-                          'Phone Number',
+                          l10n.labelPhoneNumber,
                           Icons.phone,
                         )
                       : _buildReadOnlyItem(
-                          'Phone Number',
+                          l10n.labelPhoneNumber,
                           user?['phone'] ?? 'N/A',
                           Icons.phone,
                         ),
 
                   const SizedBox(height: 32),
-                  _buildSectionHeader('Pharmacy Information'),
+                  _buildSectionHeader(l10n.labelPharmacyInformation),
                   _isEditing
                       ? _buildTextField(
                           _phNameController,
-                          'Pharmacy Name',
+                          l10n.labelPharmacyName,
                           Icons.local_pharmacy,
                         )
                       : _buildReadOnlyItem(
-                          'Pharmacy Name',
+                          l10n.labelPharmacyName,
                           user?['pharmacy']?['name'] ?? 'N/A',
                           Icons.local_pharmacy,
                         ),
@@ -162,11 +168,11 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   _isEditing
                       ? _buildTextField(
                           _phPhoneController,
-                          'Pharmacy Phone',
+                          l10n.labelPharmacyPhone,
                           Icons.contact_phone,
                         )
                       : _buildReadOnlyItem(
-                          'Pharmacy Phone',
+                          l10n.labelPharmacyPhone,
                           user?['pharmacy']?['phone'] ?? 'N/A',
                           Icons.contact_phone,
                         ),
@@ -174,12 +180,12 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   _isEditing
                       ? _buildTextField(
                           _phAddressController,
-                          'Pharmacy Address',
+                          l10n.labelPharmacyAddress,
                           Icons.location_on,
                           maxLines: 2,
                         )
                       : _buildReadOnlyItem(
-                          'Pharmacy Address',
+                          l10n.labelPharmacyAddress,
                           user?['pharmacy']?['address'] ?? 'N/A',
                           Icons.location_on,
                         ),
@@ -199,7 +205,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                         side: const BorderSide(color: Colors.red),
                         foregroundColor: Colors.red,
                       ),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.actionCancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -213,7 +219,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                       ),
                       child: authProvider.isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Save Changes'),
+                          : Text(l10n.actionSaveChanges),
                     ),
                   ),
                 ],
@@ -277,6 +283,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     IconData icon, {
     int maxLines = 1,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: TextFormField(
@@ -287,12 +294,13 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           prefixIcon: Icon(icon),
           border: const OutlineInputBorder(),
         ),
-        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+        validator: (v) => v == null || v.isEmpty ? l10n.labelRequired : null,
       ),
     );
   }
 
   Widget _buildPendingBadge() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -306,10 +314,10 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
         children: [
           Icon(Icons.pending_actions, color: Colors.amber[900]),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Awaiting approval for your previous update request. New edits will replace the pending one.',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              l10n.msgPendingUpdateInfo,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -36,6 +37,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   void _addToCart(Map<String, dynamic> item) {
+    final l10n = AppLocalizations.of(context)!;
     // Get all price options for this product/volume
     final productId = item['product']['_id'];
     final volumeId = item['volume']['_id'];
@@ -103,9 +105,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Select quantities by price:',
-                      style: TextStyle(
+                    Text(
+                      l10n.labelSelectQuantitiesByPrice,
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -129,7 +131,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '$price coins',
+                                    l10n.priceCoins(price.toString()),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -137,7 +139,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Available: $maxQty',
+                                    l10n.labelAvailableCount(maxQty),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey[600],
@@ -226,7 +228,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Text(
-                                    'Subtotal: ${(price * currentQty).toStringAsFixed(2)} coins',
+                                    l10n.labelSubtotalAmount(
+                                      (price * currentQty).toStringAsFixed(2),
+                                    ),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey[700],
@@ -243,12 +247,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Total Quantity:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        Text(
+                          l10n.labelTotalQuantity,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '$totalQuantity units',
+                          l10n.labelUnitsCount(totalQuantity),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -257,12 +261,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Total Cost:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        Text(
+                          l10n.labelTotalCost,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '${totalCost.toStringAsFixed(2)} coins',
+                          l10n.priceCoins(totalCost.toStringAsFixed(2)),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
@@ -277,7 +281,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.actionCancel),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -300,13 +304,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       SnackBar(
                         content: Text(
                           totalQuantity == 0
-                              ? 'Removed from cart'
-                              : 'Cart updated!',
+                              ? l10n.msgRemovedFromCart
+                              : l10n.msgCartUpdated,
                         ),
                       ),
                     );
                   },
-                  child: const Text('Update Cart'),
+                  child: Text(l10n.actionUpdateCart),
                 ),
               ],
             );
@@ -331,10 +335,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Future<void> _submitOrder() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Your cart is empty')));
+      ).showSnackBar(SnackBar(content: Text(l10n.msgCartEmpty)));
       return;
     }
 
@@ -363,18 +368,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       ).createOrder(orderData);
 
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order placed successfully!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgOrderPlaced)));
         Navigator.pop(context);
       } else if (mounted) {
         final error = Provider.of<ShortageProvider>(
           context,
           listen: false,
         ).errorMessage;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error ?? 'Failed to place order')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error ?? l10n.msgOrderFailed)));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -382,6 +387,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   void _viewCart() {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -397,9 +403,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Shopping Cart',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.titleShoppingCart,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -410,7 +419,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const Divider(),
               Expanded(
                 child: _cart.isEmpty
-                    ? const Center(child: Text('Your cart is empty'))
+                    ? Center(child: Text(l10n.msgCartEmpty))
                     : ListView.builder(
                         controller: scrollController,
                         itemCount: _cart.length,
@@ -425,13 +434,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             child: ListTile(
                               title: Text(item['product']['name']),
                               subtitle: Text(
-                                '${item['volume']['name']} • ${item['price']} coins × $quantity',
+                                '${item['volume']['name']} • ${l10n.priceCoins(item['price'].toString())} × $quantity',
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '${(item['price'] * quantity).toStringAsFixed(2)} coins',
+                                    l10n.priceCoins(
+                                      (item['price'] * quantity)
+                                          .toStringAsFixed(2),
+                                    ),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -461,15 +473,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Total:',
-                      style: TextStyle(
+                    Text(
+                      '${l10n.labelTotalCost.replaceAll(':', '')}:',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      '${_calculateTotal().toStringAsFixed(2)} coins',
+                      l10n.priceCoins(_calculateTotal().toStringAsFixed(2)),
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -481,10 +493,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
               TextField(
                 controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Order Notes (Optional)',
-                  border: OutlineInputBorder(),
-                  hintText: 'Add special instructions...',
+                decoration: InputDecoration(
+                  labelText: l10n.labelOrderNotesOptional,
+                  border: const OutlineInputBorder(),
+                  hintText: l10n.hintAddSpecialInstructions,
                 ),
                 maxLines: 2,
               ),
@@ -509,7 +521,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         )
                       : const Icon(Icons.shopping_bag),
                   label: Text(
-                    _isSubmitting ? 'Placing Order...' : 'Place Order',
+                    _isSubmitting
+                        ? l10n.msgPlacingOrder
+                        : l10n.actionPlaceOrder,
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
@@ -528,6 +542,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final excesses = Provider.of<ExcessProvider>(context).marketExcesses;
+    final l10n = AppLocalizations.of(context)!;
 
     // Group excesses by product/volume
     final Map<String, Map<String, dynamic>> groupedItems = {};
@@ -571,7 +586,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shopping Tour'),
+        title: Text(l10n.titleShoppingTour),
         actions: [
           if (_cart.isNotEmpty)
             Stack(
@@ -620,7 +635,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Search products...',
+                hintText: l10n.hintSearchProducts,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -651,8 +666,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isEmpty
-                              ? 'No items available in the market'
-                              : 'No items match your search',
+                              ? l10n.msgNoMarketItems
+                              : l10n.msgNoSearchMatches,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey[600],
@@ -746,7 +761,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '${item['totalQuantity']} available',
+                                      l10n.labelAvailableUnits(
+                                        item['totalQuantity'],
+                                      ),
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey[600],
@@ -778,7 +795,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                           ),
                                           if (priceCount > 1)
                                             Text(
-                                              '$priceCount prices',
+                                              l10n.labelPriceOptions(
+                                                priceCount,
+                                              ),
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 color: Colors.grey[600],

@@ -12,5 +12,5 @@ class AppLocalizationsAr extends AppLocalizations {
   String get helloWorld => 'مرحبا بكم';
 
   @override
-  String get title => 'ميدي سينك';
+  String get title => 'MediSync';
 }

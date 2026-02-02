@@ -7,6 +7,7 @@ import 'account_details_screen.dart';
 import 'help_screen.dart';
 import 'subscription_screen.dart';
 import 'change_password_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -15,10 +16,11 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Account'),
+        title: Text(l10n.navAccount),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
@@ -45,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user?['name'] ?? 'User Name',
+                    user?['name'] ?? l10n.labelUserName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -53,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    user?['email'] ?? 'email@example.com',
+                    user?['email'] ?? l10n.labelUserEmailPlaceholder,
                     style: TextStyle(color: Colors.blue[100], fontSize: 14),
                   ),
                 ],
@@ -71,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                   builder: (context, settings, _) {
                     return ListTile(
                       leading: const Icon(Icons.language, color: Colors.blue),
-                      title: const Text('App Language / اللغة'),
+                      title: Text(l10n.labelAppLanguage),
                       trailing: DropdownButton<String>(
                         value: settings.locale.languageCode,
                         underline: const SizedBox(),
@@ -89,9 +91,15 @@ class ProfileScreen extends StatelessWidget {
                             }
                           }
                         },
-                        items: const [
-                          DropdownMenuItem(value: 'en', child: Text('English')),
-                          DropdownMenuItem(value: 'ar', child: Text('العربية')),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'en',
+                            child: Text(l10n.labelEnglish),
+                          ),
+                          DropdownMenuItem(
+                            value: 'ar',
+                            child: Text(l10n.labelArabic),
+                          ),
                         ],
                       ),
                     );
@@ -106,8 +114,8 @@ class ProfileScreen extends StatelessWidget {
             _buildMenuItem(
               context: context,
               icon: Icons.account_circle_outlined,
-              title: 'My Account',
-              subtitle: 'View and edit your personal data',
+              title: l10n.menuMyAccount,
+              subtitle: l10n.subtitleMyAccount,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -119,8 +127,8 @@ class ProfileScreen extends StatelessWidget {
             _buildMenuItem(
               context: context,
               icon: Icons.help_outline,
-              title: 'Help',
-              subtitle: 'FAQs and app usage guide',
+              title: l10n.menuHelp,
+              subtitle: l10n.subtitleHelp,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const HelpScreen()),
@@ -130,8 +138,8 @@ class ProfileScreen extends StatelessWidget {
             _buildMenuItem(
               context: context,
               icon: Icons.card_membership_outlined,
-              title: 'Subscription Plans',
-              subtitle: 'Explore premium features',
+              title: l10n.titleSubscriptionPlans,
+              subtitle: l10n.subtitleSubscription,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -143,8 +151,8 @@ class ProfileScreen extends StatelessWidget {
             _buildMenuItem(
               context: context,
               icon: Icons.lock_reset_outlined,
-              title: 'Reset My Password',
-              subtitle: 'Securely update your password',
+              title: l10n.menuResetPassword,
+              subtitle: l10n.subtitleResetPassword,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -158,7 +166,7 @@ class ProfileScreen extends StatelessWidget {
             _buildMenuItem(
               context: context,
               icon: Icons.logout,
-              title: 'Log out',
+              title: l10n.actionLogout,
               titleColor: Colors.red[700],
               iconColor: Colors.red[700],
               showArrow: false,
@@ -204,17 +212,16 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context, AuthProvider authProvider) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Log out'),
-        content: const Text(
-          'Are you sure you want to log out of your account?',
-        ),
+        title: Text(l10n.actionLogout),
+        content: Text(l10n.dialogLogoutMsg),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () {
@@ -224,7 +231,10 @@ class ProfileScreen extends StatelessWidget {
                 (route) => false,
               );
             },
-            child: const Text('Log out', style: TextStyle(color: Colors.red)),
+            child: Text(
+              l10n.actionLogout,
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),

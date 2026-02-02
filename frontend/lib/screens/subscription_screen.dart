@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscription Plans'),
+        title: Text(l10n.titleSubscriptionPlans),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
@@ -19,15 +21,18 @@ class SubscriptionScreen extends StatelessWidget {
             children: [
               Icon(Icons.stars, size: 80, color: Colors.amber[700]),
               const SizedBox(height: 24),
-              const Text(
-                'Coming Soon!',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              Text(
+                l10n.msgComingSoon,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'We are working on exclusive premium features and subscription plans to help you grow your pharmacy business.',
+              Text(
+                l10n.msgSubscriptionDescription,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
@@ -40,7 +45,7 @@ class SubscriptionScreen extends StatelessWidget {
                     vertical: 15,
                   ),
                 ),
-                child: const Text('Go Back'),
+                child: Text(l10n.actionBack),
               ),
             ],
           ),

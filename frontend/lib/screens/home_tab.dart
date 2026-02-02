@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/product_provider.dart';
-import '../utils/search_utils.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import 'requests_history_screen.dart';
@@ -37,6 +36,7 @@ class _HomeTabState extends State<HomeTab> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      if (!mounted) return;
       Provider.of<ShortageProvider>(
         context,
         listen: false,
@@ -101,7 +101,6 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final provider = Provider.of<ShortageProvider>(context);
-    final productProvider = Provider.of<ProductProvider>(context);
     final isAdmin = authProvider.userRole == 'admin';
     final shortages = provider.globalShortages;
 
@@ -170,13 +169,6 @@ class _HomeTabState extends State<HomeTab> {
           'color': Colors.blueGrey,
         },
     ];
-
-    final filteredProducts = _searchQuery.isEmpty
-        ? []
-        : productProvider.products.where((p) {
-            if (p is! Map) return false;
-            return SearchUtils.matches(p['name']?.toString(), _searchQuery);
-          }).toList();
 
     return RefreshIndicator(
       onRefresh: _onRefresh,

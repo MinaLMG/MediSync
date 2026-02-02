@@ -1,52 +1,66 @@
 {
-  "helloWorld": "مرحبا بكم",
+  "helloWorld": "مرحباً بالعالم",
+  "@helloWorld": {
+    "description": "The conventional newborn programmer greeting"
+  },
   "title": "MediSync",
-  "welcomeToMediSync": "مرحبا بكم في MediSync",
+  "welcomeToMediSync": "مرحبًا بك في MediSync",
   "emailLabel": "البريد الإلكتروني",
-  "emailRequiredError": "يرجى إدخال البريد الإلكتروني",
+  "emailRequiredError": "يرجى إدخال بريدك الإلكتروني",
   "passwordLabel": "كلمة المرور",
   "passwordRequiredError": "يرجى إدخال كلمة المرور",
   "loginButton": "تسجيل الدخول",
+  "actionAdd": "إضافة",
+  "actionEdit": "تعديل",
+  "actionCreate": "إنشاء",
+  "actionDelete": "حذف",
   "loginFailed": "فشل تسجيل الدخول",
   "signUpPrompt": "ليس لديك حساب؟ سجل الآن",
-  "createAccountTitle": "إنشاء حساب جديد",
+  "createAccountTitle": "إنشاء حساب",
   "fullNameLabel": "الاسم الكامل",
   "requiredError": "مطلوب",
-  "invalidEmailError": "بريد إلكتروني غير صالح",
+  "invalidEmailError": "البريد الإلكتروني غير صالح",
   "phoneLabel": "رقم الهاتف",
-  "invalidPhoneError": "رقم هاتف غير صالح (١١ رقم تبدأ بـ ٠١)",
-  "passwordMinLengthError": "كلمة المرور قصيرة جداً (٨ حروف على الأقل)",
-  "signUpButton": "تسجيل",
+  "invalidPhoneError": "رقم هاتف غير صالح (11 رقمًا يبدأ بـ 01)",
+  "passwordMinLengthError": "قصير جدًا (8 أحرف كحد أدنى)",
+  "signUpButton": "سجل الآن",
   "registrationFailed": "فشل التسجيل",
   "onboardingTitle": "التهيئة",
-  "welcomeMessage": "مرحباً بك في MediSync!",
-  "linkPharmacyInstructions": "للبدء في استخدام المنصة، يجب ربط صيدليتك وتقديم المستندات المطلوبة.",
+  "welcomeMessage": "مرحبًا بك في MediSync!",
+  "linkPharmacyInstructions": "لبدء استخدام المنصة، تحتاج إلى ربط صيدليتك وتقديم الوثائق.",
   "addNewPharmacyButton": "إضافة صيدلية جديدة",
   "awaitingApprovalTitle": "في انتظار الموافقة",
-  "awaitingApprovalMessage": "تم تقديم مستنداتك وتجري مراجعتها من قبل الإدارة. سنقوم بإبلاغك بمجرد تفعيل حسابك.",
-  "checkStatusButton": "تحقق من الحالة",
-  "pendingCartPlaceholder": "عربة الانتظار (قريباً)",
+  "awaitingApprovalMessage": "تم تقديم وثائقك وهي قيد المراجعة من قبل المسؤول. سنخطرك بمجرد تفعيل حسابك.",
+  "checkStatusButton": "تحقق من الحالة الآن",
+  "pendingCartPlaceholder": "العربة المعلقة (قريباً)",
   "balanceDisplay": "الرصيد: {amount} عملة",
-  "reloadTooltip": "تحديث علامة التبويب الحالية",
+  "@balanceDisplay": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "reloadTooltip": "إعادة تحميل التبويب الحالي",
   "navHome": "الرئيسية",
   "navOrderHistory": "سجل الطلبات",
-  "navPendingCart": "عربة الانتظار",
+  "navPendingCart": "العربة المعلقة",
   "navAccount": "الحساب",
   "urgentShortages": "نواقص عاجلة",
-  "noShortages": "لا توجد نواقص حالياً",
-  "adSpace": "مساحة إعلانية\n(عروض وخصومات)",
+  "noShortages": "لا توجد نواقص حالية",
+  "adSpace": "مساحة إعلانية\n(عروض وترويج)",
   "menuRequestsHistory": "سجل الطلبات",
-  "menuShoppingTour": "جولة التسوق",
-  "menuAddShortage": "إضافة ناقص",
-  "menuAddExcess": "إضافة راكد",
+  "menuShoppingTour": "جولة تسوق",
+  "menuAddShortage": "إضافة نواقص",
+  "menuAddExcess": "إضافة وفرة",
   "menuStartTransactions": "بدء المعاملات",
   "menuViewTransactions": "عرض المعاملات",
   "menuSuggestProduct": "اقتراح منتج",
-  "menuSuggestionsComplaints": "الاقتراحات والشكاوى",
+  "menuSuggestionsComplaints": "اقتراحات/شكاوى",
   "menuBalanceHistory": "سجل الرصيد",
   "menuManageUsers": "إدارة المستخدمين",
   "adminDashboardTitle": "لوحة تحكم المشرف",
-  "menuFollowUpExcesses": "متابعة الزوائد",
+  "menuFollowUpExcesses": "متابعة الوفرة",
   "menuFollowUpShortages": "متابعة النواقص",
   "menuManageOrders": "إدارة الطلبات",
   "menuDeliveryRequests": "طلبات التوصيل",
@@ -58,10 +72,10 @@
   "menuSystemSettings": "إعدادات النظام",
   "manageUsersTitle": "إدارة المستخدمين",
   "tabNewRequests": "طلبات جديدة",
-  "tabActiveUsers": "مستخدمون نشطون",
-  "searchUsersHint": "بحث عن مستخدمين...",
+  "tabActiveUsers": "المستخدمين النشطين",
+  "searchUsersHint": "البحث عن مستخدمين (* للكل)...",
   "noUsersFound": "لم يتم العثور على مستخدمين.",
-  "noMatchesFound": "لا توجد نتائج مطابقة.",
+  "noMatchesFound": "لم يتم العثور على نتائج.",
   "noPharmacyLinked": "لا توجد صيدلية مرتبطة",
   "userInformation": "معلومات المستخدم",
   "labelName": "الاسم",
@@ -71,26 +85,26 @@
   "labelOwnerName": "اسم المالك",
   "labelNationalId": "الرقم القومي",
   "labelPharmacyAddress": "عنوان الصيدلية",
-  "labelPharmacistCard": "كارنيه النقابة",
+  "labelPharmacistCard": "كارنية الصيدلي",
   "labelCommercialRegistry": "السجل التجاري",
   "labelTaxCard": "البطاقة الضريبية",
   "labelLicense": "الترخيص",
   "dialogRejectRequest": "رفض الطلب",
-  "dialogRejectMessage": "هل أنت متأكد من رفض تسجيل هذا المستخدم؟",
+  "dialogRejectMessage": "هل أنت متأكد أنك تريد رفض تسجيل هذا المستخدم؟",
   "actionReject": "رفض",
-  "dialogApproveUser": "قبول المستخدم",
-  "dialogApproveMessage": "هل أنت متأكد من قبول هذا المستخدم وتفعيل حسابه؟",
-  "actionApprove": "قبول",
+  "dialogApproveUser": "موافقة المستخدم",
+  "dialogApproveMessage": "هل أنت متأكد أنك تريد الموافقة على هذا المستخدم وتفعيل حسابه؟",
+  "actionApprove": "موافقة",
   "managementActions": "إجراءات الإدارة",
   "actionActivate": "تفعيل",
   "actionSuspend": "إيقاف",
   "dialogActivateUser": "تفعيل المستخدم",
   "dialogSuspendUser": "إيقاف المستخدم",
-  "dialogActivateUserMessage": "هل أنت متأكد من تفعيل هذا الحساب؟",
-  "dialogSuspendUserMessage": "هل أنت متأكد من إيقاف هذا الحساب؟",
-  "actionResetPass": "إعادة تعيين كلمة المرور",
+  "dialogActivateUserMessage": "هل أنت متأكد أنك تريد تفعيل هذا الحساب؟",
+  "dialogSuspendUserMessage": "هل أنت متأكد أنك تريد إيقاف هذا الحساب؟",
+  "actionResetPass": "إعادة تعين كلمة المرور",
   "dialogResetPassword": "إعادة تعيين كلمة المرور",
-  "dialogResetPasswordMessage": "هل أنت متأكد من إعادة تعيين كلمة المرور لهذا المستخدم إلى \"00000000\"؟",
+  "dialogResetPasswordMessage": "هل أنت متأكد أنك تريد إعادة تعيين كلمة مرور هذا المستخدم إلى \"00000000\"؟",
   "actionConfirm": "تأكيد",
   "actionCancel": "إلغاء",
   "actionSuccessful": "تم الإجراء بنجاح",
@@ -99,37 +113,788 @@
   "labelPassword": "كلمة المرور",
   "errorRequired": "مطلوب",
   "errorMin6Chars": "6 أحرف كحد أدنى",
-  "msgDeliveryUserCreated": "تم إنشاء حساب التوصيل وهو قيد الانتظار",
+  "msgDeliveryUserCreated": "تم إنشاء مستخدم التوصيل وهو في انتظار الموافقة",
   "msgFailedCreateUser": "فشل إنشاء المستخدم",
   "errorLoadingImage": "خطأ في تحميل الصورة",
   "noImage": "لا توجد صورة",
-  "matchableProductsTitle": "المنتجات القابلة للمطابقة",
-  "searchProductsHint": "بحث عن منتجات...",
-  "noMatchableItemsFound": "لا توجد عناصر قابلة للمطابقة.",
-  "shortageFulfillment": "تلبية النواقص",
-  "matchingAvailableInVolumes": "المطابقة متاحة في {count} أحجام",
+  "matchableProductsTitle": "منتجات قابلة للمطابقة",
+  "searchProductsHint": "بحث عن منتجات (* للكل)...",
+  "noMatchableItemsFound": "لم يتم العثور على عناصر قابلة للمطابقة.",
+  "shortageFulfillment": "تلبية العجز",
+  "matchingAvailableInVolumes": "مطابقة متاحة في {count} أحجام",
+  "@matchingAvailableInVolumes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "manageProductsTitle": "إدارة المنتجات",
   "managePricesTitle": "إدارة الأسعار",
   "priceCoins": "{price} عملة",
-  "labelCustomerPrice": "سعر المستخدم",
+  "@priceCoins": {
+    "placeholders": {
+      "price": {
+        "type": "String",
+        "example": "100"
+      }
+    }
+  },
+  "labelCustomerPrice": "سعر المستهلك",
   "dialogAddPrice": "إضافة سعر",
   "actionAddNewPrice": "إضافة سعر جديد",
   "actionAdd": "إضافة",
   "actionDone": "تم",
-  "dialogEditProductInfo": "تعديل بيانات المنتج",
+  "dialogEditProductInfo": "تعديل معلومات المنتج",
   "labelProductName": "اسم المنتج",
   "actionUpdate": "تحديث",
   "actionLoadMore": "تحميل المزيد",
   "noPricesSet": "لم يتم تحديد أسعار",
-  "coinsSuffix": "عملة",
+  "coinsSuffix": "عملات",
   "tooltipDeactivate": "إلغاء التفعيل",
   "tooltipActivate": "تفعيل",
   "statusActive": "نشط",
   "statusInactive": "غير نشط",
+  "statusPending": "معلق",
+  "statusAvailable": "متاح",
+  "statusFulfilled": "مكتمل",
+  "statusPartiallyFulfilled": "مكتمل جزئياً",
+  "statusSold": "تم البيع",
+  "statusExpired": "منتهي الصلاحية",
+  "statusCancelled": "ملغي",
+  "statusRejected": "مرفوض",
+  "managePharmaciesTitle": "إدارة الصيدليات",
+  "searchPharmaciesHint": "البحث في الصيدليات...",
+  "noPharmaciesFound": "لم يتم العثور على صيدليات.",
+  "labelAddress": "العنوان",
+  "labelBalance": "الرصيد",
+  "editBalanceTitle": "تعديل الرصيد",
+  "actionSave": "حفظ",
+  "accountUpdatesTitle": "تحديثات الحساب",
+  "tabPendingReversals": "عمليات الإلغاء المعلقة",
+  "tabManualAdjustments": "تعديلات يدوية",
+  "noReversalTickets": "لا توجد تذاكر إلغاء معلقة",
+  "ticketTitle": "تذكرة رقم {id}",
+  "@ticketTitle": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionSerial": "مسلسل المعاملة: {serial}",
+  "@transactionSerial": {
+    "placeholders": {
+      "serial": {
+        "type": "String"
+      }
+    }
+  },
+  "expensesLabel": "مصروفات",
+  "userLabel": "مستخدم",
+  "amountLabel": "القيمة",
+  "resolveTicket": "حل التذكرة",
+  "dialogResolveTicket": "تأكيد الحل",
+  "dialogResolveTicketMsg": "هل أنت متأكد أنك تريد حل هذه التذكرة؟ هذا سيفعل التعديلات المالية.",
+  "adjustBalanceTitle": "تعديل الرصيد",
+  "selectPharmacyHint": "اختر الصيدلية",
+  "adjustmentAmountLabel": "قيمة التعديل (+/-)",
+  "reasonLabel": "السبب",
+  "actionDirectAdjustment": "تطبيق التعديل",
+  "adjustmentSuccess": "تم تعديل الرصيد بنجاح",
   "menuRefresh": "تحديث",
   "refreshing": "جاري التحديث...",
-  "tabPending": "قيد الانتظار",
+  "tabPending": "معلق",
   "tabAvailable": "متاح",
-  "tabFulfilled": "مكتمل",
-  "tabActive": "نشط"
+  "tabFulfilled": "تم التنفيذ",
+  "tabActive": "نشط",
+  "actionClose": "إغلاق",
+  "actionRetry": "إعادة المحاولة",
+  "actionSubmit": "إرسال",
+  "actionBack": "رجوع",
+  "actionLogout": "تسجيل خروج",
+  "actionEdit": "تعديل",
+  "actionDelete": "حذف",
+  "labelVolume": "الحجم",
+  "labelQuantity": "الكمية",
+  "labelPrice": "السعر",
+  "labelNotes": "ملاحظات",
+  "labelExpiry": "تاريخ الانتهاء",
+  "noResultsFound": "لم يتم العثور على نتائج",
+  "msgDeletedSuccessfully": "تم الحذف بنجاح",
+  "msgSubmittedSuccessfully": "تم الإرسال بنجاح",
+  "titleSuggestProduct": "اقتراح منتج جديد",
+  "titleSuggestionsComplaints": "اقتراحات وشكاوى",
+  "titleSubscriptionPlans": "خطط الاشتراك",
+  "titleNotifications": "التنبيهات",
+  "labelArabic": "العربية",
+  "labelEnglish": "الإنجليزية",
+  "labelAppLanguage": "لغة التطبيق",
+  "labelPriceWithAmount": "السعر: {amount}",
+  "@labelPriceWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tooltipMarkAllAsSeen": "تحديد الكل كمقروء",
+  "msgNoNotifications": "لا توجد تنبيهات بعد",
+  "titlePharmacyDetails": "تفاصيل الصيدلية",
+  "labelSubmitDocumentation": "تقديم الوثائق",
+  "msgProvideInformation": "يرجى تقديم المعلومات التالية كما هي مدونة في وثائقك الرسمية.",
+  "labelPharmacyNameWithHint": "اسم الصيدلية",
+  "labelOwnerNameWithHint": "اسم المالك (كما هو مدون في الرخصة)",
+  "labelNationalIdWithHint": "الرقم القومي (بطاقة رقم قومي)",
+  "msgMustBe14Digits": "يجب أن يكون 14 رقمًا بالضبط",
+  "errorNationalIdRequired": "الرقم القومي مطلوب",
+  "errorNationalIdInvalid": "يجب أن يكون الرقم القومي 14 رقمًا بالضبط",
+  "labelDetailedAddress": "العنوان بالتفصيل",
+  "labelDetailedAddressWithHint": "العنوان بالتفصيل",
+  "hintDetailedAddress": "مثال: 123 مدينة نصر، القاهرة، مصر",
+  "actionSubmitForApproval": "إرسال للموافقة",
+  "actionChange": "تغيير",
+  "actionUpload": "رفع",
+  "msgSubmissionFailed": "فشل التقديم",
+  "dialogConfirmLogout": "تأكيد تسجيل الخروج",
+  "dialogConfirmLogoutMsg": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+  "msgPleaseEnterValidPrice": "يرجى إدخال سعر صالح",
+  "msgPleaseUploadAllDocs": "يرجى رفع المستندات الأربعة جميعها",
+  "labelFeedbackDescription": "نحن نقدر رأيك. يرجى إخبارنا إذا كان لديك أي اقتراحات للتحسين أو أي شكاوى بخصوص النظام.",
+  "labelFeedbackPlaceholder": "اكتب رسالتك هنا...",
+  "labelFeedbackTitle": "رأيك",
+  "msgFeedbackSuccess": "شكراً لك على رأيك!",
+  "msgGenericError": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+  "labelRequired": "مطلوب",
+  "msgComingSoon": "قريباً!",
+  "msgSubscriptionDescription": "نحن نعمل على ميزات متميزة حصرية وخطط اشتراك لمساعدتك على تنمية أعمال صيدليتك.",
+  "labelUserName": "اسم المستخدم",
+  "labelUserEmailPlaceholder": "email@example.com",
+  "menuMyAccount": "حسابي",
+  "subtitleMyAccount": "عرض وتعديل بياناتك الشخصية",
+  "menuHelp": "مساعدة",
+  "subtitleHelp": "الأسئلة الشائعة ودليل استخدام التطبيق",
+  "subtitleSubscription": "استكشاف الميزات المتميزة",
+  "menuResetPassword": "إعادة تعيين كلمة المرور",
+  "subtitleResetPassword": "تحديث كلمة مرورك بشكل آمن",
+  "dialogLogoutMsg": "هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟",
+  "titleShortageFollowup": "متابعة النواقص",
+  "titleRequestsHistory": "سجل الطلبات",
+  "dialogConfirmDelete": "تأكيد الحذف",
+  "dialogConfirmDeleteMsg": "هل أنت متأكد أنك تريد حذف هذا العنصر؟",
+  "msgNoActiveShortages": "لا توجد نواقص نشطة",
+  "msgNoFulfilledShortages": "لا توجد نواقص مكتملة",
+  "msgNoHistoryFound": "لم يتم العثور على سجل",
+  "labelPharmacy": "الصيدلية: {name}",
+  "@labelPharmacy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelQuantityNeeded": "الكمية المطلوبة: {count}",
+  "@labelQuantityNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelRemainingQuantity": "الكمية المتبقية: {count}",
+  "@labelRemainingQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelQuantityFulfilled": "الكمية المنفذة: {count}",
+  "@labelQuantityFulfilled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgCannotDeleteFulfilledShortage": "لا يمكن حذف نواقص تم تنفيذها جزئياً بالفعل.",
+  "dialogConfirmDeleteShortage": "هل أنت متأكد أنك تريد حذف هذا النقص؟",
+  "msgShortageRequirementCompleted": "هذا الطلب مكتمل.",
+  "labelExcessOffer": "عرض وفرة",
+  "labelShortageRequest": "طلب نقص",
+  "labelType": "النوع",
+  "labelTotalQuantity": "الكمية الكلية",
+  "labelRemaining": "المتبقي",
+  "labelDiscount": "الخصم",
+  "labelDiscountAmount": "قيمة الخصم",
+  "labelFinalPrice": "السعر النهائي",
+  "labelRejectionReason": "سبب الرفض:",
+  "labelCreated": "تاريخ الإنشاء: {date}",
+  "@labelCreated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "msgCannotDeleteFulfilledItem": "لا يمكن حذف {item} الذي تم {action} بالفعل.",
+  "@msgCannotDeleteFulfilledItem": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      },
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "labelExcess": "وفرة",
+  "labelShortage": "نقص",
+  "labelTaken": "أُخذ",
+  "labelFulfilled": "تم تنفيذه",
+  "labelOffer": "عرض",
+  "labelRequest": "طلب",
+  "titleMatchProduct": "تطابق: {product}",
+  "@titleMatchProduct": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "labelShortages": "النواقص",
+  "labelExcesses": "الوفرة",
+  "labelTime": "الوقت",
+  "labelSalePercentage": "نسبة البيع %",
+  "msgSelectShortageFirst": "يرجى اختيار نقص أولاً",
+  "msgShortageFulfilled": "كمية النقص مكتملة بالفعل",
+  "labelShortageFulfillment": "تلبية النواقص",
+  "labelVol": "حجم: {name}",
+  "@labelVol": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelNeeded": "مطلوب: {count}",
+  "@labelNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelSaleRatio": "نسبة البيع: {ratio}%",
+  "@labelSaleRatio": {
+    "placeholders": {
+      "ratio": {
+        "type": "num"
+      }
+    }
+  },
+  "labelAllocated": "مخصص: {current} / {total}",
+  "@labelAllocated": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "msgOverLimit": "تجاوز الحد!",
+  "labelAdminOverrides": "تجاوزات المشرف (اختياري)",
+  "labelBuyerComm": "عمولة المشتري %",
+  "labelSellerRew": "مكافأة البائع %",
+  "hintShFulfill": "تلبية النقص",
+  "actionSubmitTransaction": "إرسال المعاملة",
+  "msgTransactionCreated": "تم إنشاء المعاملة بنجاح",
+  "labelPersonalInformation": "المعلومات الشخصية",
+  "labelFullName": "الاسم الكامل",
+  "labelEmailAddress": "البريد الإلكتروني",
+  "labelPhoneNumber": "رقم الهاتف",
+  "labelPharmacyInformation": "معلومات الصيدلية",
+  "labelPharmacyPhone": "هاتف الصيدلية",
+  "labelPharmacyAddress": "عنوان الصيدلية",
+  "actionSaveChanges": "حفظ التغييرات",
+  "msgUpdateRequested": "تم إرسال طلب التحديث للمشرف!",
+  "msgUpdateFailed": "فشل إرسال الطلب",
+  "msgPendingUpdateInfo": "في انتظار الموافقة على طلب التحديث السابق. التعديلات الجديدة ستحل محل الطلب المعلق.",
+  "labelPharmacyInfo": "معلومات الصيدلية",
+  "msgNoAddress": "لم يتم تقديم عنوان",
+  "msgNoPhone": "لم يتم تقديم هاتف",
+  "labelOwner": "المالك: {name}",
+  "@labelOwner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "titleShoppingTour": "جولة تسوق",
+  "labelSelectQuantitiesByPrice": "اختر الكميات حسب السعر:",
+  "labelAvailableCount": "متاح: {count}",
+  "@labelAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelSubtotalAmount": "المجموع الفرعي: {amount} عملة",
+  "@labelSubtotalAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "labelTotalQuantity": "إجمالي الكمية:",
+  "labelTotalCost": "إجمالي التكلفة:",
+  "labelUnitsCount": "{count} وحدات",
+  "@labelUnitsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "actionUpdateCart": "تحديث العربة",
+  "msgRemovedFromCart": "تم الحذف من العربة",
+  "msgCartUpdated": "تم تحديث العربة!",
+  "titleShoppingCart": "عربة التسوق",
+  "msgCartEmpty": "عربتك فارغة",
+  "labelOrderNotesOptional": "ملاحظات الطلب (اختياري)",
+  "hintAddSpecialInstructions": "إضافة تعليمات خاصة...",
+  "actionPlaceOrder": "إتمام الطلب",
+  "msgPlacingOrder": "جاري تنفيذ الطلب...",
+  "msgOrderPlaced": "تم تنفيذ الطلب بنجاح!",
+  "msgOrderFailed": "فشل في تنفيذ الطلب",
+  "hintSearchProducts": "بحث عن منتجات...",
+  "msgNoMarketItems": "لا توجد عناصر متاحة في السوق",
+  "msgNoSearchMatches": "لم يتم العثور على عناصر تطابق بحثك",
+  "labelAvailableUnits": "{count} متاح",
+  "@labelAvailableUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelPriceOptions": "{count} أسعار",
+  "@labelPriceOptions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "titleEditExcess": "تعديل وفرة المخزون",
+  "titleAddExcess": "إضافة وفرة مخزون",
+  "labelSelectExpiryMonthYear": "اختر الانتهاء (شهر/سنة)",
+  "msgSelectExpiryDate": "يرجى اختيار تاريخ الانتهاء",
+  "msgSelectProductVolume": "يرجى اختيار المنتج والحجم",
+  "msgInvalidSalePercentage": "نسبة بيع غير صالحة",
+  "msgEnterValidQuantity": "يرجى إدخال كمية صالحة",
+  "labelProductWithName": "المنتج: {name}",
+  "@labelProductWithName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelVolumeWithName": "الحجم: {name}",
+  "@labelVolumeWithName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLoading": "جاري التحميل...",
+  "hintSelectVolume": "اختر الحجم",
+  "labelPriceCoins": "السعر (عملات)",
+  "labelSelectPrice": "اختر السعر",
+  "actionEnterManualPrice": "إدخال سعر يدوي",
+  "labelManualPrice": "سعر يدوي",
+  "msgInvalidQuantity": "كمية غير صالحة",
+  "msgTooHigh": "عالي جداً",
+  "msgTooLow": "منخفض جداً",
+  "labelExpiryDateMMYY": "تاريخ الانتهاء (شهر/سنة)",
+  "hintSelectExpiryDate": "اختر تاريخ الانتهاء",
+  "labelRequestType": "نوع الطلب",
+  "labelRealExcess": "وفرة حقيقية",
+  "labelPercentageValue": "قيمة النسبة (%)",
+  "actionUpdateExcess": "تحديث الوفرة",
+  "actionSubmitExcess": "إرسال الوفرة",
+  "msgErrorLoadingVolumes": "خطأ في تحميل الأحجام",
+  "titleEditShortage": "تعديل النواقص",
+  "titleAddShortage": "إضافة نواقص",
+  "msgShortageUpdated": "تم تحديث النواقص بنجاح",
+  "msgShortageAdded": "تم إضافة النواقص بنجاح",
+  "msgErrorProcessingRequest": "خطأ في معالجة الطلب",
+  "labelQuantityNeededField": "الكمية المطلوبة",
+  "msgQuantityDecreaseOnly": "يمكن تقليل الكمية فقط",
+  "msgCannotBeLessThan": "لا يمكن أن يكون أقل من {count}",
+  "@msgCannotBeLessThan": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "actionUpdateShortage": "تحديث النواقص",
+  "actionSubmitShortage": "إرسال النواقص",
+  "labelUpdateSecurityDetails": "تحديث تفاصيل الأمان الخاصة بك",
+  "labelPasswordLengthHint": "تأكد من أن كلمة مرورك الجديدة تزيد عن 8 أحرف.",
+  "labelCurrentPassword": "كلمة المرور الحالية",
+  "labelNewPassword": "كلمة المرور الجديدة",
+  "labelConfirmNewPassword": "تأكيد كلمة المرور الجديدة",
+  "msgPasswordChangedSuccess": "تم تغيير كلمة المرور بنجاح!",
+  "msgPasswordChangeFailed": "فشل في تغيير كلمة المرور",
+  "msgPasswordsDoNotMatch": "كلمات المرور غير متطابقة",
+  "msgNoBalanceHistory": "لم يتم العثور على سجل رصيد.",
+  "labelBalanceUpdate": "تحديث الرصيد",
+  "labelDate": "التاريخ",
+  "labelPrevBalance": "الرصيد السابق",
+  "labelNewBalance": "الرصيد الجديد",
+  "labelBreakdown": "التفصيل:",
+  "labelNotAvailable": "غير متوفر",
+  "manageOrdersTitle": "إدارة الطلبات",
+  "manageUsersTitle": "إدارة المستخدمين",
+  "labelActiveUsers": "المستخدمين النشطين",
+  "labelAccountStatus": "حالة الحساب",
+  "labelUnknown": "غير معروف",
+  "actionSimulate": "محاكاة",
+  "actionCompensation": "تعويض",
+  "actionHistory": "السجل",
+  "actionPayment": "دفع",
+  "actionPayments": "مدفوعات",
+  "dialogConfirmDeleteAdjustment": "تأكيد الحذف",
+  "msgConfirmDeleteAdjustment": "هل أنت متأكد؟ هذا سيلغي التعديل.",
+  "actionDeleteRevert": "حذف وإلغاء",
+  "msgAdjustmentReverted": "تم إلغاء التعديل بنجاح",
+  "dialogEditPayment": "تعديل الدفعة",
+  "dialogRecordPayment": "تسجيل دفعة - {name}",
+  "@dialogRecordPayment": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelPaymentType": "النوع",
+  "labelDeposit": "💰 إيداع",
+  "labelWithdrawal": "💸 سحب",
+  "labelAdjustmentAmount": "القيمة",
+  "labelPaymentMethod": "الطريقة",
+  "labelCash": "كاش",
+  "labelBankTransfer": "تحويل بنكي",
+  "labelCheque": "شيك",
+  "labelOther": "آخر",
+  "labelReferenceNumber": "رقم المرجع",
+  "labelAdminNote": "ملاحظة المسؤول",
+  "msgInvalidAmount": "قيمة غير صالحة",
+  "msgPaymentUpdated": "تم تحديث الدفعة",
+  "msgPaymentRecorded": "تم تسجيل الدفعة",
+  "labelNewPayment": "دفعة جديدة",
+  "labelOrderNumber": "طلب رقم {number}",
+  "@labelOrderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "labelPharmacyPrefix": "الصيدلية:",
+  "labelTotalAmountPrefix": "إجمالي المبلغ: {amount} عملة",
+  "@labelTotalAmountPrefix": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "labelStatusPrefix": "الحالة:",
+  "labelProgressPrefix": "التقدم: {fulfilled} / {total} عناصر",
+  "@labelProgressPrefix": {
+    "placeholders": {
+      "fulfilled": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "msgSelectExcessToFulfill": "يرجى اختيار وفرة واحدة على الأقل لتنفيذها",
+  "msgFulfillSuccess": "تم تنفيذ {count} عنصر بنجاح",
+  "@msgFulfillSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgFulfillPartialFail": "تم تنفيذ {success} عنصر بنجاح، وفشل {fail}",
+  "@msgFulfillPartialFail": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "fail": {
+        "type": "int"
+      }
+    }
+  },
+  "msgAllFulfillmentsFailed": "فشلت جميع عمليات التنفيذ",
+  "labelSelectedUnits": "مختار: {count} وحدات",
+  "@labelSelectedUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelItemsCount": "{count} عناصر",
+  "labelVolumePrefix": "الحجم:",
+  "labelPricePrefix": "السعر:",
+  "labelNeed": "احتياج: {count}",
+  "@labelNeed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgNoMatchingExcesses": "لا توجد وفرة مطابقة متاحة",
+  "labelSaleRatioPrefix": "نسبة البيع:",
+  "labelExpiryPrefix": "الانتهاء:",
+  "actionMax": "الأقصى",
+  "actionSubmitFulfillment": "إرسال تنفيذ الطلب ({count} وحدات)",
+  "@actionSubmitFulfillment": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "msgAssignmentFailed": "فشل التعيين. تحقق مما إذا كان لا يزال متاحًا.",
+  "msgNoAvailableTransactions": "لا توجد معاملات متاحة.",
+  "msgNoTasksAssigned": "لا توجد مهام معينة لك.",
+  "labelSelectedUnitsShort": "تم اختيار: {count}",
+  "@labelSelectedUnitsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelAvailableUnitsPrefix": "متاح:",
+  "msgProcessing": "جاري المعالجة...",
+  "labelOrderHash": "طلب رقم ",
+  "labelTransactionHash": "معاملة رقم ",
+  "labelUnitsSuffix": "وحدات",
+  "labelExcessPharmacy": "صيدلية الوفرة:",
+  "labelShortagePharmacy": "صيدلية العجز:",
+  "actionAssignToMe": "تعيين لي",
+  "actionRequestAcceptance": "طلب قبول",
+  "actionRequestCompletion": "طلب إكمال",
+  "labelRequestPending": "الطلب قيد الانتظار...",
+  "labelStatus": "الحالة",
+  "labelTransactionNumber": "معاملة رقم {id}",
+  "@labelTransactionNumber": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "labelOrderPrefix": "طلب رقم ",
+  "helpSupportTitle": "المساعدة والدعم",
+  "catStockInventory": "📦 المخزون والوفرة",
+  "qHowToAddExcess": "كيف يمكنني إضافة وفرة؟",
+  "aHowToAddExcess": "اذهب إلى التبويب الرئيسي واضغط على \"إضافة منتج وفرة\". املأ تفاصيل المنتج، تاريخ الانتهاء، والخصم. بمجرد الإرسال، ستتمكن الصيدليات الأخرى من رؤيته وطلبه.",
+  "qWhatIsShortage": "ما هو \"طلب النقص\"؟",
+  "aWhatIsShortage": "إذا كنت بحاجة إلى منتج غير متاح في مخزونك، يمكنك إنشاء \"طلب نقص\". الصيدليات الأخرى التي لديها وفرة من هذا المنتج يمكنها تلبية طلبك.",
+  "catBalanceFinance": "💰 الرصيد والمالية",
+  "qHowToGetBalance": "كيف يمكنني الحصول على رصيدي؟",
+  "aHowToGetBalance": "يتم عرض رصيدك الحالي في أعلى التبويب الرئيسي. يمكنك أيضاً عرض تفاصيل دقيقة في \"سجل المعاملات\".",
+  "qHowCommissionWorks": "كيف تعمل العمولة؟",
+  "aHowCommissionWorks": "تفرض MediSync عمولة صغيرة على عمليات المطابقة الناجحة بين الصيدليات. هذا يساعدنا في صيانة المنصة وتقديم خدمات التوصيل.",
+  "catTransactionsHistory": "🔄 المعاملات والسجل",
+  "qWhereIsHistory": "أين سجل طلباتي؟",
+  "aWhereIsHistory": "يمكن العثور على جميع معاملاتك السابقة وطلبات المخزون الحالية في تبويب \"السجل\" في أسفل لوحة التحكم.",
+  "qHowToTrackDelivery": "كيف أتتبع التوصيل؟",
+  "aHowToTrackDelivery": "بمجرد تأكيد المطابقة وتعيين عامل توصيل، يمكنك عرض الحالة المباشرة في قسم \"تتبع التوصيل\" لطلبك النشط.",
+  "tabOverview": "نظرة عامة",
+  "tabRequests": "الطلبات",
+  "tabLedger": "دفتر الأستاذ",
+  "labelCurrentBalance": "الرصيد الحالي",
+  "labelPharmacyInformation": "معلومات الصيدلية",
+  "labelOwnerInformation": "معلومات المالك",
+  "msgFailedToLoadDetails": "فشل تحميل التفاصيل",
+  "msgNoRequestHistoryFound": "لم يتم العثور على سجل طلبات.",
+  "msgNoFinancialHistoryFound": "لم يتم العثور على سجل مالي.",
+  "deliveryDashboardTitle": "لوحة تحكم التوصيل",
+  "tabAvailable": "متاح",
+  "tabMyTasks": "مهامي",
+  "tabHistory": "السجل",
+  "msgAssigningToYou": "جاري التعيين لك...",
+  "msgAssignmentSuccess": "نجاح! تم تعيين المعاملة.",
+  "msgRequestSent": "تم إرسال الطلب!",
+  "catAccountManagement": "⚙️ إدارة الحساب",
+  "qHowToEditProfile": "كيف يمكنني تعديل بيانات صيدليتي؟",
+  "aHowToEditProfile": "اذهب إلى \"الحساب\" -> \"حسابي\" واضغط على زر \"تعديل\". قم بتحديث معلوماتك وأرسلها. سيتم معالجة طلبك قريباً.",
+  "qCanIChangePassword": "هل يمكنني تغيير كلمة المرور؟",
+  "aCanIChangePassword": "نعم! استخدم خيار \"إعادة تعيين كلمة المرور\" في قائمة الحساب. ستحتاج إلى كلمة مرورك الحالية لتعيين كلمة مرور جديدة.",
+  "labelAdminDeliveryRequests": "طلبات التوصيل",
+  "actionSaveSettings": "حفظ الإعدادات",
+  "statusUnknown": "غير معروف",
+  "labelShortagePharmacy": "النقص:",
+  "labelExcessPharmacy": "الوفرة:",
+  "labelProduct": "المنتج",
+  "labelUnitsShort": "وحدات",
+  "labelCoins": "عملة",
+  "labelPrice": "السعر",
+  "labelVolume": "الحجم",
+  "actionUpdateTransaction": "تحديث المعاملة",
+  "msgFailedUpdateTransaction": "فشل في تحديث المعاملة",
+  "labelTransactionHash": "المعاملة: ",
+  "actionApprove": "موافقة",
+  "actionReject": "رفض",
+  "msgRequestApproved": "تمت الموافقة على الطلب",
+  "msgRequestRejected": "تم رفض الطلب",
+  "msgFailedReviewRequest": "فشل في مراجعة الطلب",
+  "msgCleanupOldRequests": "تم تنظيف الطلبات القديمة (أقدم من شهر)",
+  "msgCleanupFailed": "فشل التنظيف",
+  "labelCleanup": "تنظيف",
+  "msgConfirmCleanup": "هل تريد حذف جميع الطلبات المعتمدة/المرفوضة التي مضى عليها أكثر من شهر؟",
+  "actionDelete": "حذف",
+  "msgNoPendingDeliveryRequests": "لا توجد طلبات توصيل معلقة.",
+  "titleEditTransaction": "تعديل المعاملة #{serial}",
+  "@titleEditTransaction": {
+    "placeholders": {
+      "serial": {
+        "type": "String"
+      }
+    }
+  },
+  "labelOrderBadge": "طلب",
+  "labelTotalOriginalNeeded": "إجمالي الاحتياج الأصلي:",
+  "labelAvailableOriginal": "المتاح (المتاح الأصلي):",
+  "labelTotalDistribution": "إجمالي التوزيع:",
+  "msgTotalQtyCannotBeZero": "إجمالي الكمية لا يمكن أن يكون صفراً",
+  "msgTransactionUpdated": "تم تحديث المعاملة بنجاح",
+  "msgExecuting": "جاري التنفيذ...",
+  "labelPortionInTx": "الجزء في هذه المعاملة: {count}",
+  "@labelPortionInTx": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "labelCommissionRatios": "نسب العمولة (%)",
+  "labelMinComm": "العمولة الدنيا (%)",
+  "helperMinComm": "العمولة الافتراضية لإعادة توازن الوفرة الحقيقية.",
+  "labelShortageComm": "عمولة النقص (%)",
+  "helperShortageComm": "العمولة الافتراضية لتلبية طلبات النقص.",
+  "labelShortageSellerRewardField": "مكافأة البائع في النقص (%)",
+  "helperShortageSellerReward": "المكافأة الافتراضية لموفر تلبية النقص.",
+  "msgSettingsUpdated": "تم تحديث الإعدادات بنجاح",
+  "msgFailedUpdateSettings": "فشل في تحديث الإعدادات",
+  "msgPleaseEnterValue": "يرجى إدخال قيمة",
+  "msgEnterNumberBetween0And20": "أدخل رقماً بين 0 و 20",
+  "msgEnterPositiveNumber": "أدخل رقماً موجباً",
+  "titleFeedbackComplaints": "الآراء والشكاوى",
+  "msgNoSuggestionsFound": "لم يتم العثور على اقتراحات.",
+  "labelUnknownPharmacy": "صيدلية غير معروفة",
+  "labelUserPrefix": "المستخدم: {name}",
+  "@labelUserPrefix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelFromPrefix": "من: {name}",
+  "@labelFromPrefix": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFeedbackDetails": "تفاصيل الرأي",
+  "msgNoContentProvided": "لم يتم تقديم محتوى",
+  "titleProductSuggestions": "اقتراحات المنتجات الجديدة",
+  "titleSuggestionAction": "{status} اقتراح",
+  "@titleSuggestionAction": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "msgConfirmSuggestionAction": "هل أنت متأكد أنك تريد {status} هذا الاقتراح؟",
+  "@msgConfirmSuggestionAction": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "labelReviewerNotesOptional": "ملاحظات المراجع (اختياري)",
+  "labelProposedPrice": "السعر المقترح",
+  "labelSuggestedBy": "مقترح بواسطة",
+  "labelReviewerNotes": "ملاحظات المراجع: {notes}",
+  "@labelReviewerNotes": {
+    "placeholders": {
+      "notes": {
+        "type": "String"
+      }
+    }
+  },
+  "hintSearchSuggestions": "البحث في الاقتراحات (* للكل)...",
+  "titleBuyProduct": "شراء {name} ({volume})",
+  "@titleBuyProduct": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "volume": {
+        "type": "String"
+      }
+    }
+  },
+  "labelTotalCoins": "الإجمالي: {amount} عملة",
+  "@labelTotalCoins": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "titleExcessFollowUp": "متابعة الزيادات",
+  "msgNoFulfilledExcesses": "لا توجد زيادات مكتملة",
+  "msgNoPendingExcesses": "لا توجد زيادات معلقة",
+  "msgNoAvailableExcesses": "لا توجد زيادات متاحة",
+  "msgActionCompletedLocked": "هذا الإجراء مكتمل ومغلق.",
+  "msgCannotDeleteTakenExcess": "لا يمكن حذف الزيادة التي تم سحب مخزون منها بالفعل.",
+  "labelConfirmDelete": "تأكيد الحذف",
+  "msgConfirmDeleteExcess": "هل أنت متأكد أنك تريد حذف هذه الزيادة؟",
+  "msgConfirmDeleteExcessAvailable": "هل أنت متأكد أنك تريد حذف هذه الزيادة المتاحة؟",
+  "labelRejectExcessOffer": "رفض عرض الزيادة",
+  "hintRejectionReason": "مثال: السعر مرتفع جداً، تاريخ الانتهاء قريب جداً",
+  "labelConfirmApproval": "تأكيد الموافقة",
+  "msgConfirmApproveExcess": "هل أنت متأكد أنك تريد الموافقة على هذه الزيادة وجعلها متاحة للمطابقة؟",
+  "labelNewPrice": "سعر جديد",
+  "labelPrice": "السعر",
+  "labelQuantity": "الكمية",
+  "labelExpiry": "تاريخ الانتهاء",
+  "labelOff": "خصم"
 }

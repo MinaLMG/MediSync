@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
 import 'onboarding_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class PharmacyFormScreen extends StatefulWidget {
   const PharmacyFormScreen({super.key});
@@ -44,9 +45,10 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = Provider.of<AuthProvider>(context).isLoading;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pharmacy Details')),
+      appBar: AppBar(title: Text(l10n.titlePharmacyDetails)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -54,45 +56,50 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Submit Documentation',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                l10n.labelSubmitDocumentation,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Please provide the following information as written in your official documents.',
-                style: TextStyle(color: Colors.grey),
+              Text(
+                l10n.msgProvideInformation,
+                style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 24),
 
               _buildTextField(
                 _nameController,
-                'Pharmacy Name (اسم الصيدلية)',
+                l10n.labelPharmacyNameWithHint,
                 Icons.store,
+                l10n.labelRequired,
               ),
               _buildTextField(
                 _ownerController,
-                "Owner's Name (اسم صاحب الصيدلية كما مدون في الرخصه)",
+                l10n.labelOwnerNameWithHint,
                 Icons.person_outline,
+                l10n.labelRequired,
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: TextFormField(
                   controller: _nationalIdController,
-                  decoration: const InputDecoration(
-                    labelText: 'National ID (بطاقة رقم قومي)',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                    border: OutlineInputBorder(),
-                    helperText: 'Must be exactly 14 digits',
+                  decoration: InputDecoration(
+                    labelText: l10n.labelNationalIdWithHint,
+                    prefixIcon: const Icon(Icons.badge_outlined),
+                    border: const OutlineInputBorder(),
+                    helperText: l10n.msgMustBe14Digits,
                   ),
                   keyboardType: TextInputType.number,
                   maxLength: 14,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'National ID is required';
+                      return l10n.errorNationalIdRequired;
                     }
                     if (!RegExp(r'^\d{14}$').hasMatch(value)) {
-                      return 'National ID must be exactly 14 digits';
+                      return l10n.errorNationalIdInvalid;
                     }
                     return null;
                   },
@@ -100,23 +107,26 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
               ),
 
               const SizedBox(height: 16),
-              const Text(
-                'Detailed Address',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l10n.labelDetailedAddress,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Detailed Address (العنوان بالتفصيل)',
-                  hintText: 'e.g. 123 Madinet Nasr, Cairo, Egypt',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.labelDetailedAddressWithHint,
+                  hintText: l10n.hintDetailedAddress,
+                  prefixIcon: const Icon(Icons.location_on_outlined),
+                  border: const OutlineInputBorder(),
                   counterText: "",
                 ),
                 maxLines: 3,
                 maxLength: 200,
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                validator: (v) => v!.isEmpty ? l10n.labelRequired : null,
               ),
 
               const SizedBox(height: 16),
@@ -124,24 +134,32 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
               const SizedBox(height: 16),
 
               _buildImagePlaceholder(
-                'Pharmacist Card',
+                l10n.labelPharmacistCard,
                 pharmacistCardPath != null,
                 () => _pickImage('card'),
+                l10n.actionChange,
+                l10n.actionUpload,
               ),
               _buildImagePlaceholder(
-                'Commercial Registry',
+                l10n.labelCommercialRegistry,
                 registryPath != null,
                 () => _pickImage('registry'),
+                l10n.actionChange,
+                l10n.actionUpload,
               ),
               _buildImagePlaceholder(
-                'Tax Card',
+                l10n.labelTaxCard,
                 taxPath != null,
                 () => _pickImage('tax'),
+                l10n.actionChange,
+                l10n.actionUpload,
               ),
               _buildImagePlaceholder(
-                'Pharmacy License',
+                l10n.labelLicense,
                 licensePath != null,
                 () => _pickImage('license'),
+                l10n.actionChange,
+                l10n.actionUpload,
               ),
 
               const SizedBox(height: 32),
@@ -161,7 +179,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text('Submit for Approval'),
+                    : Text(l10n.actionSubmitForApproval),
               ),
             ],
           ),
@@ -174,6 +192,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
     TextEditingController controller,
     String label,
     IconData icon,
+    String requiredError,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -184,7 +203,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
           prefixIcon: Icon(icon),
           border: const OutlineInputBorder(),
         ),
-        validator: (v) => v!.isEmpty ? 'Required' : null,
+        validator: (v) => v!.isEmpty ? requiredError : null,
       ),
     );
   }
@@ -193,6 +212,8 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
     String label,
     bool hasImage,
     VoidCallback onTap,
+    String changeLabel,
+    String uploadLabel,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -215,7 +236,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
             Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
             TextButton(
               onPressed: onTap,
-              child: Text(hasImage ? 'Change' : 'Upload'),
+              child: Text(hasImage ? changeLabel : uploadLabel),
             ),
           ],
         ),
@@ -224,14 +245,15 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
   }
 
   void _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       if (pharmacistCardPath == null ||
           registryPath == null ||
           taxPath == null ||
           licensePath == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please upload all 4 documents'),
+          SnackBar(
+            content: Text(l10n.msgPleaseUploadAllDocs),
             backgroundColor: Colors.red,
           ),
         );
@@ -265,7 +287,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
           SnackBar(
             content: Text(
               Provider.of<AuthProvider>(context, listen: false).errorMessage ??
-                  'Submission failed',
+                  l10n.msgSubmissionFailed,
             ),
           ),
         );

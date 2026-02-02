@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/order_provider.dart';
 import 'admin_order_fulfillment_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminOrderListScreen extends StatefulWidget {
   const AdminOrderListScreen({super.key});
@@ -29,8 +30,9 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
   Widget build(BuildContext context) {
     final orders = Provider.of<OrderProvider>(context).orders;
 
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Orders')),
+      appBar: AppBar(title: Text(l10n.manageOrdersTitle)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
@@ -39,24 +41,28 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
                 final order = orders[i];
                 // order: { serial, status, totalItems, fulfilledItems, totalAmount, pharmacy: { name }, items: [] }
                 final pharmacyName =
-                    order['pharmacy']?['name'] ?? 'Unknown Pharmacy';
+                    order['pharmacy']?['name'] ?? l10n.labelUnknown;
                 final totalAmount = order['totalAmount'] ?? 0;
                 final status = order['status'];
 
                 return Card(
                   margin: const EdgeInsets.all(8),
                   child: ListTile(
-                    title: Text('Order #${order['serial']}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Pharmacy: $pharmacyName'),
+                        Text('${l10n.labelPharmacyPrefix} $pharmacyName'),
                         Text(
-                          'Total Amount: ${totalAmount.toStringAsFixed(2)} coins',
+                          l10n.labelTotalAmountPrefix(
+                            totalAmount.toStringAsFixed(2),
+                          ),
                         ),
-                        Text('Status: $status'),
+                        Text('${l10n.labelStatusPrefix} $status'),
                         Text(
-                          'Progress: ${order['fulfilledItems']} / ${order['totalItems']} items',
+                          l10n.labelProgressPrefix(
+                            order['fulfilledItems'],
+                            order['totalItems'],
+                          ),
                         ),
                       ],
                     ),

@@ -6,6 +6,7 @@ import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/async_searchable_dropdown.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AddExcessScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -78,6 +79,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   }
 
   Future<void> _selectExpiryDate() async {
+    final l10n = AppLocalizations.of(context)!;
     if (isEditMode) return;
     int selectedYear = _expiryDate != null
         ? 2000 + int.parse(_expiryDate!.split('/')[1])
@@ -90,7 +92,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Select Expiry (Month/Year)'),
+          title: Text(l10n.labelSelectExpiryMonthYear),
           content: SizedBox(
             height: 300,
             width: 300,
@@ -125,7 +127,10 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            DateFormat('MMM').format(DateTime(0, month)),
+                            DateFormat(
+                              'MMM',
+                              l10n.localeName,
+                            ).format(DateTime(0, month)),
                             style: TextStyle(
                               fontWeight: selectedMonth == month
                                   ? FontWeight.bold
@@ -146,7 +151,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(l10n.actionCancel),
             ),
           ],
         ),
@@ -162,17 +167,18 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   }
 
   void _submitForm() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       if (!isEditMode && _expiryDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select expiry date')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgSelectExpiryDate)));
         return;
       }
       if (_selectedProductId == null || _selectedVolumeId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select product and volume')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgSelectProductVolume)));
         return;
       }
 
@@ -180,9 +186,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           ? double.tryParse(_manualPriceController.text)
           : _selectedPrice;
       if (price == null || price <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid price')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgPleaseEnterValidPrice)));
         return;
       }
 
@@ -193,7 +199,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           saleVal = double.tryParse(saleValText);
           if (saleVal == null || saleVal < 0 || saleVal > 100) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid sale percentage')),
+              SnackBar(content: Text(l10n.msgInvalidSalePercentage)),
             );
             return;
           }
@@ -204,9 +210,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
       final quantity = int.tryParse(_quantityController.text);
       if (quantity == null || quantity <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid quantity')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgEnterValidQuantity)));
         return;
       }
 
@@ -238,7 +244,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           Navigator.pop(context);
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Success')));
+          ).showSnackBar(SnackBar(content: Text(l10n.actionSuccessful)));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -247,7 +253,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error',
+                    l10n.msgGenericError,
               ),
             ),
           );
@@ -259,6 +265,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   @override
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
     final currentVolume =
         _availableVolumes.isNotEmpty && _selectedVolumeId != null
         ? _availableVolumes.firstWhere(
@@ -279,7 +286,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditMode ? 'Edit Excess Stock' : 'Add Excess Stock'),
+        title: Text(isEditMode ? l10n.titleEditExcess : l10n.titleAddExcess),
       ),
       body: productProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -303,7 +310,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'REJECTION REASON: ${widget.initialData!['rejectionReason']}',
+                            '${l10n.labelRejectionReason} ${widget.initialData!['rejectionReason']}',
                             style: const TextStyle(color: Colors.red),
                           ),
                         ),
@@ -317,7 +324,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           border: Border.all(color: Colors.grey[300]!),
                         ),
                         child: Text(
-                          'Product: ${widget.initialData!['product']['name']}',
+                          l10n.labelProductWithName(
+                            widget.initialData!['product']['name'],
+                          ),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -326,7 +335,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     if (!isEditMode) ...[
                       AsyncSearchableDropdown(
                         value: _selectedProductId,
-                        labelText: 'Product',
+                        labelText: l10n.labelName,
                         onChanged: (product) async {
                           if (product == null) {
                             setState(() {
@@ -365,8 +374,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           } catch (e) {
                             if (mounted)
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Error loading volumes'),
+                                SnackBar(
+                                  content: Text(l10n.msgErrorLoadingVolumes),
                                 ),
                               );
                           } finally {
@@ -385,10 +394,10 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         ),
                         value: _selectedVolumeId,
                         decoration: InputDecoration(
-                          labelText: 'Volume',
+                          labelText: l10n.labelVolume,
                           hintText: _isFetchingVolumes
-                              ? 'Loading...'
-                              : 'Select volume',
+                              ? l10n.hintLoading
+                              : l10n.hintSelectVolume,
                           suffixIcon: _isFetchingVolumes
                               ? const SizedBox(
                                   width: 20,
@@ -425,9 +434,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     ],
 
                     if (_selectedVolumeId != null && !isStockTaken) ...[
-                      const Text(
-                        'Price (coins)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        l10n.labelPriceCoins,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       if (!_isManualPrice)
                         DropdownButtonFormField<double>(
@@ -435,8 +444,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             'price_dropdown_${_selectedVolumeId ?? "none"}',
                           ),
                           value: _selectedPrice,
-                          decoration: const InputDecoration(
-                            labelText: 'Select Price',
+                          decoration: InputDecoration(
+                            labelText: l10n.labelSelectPrice,
                           ),
                           items: prices
                               .map(
@@ -464,8 +473,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       if (_isManualPrice)
                         TextFormField(
                           controller: _manualPriceController,
-                          decoration: const InputDecoration(
-                            labelText: 'Manual Price',
+                          decoration: InputDecoration(
+                            labelText: l10n.labelManualPrice,
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
@@ -480,7 +489,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
                     TextFormField(
                       controller: _quantityController,
-                      decoration: const InputDecoration(labelText: 'Quantity'),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelQuantity,
+                      ),
                       keyboardType: TextInputType.number,
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
@@ -500,11 +511,11 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         controller: _expiryController,
                         readOnly: true,
                         onTap: _selectExpiryDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Expiry Date (MM/YY)',
-                          hintText: 'Select Expiry Date',
-                          suffixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.labelExpiryDateMMYY,
+                          hintText: l10n.hintSelectExpiryDate,
+                          suffixIcon: const Icon(Icons.calendar_today),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) =>
                             v == null || v.isEmpty ? 'Required' : null,
@@ -513,21 +524,21 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     ],
 
                     if (!isStockTaken) ...[
-                      const Text(
-                        'Request Type',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        l10n.labelRequestType,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<bool>(
                         value: _shortageFulfillment,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: true,
-                            child: Text('Shortage Fulfillment'),
+                            child: Text(l10n.labelShortageFulfillment),
                           ),
                           DropdownMenuItem(
                             value: false,
-                            child: Text('Real Excess'),
+                            child: Text(l10n.labelRealExcess),
                           ),
                         ],
                         onChanged: (val) =>
@@ -541,9 +552,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       if (!_shortageFulfillment)
                         TextFormField(
                           controller: _saleValueController,
-                          decoration: const InputDecoration(
-                            labelText: 'Percentage Value (%)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.labelPercentageValue,
+                            border: const OutlineInputBorder(),
                             suffixText: '%',
                           ),
                           keyboardType: TextInputType.number,

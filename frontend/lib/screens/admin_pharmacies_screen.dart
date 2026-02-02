@@ -45,6 +45,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final filteredPharmacies = _pharmacies.where((ph) {
       return SearchUtils.matches(ph['name'], _searchQuery) ||
           SearchUtils.matches(ph['email'], _searchQuery) ||
@@ -54,7 +55,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.managePharmaciesTitle),
+        title: Text(l10n.managePharmaciesTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -68,7 +69,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: AppLocalizations.of(context)!.searchPharmaciesHint,
+                hintText: l10n.searchPharmaciesHint,
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
               ),
@@ -79,11 +80,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filteredPharmacies.isEmpty
-                ? Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.noPharmaciesFound,
-                    ),
-                  )
+                ? Center(child: Text(l10n.noPharmaciesFound))
                 : ListView.builder(
                     itemCount: filteredPharmacies.length,
                     itemBuilder: (context, index) {
@@ -145,8 +142,9 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                     owner?['email'] ?? 'N/A',
                                   ),
                                   _detailRow(
-                                    'Account Status', // Add to ARB if strictly needed, or map statusActive/Inactive
-                                    ph['status']?.toUpperCase() ?? 'UNKNOWN',
+                                    l10n.labelAccountStatus,
+                                    ph['status']?.toUpperCase() ??
+                                        l10n.labelUnknown,
                                   ),
                                   const SizedBox(height: 16),
                                   SizedBox(
@@ -165,7 +163,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                         );
                                       },
                                       icon: const Icon(Icons.visibility),
-                                      label: const Text('Simulate'),
+                                      label: Text(l10n.actionSimulate),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.blue[800],
                                         foregroundColor: Colors.white,
@@ -286,11 +284,12 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
             title: Text(
               isEdit
-                  ? AppLocalizations.of(context)!.editBalanceTitle
-                  : '${AppLocalizations.of(context)!.adjustBalanceTitle} - $pharmacyName',
+                  ? l10n.editBalanceTitle
+                  : '${l10n.adjustBalanceTitle} - $pharmacyName',
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -445,6 +444,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
         builder: (context, scrollController) => FutureBuilder(
           future: _fetchCompensations(context, pharmacyId),
           builder: (context, snapshot) {
+            final l10n = AppLocalizations.of(context)!;
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -454,7 +454,9 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
             return Column(
               children: [
                 AppBar(
-                  title: Text('$pharmacyName History'),
+                  title: Text(
+                    '$pharmacyName ${AppLocalizations.of(context)!.actionHistory}',
+                  ),
                   automaticallyImplyLeading: false,
                   actions: [
                     IconButton(
@@ -464,9 +466,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                   ],
                 ),
                 if (compensations.isEmpty)
-                  const Expanded(
-                    child: Center(child: Text('No adjustment history.')),
-                  )
+                  Expanded(child: Center(child: Text(l10n.noMatchesFound)))
                 else
                   Expanded(
                     child: ListView.builder(
@@ -558,28 +558,31 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
   ) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text(
-          'Are you sure? This will REVERT the adjustment.',
-        ), // Add to ARB if strictly needed
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.actionCancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Close sheet
-              await _deleteCompensation(context, compensationId);
-              _fetchPharmacies(); // Refresh balance
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete & Revert'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          title: Text(l10n.dialogConfirmDeleteAdjustment),
+          content: Text(
+            l10n.msgConfirmDeleteAdjustment,
+          ), // Add to ARB if strictly needed
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(AppLocalizations.of(context)!.actionCancel),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx); // Close dialog
+                Navigator.pop(context); // Close sheet
+                await _deleteCompensation(context, compensationId);
+                _fetchPharmacies(); // Refresh balance
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(l10n.actionDeleteRevert),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -587,6 +590,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     BuildContext context,
     String compensationId,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final token = Provider.of<AuthProvider>(context, listen: false).token;
       final response = await http.delete(
@@ -597,8 +601,8 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       if (data['success']) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Adjustment reverted successfully'),
+            SnackBar(
+              content: Text(l10n.msgAdjustmentReverted),
               backgroundColor: Colors.green,
             ),
           );
@@ -640,25 +644,30 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
             title: Text(
-              isEdit ? 'Edit Payment' : 'Record Payment - $pharmacyName',
+              isEdit
+                  ? l10n.dialogEditPayment
+                  : l10n.dialogRecordPayment(pharmacyName),
             ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Type'),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelPaymentType,
+                    ),
                     value: type,
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'deposit',
-                        child: Text('💰 Deposit'),
+                        child: Text(l10n.labelDeposit),
                       ),
                       DropdownMenuItem(
                         value: 'withdrawal',
-                        child: Text('💸 Withdrawal'),
+                        child: Text(l10n.labelWithdrawal),
                       ),
                     ],
                     onChanged: (val) => setDialogState(() => type = val!),
@@ -666,41 +675,52 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount',
-                      prefixIcon: Icon(Icons.attach_money),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelAdjustmentAmount,
+                      prefixIcon: const Icon(Icons.attach_money),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Method'),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelPaymentMethod,
+                    ),
                     value: method,
-                    items: const [
-                      DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'cash',
+                        child: Text(l10n.labelCash),
+                      ),
                       DropdownMenuItem(
                         value: 'bank_transfer',
-                        child: Text('Bank Transfer'),
+                        child: Text(l10n.labelBankTransfer),
                       ),
-                      DropdownMenuItem(value: 'cheque', child: Text('Cheque')),
-                      DropdownMenuItem(value: 'other', child: Text('Other')),
+                      DropdownMenuItem(
+                        value: 'cheque',
+                        child: Text(l10n.labelCheque),
+                      ),
+                      DropdownMenuItem(
+                        value: 'other',
+                        child: Text(l10n.labelOther),
+                      ),
                     ],
                     onChanged: (val) => setDialogState(() => method = val!),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: referenceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Reference Number',
-                      prefixIcon: Icon(Icons.receipt),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelReferenceNumber,
+                      prefixIcon: const Icon(Icons.receipt),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Admin Note',
-                      prefixIcon: Icon(Icons.note),
+                    decoration: InputDecoration(
+                      labelText: l10n.labelAdminNote,
+                      prefixIcon: const Icon(Icons.note),
                     ),
                     maxLines: 2,
                   ),
@@ -736,7 +756,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                           ).token;
 
                           final url = isEdit
-                              ? '${Constants.baseUrl}/payment/${payment!['_id']}'
+                              ? '${Constants.baseUrl}/payment/${payment['_id']}'
                               : '${Constants.baseUrl}/payment';
 
                           final methodHttp = isEdit ? http.put : http.post;
@@ -768,8 +788,8 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                                 SnackBar(
                                   content: Text(
                                     isEdit
-                                        ? 'Payment updated'
-                                        : 'Payment recorded',
+                                        ? l10n.msgPaymentUpdated
+                                        : l10n.msgPaymentRecorded,
                                   ),
                                   backgroundColor: Colors.green,
                                 ),
@@ -834,7 +854,9 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
             return Column(
               children: [
                 AppBar(
-                  title: Text('$pharmacyName - Payments'),
+                  title: Text(
+                    '$pharmacyName - ${AppLocalizations.of(context)!.actionPayments}',
+                  ),
                   automaticallyImplyLeading: false,
                   actions: [
                     IconButton(
@@ -844,8 +866,12 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                   ],
                 ),
                 if (payments.isEmpty)
-                  const Expanded(
-                    child: Center(child: Text('No payment history.')),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        AppLocalizations.of(context)!.msgNoBalanceHistory,
+                      ),
+                    ),
                   )
                 else
                   Expanded(

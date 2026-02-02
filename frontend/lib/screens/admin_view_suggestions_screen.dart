@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/app_suggestion_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AdminViewSuggestionsScreen extends StatefulWidget {
   const AdminViewSuggestionsScreen({super.key});
@@ -26,9 +27,10 @@ class _AdminViewSuggestionsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Feedback & Complaints'),
+        title: Text(l10n.titleFeedbackComplaints),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -46,7 +48,7 @@ class _AdminViewSuggestionsScreenState
           }
 
           if (provider.suggestions.isEmpty) {
-            return const Center(child: Text('No suggestions found.'));
+            return Center(child: Text(l10n.msgNoSuggestionsFound));
           }
 
           return RefreshIndicator(
@@ -66,7 +68,8 @@ class _AdminViewSuggestionsScreenState
                   ),
                   child: ListTile(
                     title: Text(
-                      suggestion['pharmacy']?['name'] ?? 'Unknown Pharmacy',
+                      suggestion['pharmacy']?['name'] ??
+                          l10n.labelUnknownPharmacy,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.teal,
@@ -78,7 +81,9 @@ class _AdminViewSuggestionsScreenState
                       children: [
                         const SizedBox(height: 4),
                         Text(
-                          'User: ${suggestion['user']?['name'] ?? 'Unknown'}',
+                          l10n.labelUserPrefix(
+                            suggestion['user']?['name'] ?? l10n.statusUnknown,
+                          ),
                           style: const TextStyle(
                             fontSize: 12,
                             fontStyle: FontStyle.italic,
@@ -107,20 +112,26 @@ class _AdminViewSuggestionsScreenState
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text('Feedback Details'),
+                          title: Text(l10n.titleFeedbackDetails),
                           content: SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'From: ${suggestion['pharmacy']?['name'] ?? 'Unknown'}',
+                                  l10n.labelFromPrefix(
+                                    suggestion['pharmacy']?['name'] ??
+                                        l10n.labelUnknownPharmacy,
+                                  ),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
-                                  'User: ${suggestion['user']?['name'] ?? 'Unknown'}',
+                                  l10n.labelUserPrefix(
+                                    suggestion['user']?['name'] ??
+                                        l10n.statusUnknown,
+                                  ),
                                   style: const TextStyle(fontSize: 12),
                                 ),
                                 Text(
@@ -133,7 +144,7 @@ class _AdminViewSuggestionsScreenState
                                 const Divider(),
                                 Text(
                                   suggestion['content'] ??
-                                      'No content provided',
+                                      l10n.msgNoContentProvided,
                                 ),
                               ],
                             ),
@@ -141,7 +152,7 @@ class _AdminViewSuggestionsScreenState
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
-                              child: const Text('Close'),
+                              child: Text(l10n.actionClose),
                             ),
                           ],
                         ),

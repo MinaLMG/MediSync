@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../widgets/async_searchable_dropdown.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AddShortageScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -46,19 +47,20 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   }
 
   void _submitForm() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       if (_selectedProductId == null || _selectedVolumeId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select product and volume')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgSelectProductVolume)));
         return;
       }
 
       final quantity = int.tryParse(_quantityController.text);
       if (quantity == null || quantity <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid quantity')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgEnterValidQuantity)));
         return;
       }
 
@@ -84,9 +86,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                isEditMode
-                    ? 'Shortage updated successfully'
-                    : 'Shortage added successfully',
+                isEditMode ? l10n.msgShortageUpdated : l10n.msgShortageAdded,
               ),
             ),
           );
@@ -98,7 +98,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error processing request',
+                    l10n.msgErrorProcessingRequest,
               ),
             ),
           );
@@ -110,6 +110,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
   @override
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final int quantity = widget.initialData?['quantity'] ?? 0;
     final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
@@ -117,7 +118,9 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditMode ? 'Edit Shortage' : 'Add Shortage'),
+        title: Text(
+          isEditMode ? l10n.titleEditShortage : l10n.titleAddShortage,
+        ),
       ),
       body: productProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -142,13 +145,17 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Product: ${widget.initialData!['product']['name']}',
+                              l10n.labelProductWithName(
+                                widget.initialData!['product']['name'],
+                              ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
-                              'Volume: ${widget.initialData!['volume']['name']}',
+                              l10n.labelVolumeWithName(
+                                widget.initialData!['volume']['name'],
+                              ),
                             ),
                           ],
                         ),
@@ -158,7 +165,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                     if (!isEditMode) ...[
                       AsyncSearchableDropdown(
                         value: _selectedProductId,
-                        labelText: 'Product',
+                        labelText: l10n.labelName,
                         onChanged: (product) async {
                           if (product == null) {
                             setState(() {
@@ -199,8 +206,8 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                           } catch (e) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Error loading volumes'),
+                                SnackBar(
+                                  content: Text(l10n.msgErrorLoadingVolumes),
                                 ),
                               );
                             }
@@ -223,10 +230,10 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                         ),
                         value: _selectedVolumeId,
                         decoration: InputDecoration(
-                          labelText: 'Volume',
+                          labelText: l10n.labelVolume,
                           hintText: _isFetchingVolumes
-                              ? 'Loading...'
-                              : 'Select volume',
+                              ? l10n.hintLoading
+                              : l10n.hintSelectVolume,
                           suffixIcon: _isFetchingVolumes
                               ? const SizedBox(
                                   width: 20,
@@ -262,20 +269,21 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
 
                     TextFormField(
                       controller: _quantityController,
-                      decoration: const InputDecoration(
-                        labelText: 'Quantity Needed',
+                      decoration: InputDecoration(
+                        labelText: l10n.labelQuantityNeededField,
                       ),
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
+                        if (v == null || v.isEmpty) return l10n.labelRequired;
                         final qty = int.tryParse(v);
-                        if (qty == null || qty < 1) return 'Invalid quantity';
+                        if (qty == null || qty < 1)
+                          return l10n.msgInvalidQuantity;
                         if (isEditMode) {
                           if (qty > quantity)
-                            return 'Quantity can only be decreased';
+                            return l10n.msgQuantityDecreaseOnly;
                           if (qty < fulfilled)
-                            return 'Cannot be less than $fulfilled';
+                            return l10n.msgCannotBeLessThan(fulfilled);
                         }
                         return null;
                       },
@@ -299,8 +307,8 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                               )
                             : Text(
                                 isEditMode
-                                    ? 'Update Shortage'
-                                    : 'Submit Shortage',
+                                    ? l10n.actionUpdateShortage
+                                    : l10n.actionSubmitShortage,
                               ),
                       ),
                     ),

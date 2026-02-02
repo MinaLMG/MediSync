@@ -40,13 +40,12 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
     String paymentId,
     String pharmacyName,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Payment'),
-        content: Text(
-          'Are you sure you want to delete this payment for $pharmacyName? This will reverse the balance change.',
-        ),
+        title: Text(l10n.dialogConfirmDeleteAdjustment),
+        content: Text('${l10n.msgConfirmDeleteAdjustment} ($pharmacyName)'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -59,9 +58,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                 await ApiService.deleteRequest('/payment/$paymentId');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Payment deleted successfully'),
-                    ),
+                    SnackBar(content: Text(l10n.msgAdjustmentReverted)),
                   );
                   Provider.of<PaymentProvider>(
                     context,
@@ -77,7 +74,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(l10n.actionDeleteRevert),
           ),
         ],
       ),
@@ -89,9 +86,10 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
     final paymentProvider = Provider.of<PaymentProvider>(context);
     final payments = paymentProvider.payments;
 
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payments'),
+        title: Text(l10n.actionPayments),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -165,29 +163,29 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                         ),
                         PopupMenuButton(
                           itemBuilder: (context) => [
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'edit',
                               child: Row(
                                 children: [
-                                  Icon(Icons.edit, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Edit'),
+                                  const Icon(Icons.edit, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.actionEdit),
                                 ],
                               ),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.delete,
                                     size: 20,
                                     color: Colors.red,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.red),
+                                    l10n.actionDelete,
+                                    style: const TextStyle(color: Colors.red),
                                   ),
                                 ],
                               ),
@@ -215,21 +213,22 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPaymentDialog(context),
         icon: const Icon(Icons.add),
-        label: const Text('New Payment'),
+        label: Text(l10n.labelNewPayment),
       ),
     );
   }
 
   String _formatMethod(String method) {
+    final l10n = AppLocalizations.of(context)!;
     switch (method) {
       case 'bank_transfer':
-        return 'Bank Transfer';
+        return l10n.labelBankTransfer;
       case 'cheque':
-        return 'Cheque';
+        return l10n.labelCheque;
       case 'cash':
-        return 'Cash';
+        return l10n.labelCash;
       case 'other':
-        return 'Other';
+        return l10n.labelOther;
       default:
         return method;
     }
@@ -290,8 +289,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: Text(isEdit ? 'Edit Payment' : 'New Payment'),
+      title: Text(isEdit ? l10n.dialogEditPayment : l10n.labelNewPayment),
       content: _isLoadingPharmacies
           ? const SizedBox(
               height: 100,
@@ -304,7 +304,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: 'Pharmacy'),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelPharmacyName,
+                      ),
                       value: _selectedPharmacyId,
                       items: _pharmacies.map<DropdownMenuItem<String>>((p) {
                         return DropdownMenuItem(
@@ -315,20 +317,23 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       onChanged: isEdit
                           ? null
                           : (val) => setState(() => _selectedPharmacyId = val),
-                      validator: (val) => val == null ? 'Required' : null,
+                      validator: (val) =>
+                          val == null ? l10n.errorRequired : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: 'Type'),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelPaymentType,
+                      ),
                       value: _type,
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'deposit',
-                          child: Text('💰 Deposit'),
+                          child: Text(l10n.labelDeposit),
                         ),
                         DropdownMenuItem(
                           value: 'withdrawal',
-                          child: Text('💸 Withdrawal'),
+                          child: Text(l10n.labelWithdrawal),
                         ),
                       ],
                       onChanged: (val) => setState(() => _type = val!),
@@ -336,54 +341,61 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _amountController,
-                      decoration: const InputDecoration(
-                        labelText: 'Amount',
-                        prefixIcon: Icon(Icons.attach_money),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelAdjustmentAmount,
+                        prefixIcon: const Icon(Icons.attach_money),
                       ),
                       keyboardType: TextInputType.number,
                       validator: (val) {
-                        if (val == null || val.isEmpty) return 'Required';
+                        if (val == null || val.isEmpty)
+                          return l10n.errorRequired;
                         if (double.tryParse(val) == null ||
                             double.parse(val) <= 0) {
-                          return 'Invalid amount';
+                          return l10n.msgInvalidAmount;
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Payment Method',
+                      decoration: InputDecoration(
+                        labelText: l10n.labelPaymentMethod,
                       ),
                       value: _method,
-                      items: const [
-                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'cash',
+                          child: Text(l10n.labelCash),
+                        ),
                         DropdownMenuItem(
                           value: 'bank_transfer',
-                          child: Text('Bank Transfer'),
+                          child: Text(l10n.labelBankTransfer),
                         ),
                         DropdownMenuItem(
                           value: 'cheque',
-                          child: Text('Cheque'),
+                          child: Text(l10n.labelCheque),
                         ),
-                        DropdownMenuItem(value: 'other', child: Text('Other')),
+                        DropdownMenuItem(
+                          value: 'other',
+                          child: Text(l10n.labelOther),
+                        ),
                       ],
                       onChanged: (val) => setState(() => _method = val!),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _referenceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reference Number (Optional)',
-                        prefixIcon: Icon(Icons.receipt),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelReferenceNumber,
+                        prefixIcon: const Icon(Icons.receipt),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _noteController,
-                      decoration: const InputDecoration(
-                        labelText: 'Admin Note (Optional)',
-                        prefixIcon: Icon(Icons.note),
+                      decoration: InputDecoration(
+                        labelText: l10n.labelAdminNote,
+                        prefixIcon: const Icon(Icons.note),
                       ),
                       maxLines: 2,
                     ),
@@ -404,7 +416,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(isEdit ? 'Update' : 'Create'),
+              : Text(isEdit ? l10n.actionUpdate : l10n.actionCreate),
         ),
       ],
     );
@@ -435,10 +447,13 @@ class _PaymentDialogState extends State<PaymentDialog> {
       }
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isEdit ? 'Payment updated' : 'Payment created'),
+            content: Text(
+              isEdit ? l10n.msgPaymentUpdated : l10n.msgPaymentRecorded,
+            ),
           ),
         );
       }

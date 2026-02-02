@@ -579,7 +579,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Create'),
+                  : Text(AppLocalizations.of(context)!.actionCreate),
             ),
           ),
         ],

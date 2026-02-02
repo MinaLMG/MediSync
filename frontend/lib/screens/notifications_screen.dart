@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/notification_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(l10n.titleNotifications),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -27,7 +29,7 @@ class NotificationsScreen extends StatelessWidget {
                 listen: false,
               ).markAllAsSeen();
             },
-            tooltip: 'Mark all as seen',
+            tooltip: l10n.tooltipMarkAllAsSeen,
           ),
         ],
       ),
@@ -48,7 +50,7 @@ class NotificationsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => provider.fetchNotifications(),
-                    child: const Text('Retry'),
+                    child: Text(l10n.actionRetry),
                   ),
                 ],
               ),
@@ -56,19 +58,19 @@ class NotificationsScreen extends StatelessWidget {
           }
 
           if (provider.notifications.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.notifications_off_outlined,
                     size: 64,
                     color: Colors.grey,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    'No notifications yet',
-                    style: TextStyle(color: Colors.grey),
+                    l10n.msgNoNotifications,
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ],
               ),

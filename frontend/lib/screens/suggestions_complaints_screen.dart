@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_suggestion_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class SuggestionsComplaintsScreen extends StatefulWidget {
   const SuggestionsComplaintsScreen({super.key});
@@ -31,7 +32,9 @@ class _SuggestionsComplaintsScreenState
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thank you for your feedback!')),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.msgFeedbackSuccess),
+            ),
           );
           Navigator.pop(context);
         } else {
@@ -42,7 +45,7 @@ class _SuggestionsComplaintsScreenState
                       context,
                       listen: false,
                     ).errorMessage ??
-                    'Error submitting feedback',
+                    AppLocalizations.of(context)!.msgGenericError,
               ),
             ),
           );
@@ -54,9 +57,10 @@ class _SuggestionsComplaintsScreenState
   @override
   Widget build(BuildContext context) {
     final isLoading = Provider.of<AppSuggestionProvider>(context).isLoading;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Suggestions & Complaints')),
+      appBar: AppBar(title: Text(l10n.titleSuggestionsComplaints)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -64,23 +68,22 @@ class _SuggestionsComplaintsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'We value your feedback. Please let us know if you have any suggestions for improvement or any complaints regarding the system.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+              Text(
+                l10n.labelFeedbackDescription,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _contentController,
                 maxLength: 1000,
                 maxLines: 10,
-                decoration: const InputDecoration(
-                  labelText: 'Your Feedback',
-                  hintText: 'Type your message here...',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.labelFeedbackTitle,
+                  hintText: l10n.labelFeedbackPlaceholder,
+                  border: const OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
-                validator: (v) =>
-                    v!.isEmpty ? 'Please enter some content' : null,
+                validator: (v) => v!.isEmpty ? l10n.requiredError : null,
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -92,7 +95,7 @@ class _SuggestionsComplaintsScreenState
                 ),
                 child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Submit Feedback'),
+                    : Text(l10n.actionSubmit),
               ),
             ],
           ),

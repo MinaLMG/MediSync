@@ -76,7 +76,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Follow-up Excesses'),
+        title: Text(AppLocalizations.of(context)!.titleExcessFollowUp),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -119,7 +119,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
         }
 
         if (provider.fulfilledExcesses.isEmpty) {
-          return const Center(child: Text('No fulfilled excesses'));
+          return Center(
+            child: Text(AppLocalizations.of(context)!.msgNoFulfilledExcesses),
+          );
         }
 
         return RefreshIndicator(
@@ -162,17 +164,17 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               ),
                             ),
                           ),
-                          const Chip(
+                          Chip(
                             label: Text(
-                              'Fulfilled',
-                              style: TextStyle(
+                              AppLocalizations.of(context)!.statusFulfilled,
+                              style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.blueGrey,
                               ),
                             ),
                             backgroundColor: Colors.white,
                             padding: EdgeInsets.zero,
-                            avatar: Icon(
+                            avatar: const Icon(
                               Icons.check_circle,
                               color: Colors.blueGrey,
                               size: 14,
@@ -192,16 +194,20 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Price: ${item['selectedPrice']} coins'),
-                      Text('Quantity Fulfilled: ${item['originalQuantity']}'),
                       Text(
-                        'Expiry: $expiryStr',
+                        '${AppLocalizations.of(context)!.labelPrice}: ${item['selectedPrice']} ${AppLocalizations.of(context)!.coinsSuffix}',
+                      ),
+                      Text(
+                        '${AppLocalizations.of(context)!.labelQuantityFulfilled}: ${item['originalQuantity']}',
+                      ),
+                      Text(
+                        '${AppLocalizations.of(context)!.labelExpiry}: $expiryStr',
                         style: const TextStyle(color: Colors.grey),
                       ),
                       const Divider(),
-                      const Text(
-                        'This action is completed and locked.',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.msgActionCompletedLocked,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                           color: Colors.grey,
@@ -226,7 +232,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
         }
 
         if (provider.pendingExcesses.isEmpty) {
-          return const Center(child: Text('No pending excesses'));
+          return Center(
+            child: Text(AppLocalizations.of(context)!.msgNoPendingExcesses),
+          );
         }
 
         return RefreshIndicator(
@@ -343,7 +351,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                   ? settings.shortageCommission
                                   : settings.minimumCommission);
                           return Text(
-                            '${effectiveSale.toStringAsFixed(1)}% Off',
+                            '${effectiveSale.toStringAsFixed(1)}% ${AppLocalizations.of(context)!.labelOff}',
                             style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -352,11 +360,15 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         },
                       ),
 
-                      Text('Price: ${item['selectedPrice']} coins'),
-                      Text('Quantity: ${item['originalQuantity']}'),
+                      Text(
+                        '${AppLocalizations.of(context)!.labelPrice}: ${item['selectedPrice']} ${AppLocalizations.of(context)!.coinsSuffix}',
+                      ),
+                      Text(
+                        '${AppLocalizations.of(context)!.labelQuantity}: ${item['originalQuantity']}',
+                      ),
 
                       Text(
-                        'Expiry: $expiryStr',
+                        '${AppLocalizations.of(context)!.labelExpiry}: $expiryStr',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: _isNearExpiry(expiryStr) ? Colors.red : null,
@@ -372,7 +384,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'Rejection Reason: ${item['rejectionReason']}',
+                            '${AppLocalizations.of(context)!.labelRejectionReason} ${item['rejectionReason']}',
                             style: const TextStyle(
                               color: Colors.red,
                               fontWeight: FontWeight.bold,
@@ -393,9 +405,11 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                   item['remainingQuantity'] ?? 0;
                               if (total - remaining > 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Cannot delete excess where stock has already been taken.',
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.msgCannotDeleteTakenExcess,
                                     ),
                                   ),
                                 );
@@ -404,14 +418,24 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Confirm Delete'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this excess?',
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.labelConfirmDelete,
+                                  ),
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.msgConfirmDeleteExcess,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionCancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -421,7 +445,11 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.red,
                                       ),
-                                      child: const Text('Delete'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionDelete,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -430,7 +458,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
                             ),
-                            child: const Text('Delete'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionDelete,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           TextButton(
@@ -448,7 +478,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                 }
                               });
                             },
-                            child: const Text('Edit'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionEdit,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
@@ -457,20 +489,31 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Reject Excess Offer'),
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.labelRejectExcessOffer,
+                                  ),
                                   content: TextField(
                                     controller: reasonController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Rejection Reason',
-                                      hintText:
-                                          'e.g., Price too high, Expiry too near',
+                                    decoration: InputDecoration(
+                                      labelText: AppLocalizations.of(
+                                        context,
+                                      )!.labelRejectionReason,
+                                      hintText: AppLocalizations.of(
+                                        context,
+                                      )!.hintRejectionReason,
                                     ),
                                     maxLines: 2,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionCancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -487,7 +530,11 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.red,
                                       ),
-                                      child: const Text('Reject'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionReject,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -497,7 +544,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               backgroundColor: Colors.orange,
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text('Reject'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionReject,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
@@ -505,21 +554,35 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Confirm Approval'),
-                                  content: const Text(
-                                    'Are you sure you want to approve this excess and make it available for matches?',
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.labelConfirmApproval,
+                                  ),
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.msgConfirmApproveExcess,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionCancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () {
                                         Navigator.pop(ctx);
                                         provider.approveExcess(item['_id']);
                                       },
-                                      child: const Text('Approve'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionApprove,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -529,7 +592,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text('Approve'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionApprove,
+                            ),
                           ),
                         ],
                       ),
@@ -552,7 +617,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
         }
 
         if (provider.availableExcesses.isEmpty) {
-          return const Center(child: Text('No available excesses'));
+          return Center(
+            child: Text(AppLocalizations.of(context)!.msgNoAvailableExcesses),
+          );
         }
 
         return RefreshIndicator(
@@ -598,8 +665,12 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           Chip(
                             label: Text(
                               item['status'] == 'partially_fulfilled'
-                                  ? 'Partially Taken'
-                                  : 'Available',
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.statusPartiallyFulfilled
+                                  : AppLocalizations.of(
+                                      context,
+                                    )!.statusAvailable,
                               style: const TextStyle(fontSize: 10),
                             ),
                             backgroundColor:
@@ -660,7 +731,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                   ? settings.shortageCommission
                                   : settings.minimumCommission);
                           return Text(
-                            '${effectiveSale.toStringAsFixed(1)}% Off',
+                            '${effectiveSale.toStringAsFixed(1)}% ${AppLocalizations.of(context)!.labelOff}',
                             style: const TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -669,13 +740,15 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         },
                       ),
 
-                      Text('Price: ${item['selectedPrice']} coins'),
                       Text(
-                        'Remaining: ${item['remainingQuantity']}/${item['originalQuantity']}',
+                        '${AppLocalizations.of(context)!.labelPrice}: ${item['selectedPrice']} ${AppLocalizations.of(context)!.coinsSuffix}',
+                      ),
+                      Text(
+                        '${AppLocalizations.of(context)!.labelRemaining}: ${item['remainingQuantity']}/${item['originalQuantity']}',
                       ),
 
                       Text(
-                        'Expiry: $expiryStr',
+                        '${AppLocalizations.of(context)!.labelExpiry}: $expiryStr',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: _isNearExpiry(expiryStr) ? Colors.red : null,
@@ -693,9 +766,11 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                   item['remainingQuantity'] ?? 0;
                               if (total - remaining > 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Cannot delete available excess where stock has already been taken.',
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.msgCannotDeleteTakenExcess,
                                     ),
                                   ),
                                 );
@@ -704,14 +779,24 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text('Confirm Delete'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this available excess?',
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.labelConfirmDelete,
+                                  ),
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.msgConfirmDeleteExcessAvailable,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionCancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -721,7 +806,11 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.red,
                                       ),
-                                      child: const Text('Delete'),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.actionDelete,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -730,7 +819,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
                             ),
-                            child: const Text('Delete'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionDelete,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           TextButton(
@@ -748,7 +839,9 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                                 }
                               });
                             },
-                            child: const Text('Edit'),
+                            child: Text(
+                              AppLocalizations.of(context)!.actionEdit,
+                            ),
                           ),
                         ],
                       ),
