@@ -71,10 +71,6 @@ class _HomeTabState extends State<HomeTab> {
   Future<void> _onRefresh() async {
     final shortages = Provider.of<ShortageProvider>(context, listen: false);
     final products = Provider.of<ProductProvider>(context, listen: false);
-    final suggestions = Provider.of<AppSuggestionProvider>(
-      context,
-      listen: false,
-    );
     final notifications = Provider.of<NotificationProvider>(
       context,
       listen: false,
@@ -84,9 +80,8 @@ class _HomeTabState extends State<HomeTab> {
     await Future.wait([
       shortages.fetchGlobalActiveShortages(),
       products.fetchProducts(),
-      suggestions.fetchPendingCounts(),
       notifications.fetchNotifications(),
-      if (auth.userRole != 'admin') auth.refreshProfile(),
+      auth.refreshProfile(),
     ]);
   }
 
@@ -99,9 +94,7 @@ class _HomeTabState extends State<HomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
     final provider = Provider.of<ShortageProvider>(context);
-    final isAdmin = authProvider.userRole == 'admin';
     final shortages = provider.globalShortages;
 
     final List<Map<String, dynamic>> menuItems = [
@@ -129,20 +122,6 @@ class _HomeTabState extends State<HomeTab> {
         'icon': Icons.add_circle_outline,
         'color': Colors.green,
       },
-      if (isAdmin) ...[
-        {
-          'title': AppLocalizations.of(context)!.menuStartTransactions,
-          'originalTitle': 'Start Transactions',
-          'icon': Icons.swap_horiz,
-          'color': Colors.indigo,
-        },
-        {
-          'title': AppLocalizations.of(context)!.menuViewTransactions,
-          'originalTitle': 'View Transactions',
-          'icon': Icons.track_changes,
-          'color': Colors.deepOrange,
-        },
-      ],
       {
         'title': AppLocalizations.of(context)!.menuSuggestProduct,
         'originalTitle': 'Suggest Product',
@@ -161,13 +140,6 @@ class _HomeTabState extends State<HomeTab> {
         'icon': Icons.account_balance_wallet,
         'color': Colors.amber[800]!,
       },
-      if (isAdmin)
-        {
-          'title': AppLocalizations.of(context)!.menuManageUsers,
-          'originalTitle': 'Manage Users',
-          'icon': Icons.people,
-          'color': Colors.blueGrey,
-        },
     ];
 
     return RefreshIndicator(
@@ -288,27 +260,12 @@ class _HomeTabState extends State<HomeTab> {
                   itemCount: menuItems.length,
                   itemBuilder: (context, index) {
                     final item = menuItems[index];
-                    int badgeCount = 0;
-                    if (isAdmin) {
-                      final suggestionProvider =
-                          Provider.of<AppSuggestionProvider>(context);
-                      if (item['originalTitle'] == 'Suggest Product') {
-                        badgeCount =
-                            suggestionProvider.pendingProductSuggestionsCount;
-                      } else if (item['originalTitle'] == 'View Transactions') {
-                        badgeCount = suggestionProvider.pendingExcessCount;
-                      } else if (item['originalTitle'] == 'Manage Users') {
-                        badgeCount = suggestionProvider.waitingUsersCount;
-                      }
-                    }
-
                     return _buildMenuCard(
                       context,
                       item['title'] ?? 'Menu Item',
                       item['originalTitle'] ?? '',
                       item['icon'] ?? Icons.help,
                       item['color'] ?? Colors.blue,
-                      badgeCount: badgeCount,
                     );
                   },
                 ),
@@ -329,9 +286,6 @@ class _HomeTabState extends State<HomeTab> {
     Color? color, {
     int badgeCount = 0,
   }) {
-    final isAdmin =
-        Provider.of<AuthProvider>(context, listen: false).userRole == 'admin';
-
     final effectiveColor = color ?? Colors.blue;
 
     return Card(
@@ -368,20 +322,6 @@ class _HomeTabState extends State<HomeTab> {
                 builder: (context) => const CreateOrderScreen(),
               ),
             );
-          } else if (logicTitle == 'Start Transactions') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminMatchableProductsScreen(),
-              ),
-            );
-          } else if (logicTitle == 'View Transactions') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const FollowUpTransactionsScreen(),
-              ),
-            );
           } else if (logicTitle == 'Suggest Product') {
             Navigator.push(
               context,
@@ -393,16 +333,7 @@ class _HomeTabState extends State<HomeTab> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => isAdmin
-                    ? const AdminViewSuggestionsScreen()
-                    : const SuggestionsComplaintsScreen(),
-              ),
-            );
-          } else if (logicTitle == 'Manage Users') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminManageUsersScreen(),
+                builder: (context) => const SuggestionsComplaintsScreen(),
               ),
             );
           } else if (logicTitle == 'Balance History') {

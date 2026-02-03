@@ -15,6 +15,9 @@ import 'providers/requests_history_provider.dart';
 import 'providers/payment_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/delivery_dashboard_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -129,12 +132,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
         return Consumer<AuthProvider>(
           builder: (context, auth, _) {
             if (auth.isAuthenticated) {
-              if (auth.userRole == 'admin') {
-                return DashboardScreen(userType: auth.userRole ?? 'admin');
-              } else if (auth.userRole == 'delivery') {
-                return DashboardScreen(userType: auth.userRole ?? 'delivery');
+              final role = auth.userRole;
+              if (role == 'admin') {
+                return const AdminDashboardScreen();
+              } else if (role == 'delivery') {
+                return const DeliveryDashboardScreen();
+              } else if (auth.userStatus == 'active') {
+                return const DashboardScreen(userType: 'manager');
+              } else {
+                return const OnboardingScreen();
               }
-              return DashboardScreen(userType: auth.userRole ?? 'pharmacy');
             }
             return const LoginScreen();
           },
