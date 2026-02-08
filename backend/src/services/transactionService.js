@@ -197,13 +197,17 @@ exports.settleTransaction = async (transaction, session) => {
             let sourceBuyerDetails = {};
 
             if (excess.shortage_fulfillment) {
-                const bonusRatio = transaction.sellerBonusRatio !== undefined
+                let bonusRatio = transaction.sellerBonusRatio !== undefined
                     ? transaction.sellerBonusRatio
                     : (settings.shortageSellerReward / 100);
                 
-                const commRatio = transaction.buyerCommissionRatio !== undefined
+                let commRatio = transaction.buyerCommissionRatio !== undefined
                     ? transaction.buyerCommissionRatio
                     : (settings.shortageCommission / 100);
+
+                // Override for Hub
+                if (sellerPh.isHub) bonusRatio = 0;
+                if (buyerPh.isHub) commRatio = 0;
 
                 sellerEffect = (1 + bonusRatio) * source.totalAmount;
                 sellerDetails = {
@@ -220,17 +224,22 @@ exports.settleTransaction = async (transaction, session) => {
                     excessId: excess._id
                 };
             } else {
-                const excessComm = (excess.salePercentage !== undefined && excess.salePercentage !== null)
+                let excessComm = (excess.salePercentage !== undefined && excess.salePercentage !== null)
                     ? (excess.salePercentage / 100)
                     : systemMinCommRatio;
 
-                const finalCommRatio = Math.max(systemMinCommRatio, excessComm);
+                // Override for Hub Seller
+                if (sellerPh.isHub) {
+                    excessComm = 0;
+                }
+
+                const finalCommRatio = Math.max(sellerPh.isHub ? 0 : systemMinCommRatio, excessComm);
                 sellerEffect = (1 - finalCommRatio) * source.totalAmount;
                 sellerDetails = {
                     type: 'excess_rebalance',
                     baseAmount: source.totalAmount,
                     commissionRatio: finalCommRatio,
-                    systemMinRatio: systemMinCommRatio,
+                    systemMinRatio: sellerPh.isHub ? 0 : systemMinCommRatio,
                     offeredRatio: excessComm
                 };
 
