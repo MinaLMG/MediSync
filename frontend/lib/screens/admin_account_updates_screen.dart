@@ -274,7 +274,16 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen>
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red),
                         ),
-                        child: Text(AppLocalizations.of(context)!.actionReject),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.red,
+                                ),
+                              )
+                            : Text(AppLocalizations.of(context)!.actionReject),
                       ),
                     ),
                     const SizedBox(width: 12),

@@ -36,6 +36,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionAdd => 'Add';
 
   @override
+  String get actionAddToHub => 'Add to Hub';
+
+  @override
+  String get titleAddToHub => 'Move to Hub';
+
+  @override
+  String get labelSelectHub => 'Select Hub';
+
+  @override
+  String get labelHubQuantity => 'Quantity to Move';
+
+  @override
+  String get msgMoveToHubSuccess => 'Successfully moved to hub';
+
+  @override
   String get actionEdit => 'Edit';
 
   @override

@@ -1,11 +1,12 @@
-const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction } = require('../models');
+const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy } = require('../models');
 const auditService = require('./auditService');
+const serialService = require('./serialService');
 const mongoose = require('mongoose');
 
 /**
  * Creates a new stock excess.
  */
-exports.createExcess = async (userData, pharmacyId, req = null) => {
+exports.createExcess = async (userData, pharmacyId, req = null, session = null) => {
     const { 
         product, 
         volume, 
@@ -13,11 +14,11 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
         expiryDate, 
         selectedPrice, 
         salePercentage, 
-        shortage_fulfillment 
+        shortage_fulfillment,
     } = userData;
 
     // Check product status
-    const productObj = await Product.findById(product);
+    const productObj = await Product.findById(product).session(session);
     if (!productObj || productObj.status !== 'active') {
         throw new Error('This product is currently inactive and cannot be added as an excess.');
     }
@@ -27,9 +28,9 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
         pharmacy: pharmacyId,
         product,
         status: { $in: ['active', 'partially_fulfilled'] }
-    });
+    }).session(session);
 
-    if (existingShortage) {
+    if (existingShortage) { // Only check for regular user adds
         throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
     }
 
@@ -43,26 +44,30 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
     }
 
     // Check if Selected Price is New
-    const hasVolume = await HasVolume.findOne({ product, volume });
+    const hasVolume = await HasVolume.findOne({ product, volume }).session(session);
     let isNewPrice = false;
     if (hasVolume && !hasVolume.prices.includes(selectedPrice)) {
         isNewPrice = true;
     }
 
-    const excess = await StockExcess.create({
+    const excessData = {
         pharmacy: pharmacyId, 
         product,
         volume,
         originalQuantity: quantity,
-        remainingQuantity: quantity,
+        remainingQuantity: userData.remainingQuantity !== undefined ? userData.remainingQuantity : quantity,
         expiryDate,
         selectedPrice,
         salePercentage: finalSalePercentage,
         saleAmount: finalSaleAmount,
         shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
-        status: 'pending'
-    });
+        status: 'pending' 
+    };
+
+    const excess = session
+        ? (await StockExcess.create([excessData], { session }))[0]
+        : await StockExcess.create(excessData);
 
     await auditService.logAction({
         user: req?.user?._id,
@@ -71,6 +76,31 @@ exports.createExcess = async (userData, pharmacyId, req = null) => {
         entityId: excess._id,
         changes: excess.toObject()
     }, req);
+
+    return excess;
+};
+
+/**
+ * Approves an excess, setting its status to 'available'.
+ * Handles pricing updates in HasVolume.
+ */
+exports.approveExcess = async (excessId, session = null) => {
+    const excess = await StockExcess.findByIdAndUpdate(
+        excessId, 
+        { status: 'available' }, 
+        { new: true, session }
+    );
+    
+    if (!excess) throw new Error('Excess not found');
+
+    if (excess.isNewPrice) {
+        const hasVol = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
+        if (hasVol && !hasVol.prices.includes(excess.selectedPrice)) {
+            hasVol.prices.push(excess.selectedPrice);
+            hasVol.prices.sort((a, b) => a - b);
+            await hasVol.save({ session });
+        }
+    }
 
     return excess;
 };
@@ -138,8 +168,8 @@ exports.syncExcessStatus = async (excess, session = null) => {
     
     const hasActiveOrCompleted = transactions.some(t => ['pending', 'accepted', 'completed'].includes(t.status));
     
-    // Don't change pending or rejected status
-    if (['pending', 'rejected'].includes(excess.status)) {
+    // Don't change pending, rejected, or cancelled status
+    if (['pending', 'rejected', 'cancelled'].includes(excess.status)) {
         return;
     }
     
@@ -155,5 +185,100 @@ exports.syncExcessStatus = async (excess, session = null) => {
     } else {
         // No remaining quantity (all taken)
         excess.status = 'fulfilled';
+    }
+};
+
+/**
+ * Moves excess quantity to a Hub pharmacy.
+ */
+exports.addToHub = async (excessId, hubId, quantity, req = null) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const excess = await StockExcess.findById(excessId).session(session);
+        if (!excess) throw new Error('Excess not found');
+        if (excess.remainingQuantity < quantity) throw new Error('Requested quantity exceeds available');
+
+        const hub = await Pharmacy.findById(hubId).session(session);
+        if (!hub || !hub.isHub) throw new Error('Target pharmacy is not a valid Hub');
+
+        // Check for self-dealing (Hub cannot add to itself)
+        if (excess.pharmacy.toString() === hub._id.toString()) {
+            throw new Error('Cannot add excess to the same hub account (Self-dealing detected).');
+        }
+
+        // Services imported here to avoid circular dependency
+        const shortageService = require('./shortageService');
+        const transactionService = require('./transactionService');
+
+        // 1. Create a shortage at the hub
+        const shortage = await shortageService.createShortage(
+            {
+                product: excess.product,
+                volume: excess.volume,
+                quantity: quantity,
+                isSystemGenerated: true // Mark as system generated
+            },
+            hubId,
+            req,
+            session
+        );
+
+        // 2. Create the transaction (Hub as buyer)
+        const transaction = await transactionService.createTransaction({
+            shortageId: shortage._id,
+            quantityTaken: quantity,
+            excessSources: [{ stockExcessId: excess._id, quantity: quantity }],
+        }, session, req);
+
+        // 3. Complete the transaction (Accepted -> Completed)
+        await transactionService.updateTransactionStatus(transaction._id, 'accepted', session, req);
+        await transactionService.updateTransactionStatus(transaction._id, 'completed', session, req);
+
+        // 4. Create new excess at the hub (instantly available)
+        const hubExcess = await exports.createExcess({
+            product: excess.product,
+            volume: excess.volume,
+            quantity: quantity,
+            remainingQuantity: quantity,
+            expiryDate: excess.expiryDate,
+            selectedPrice: excess.selectedPrice,
+            salePercentage: excess.salePercentage,
+            shortage_fulfillment: excess.shortage_fulfillment,
+        }, hubId, req, session);
+
+        // Approve excess (sets status to available and handles price updates)
+        await exports.approveExcess(hubExcess._id, session);
+
+        // Update hubExcess with isHubGenerated (since createExcess doesn't support it directly yet or we modify createExcess, but direct update is safer here)
+        hubExcess.isHubGenerated = true;
+        await hubExcess.save({ session });
+
+        // Update transaction with added_to_hub reference
+        transaction.added_to_hub = { excessId: hubExcess._id };
+        await transaction.save({ session });
+
+        await session.commitTransaction();
+
+        // 5. Notify parties (after commit)
+        await transactionService.notifyParties(transaction);
+
+        await auditService.logAction({
+            user: req?.user?._id,
+            action: 'ADD_TO_HUB',
+            entityType: 'StockExcess',
+            entityId: excessId,
+            changes: { hubId, quantity, newExcessId: hubExcess._id }
+        }, req);
+
+        return { success: true, transaction, hubExcess };
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        console.error('❌ [Excess Service] addToHub failed:', error);
+        throw error;
+    } finally {
+        session.endSession();
     }
 };

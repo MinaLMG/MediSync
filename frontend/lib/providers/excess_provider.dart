@@ -9,6 +9,7 @@ class ExcessProvider with ChangeNotifier {
   List<dynamic> _availableExcesses = [];
   List<dynamic> _fulfilledExcesses = [];
   List<dynamic> _marketExcesses = [];
+  List<dynamic> _hubs = [];
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -16,6 +17,7 @@ class ExcessProvider with ChangeNotifier {
   List<dynamic> get availableExcesses => _availableExcesses;
   List<dynamic> get fulfilledExcesses => _fulfilledExcesses;
   List<dynamic> get marketExcesses => _marketExcesses;
+  List<dynamic> get hubs => _hubs;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -125,8 +127,10 @@ class ExcessProvider with ChangeNotifier {
     }
   }
 
-  // Update Excess
   Future<bool> updateExcess(String id, Map<String, dynamic> updateData) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(Constants.tokenKey);
@@ -143,15 +147,18 @@ class ExcessProvider with ChangeNotifier {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        fetchPendingExcesses();
+        _isLoading = false;
+        notifyListeners();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Update failed';
+        _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
+      _isLoading = false;
       notifyListeners();
       return false;
     }
@@ -162,8 +169,10 @@ class ExcessProvider with ChangeNotifier {
     return await _performAction('/excess/$id/approve', 'PUT');
   }
 
-  // Reject Excess
   Future<bool> rejectExcess(String id, String reason) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(Constants.tokenKey);
@@ -180,16 +189,19 @@ class ExcessProvider with ChangeNotifier {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
+        _isLoading = false;
         fetchPendingExcesses();
         fetchAvailableExcesses();
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Rejection failed';
+        _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
+      _isLoading = false;
       notifyListeners();
       return false;
     }
@@ -201,6 +213,9 @@ class ExcessProvider with ChangeNotifier {
   }
 
   Future<bool> _performAction(String endpoint, String method) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(Constants.tokenKey);
@@ -221,6 +236,7 @@ class ExcessProvider with ChangeNotifier {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
+        _isLoading = false;
         // Refresh lists
         fetchPendingExcesses();
         fetchAvailableExcesses();
@@ -228,11 +244,62 @@ class ExcessProvider with ChangeNotifier {
         return true;
       } else {
         _errorMessage = data['message'] ?? 'Action failed';
+        _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Fetch Hubs (Admin)
+  Future<void> fetchHubs() async {
+    await _fetchExcesses('/admin/hubs', (data) => _hubs = data);
+  }
+
+  // Add to Hub (Admin)
+  Future<bool> addToHub(String excessId, String hubId, int quantity) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(Constants.tokenKey);
+
+      final response = await http.post(
+        Uri.parse('${Constants.baseUrl}/excess/add-to-hub'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'excessId': excessId,
+          'hubId': hubId,
+          'quantity': quantity,
+        }),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _isLoading = false;
+        fetchAvailableExcesses();
+        fetchFulfilledExcesses();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Add to hub failed';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
       notifyListeners();
       return false;
     }

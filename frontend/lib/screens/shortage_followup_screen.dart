@@ -166,10 +166,14 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                                       child: Text(l10n.actionCancel),
                                     ),
                                     TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        provider.deleteShortage(item['_id']);
-                                      },
+                                      onPressed: provider.isLoading
+                                          ? null
+                                          : () {
+                                              Navigator.pop(ctx);
+                                              provider.deleteShortage(
+                                                item['_id'],
+                                              );
+                                            },
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.red,
                                       ),

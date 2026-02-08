@@ -29,6 +29,9 @@ exports.deleteExcess = async (req, res) => {
         if ((excess.originalQuantity - excess.remainingQuantity) > 0) {
             return res.status(400).json({ success: false, message: 'Cannot delete fulfilled excess' });
         }
+        if (excess.isHubGenerated) {
+            return res.status(400).json({ success: false, message: 'Hub generated excesses cannot be deleted. Please use cancellation.' });
+        }
         await excess.deleteOne();
         res.status(200).json({ success: true, message: 'Deleted' });
     } catch (error) {
@@ -41,16 +44,7 @@ exports.approveExcess = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const excess = await StockExcess.findByIdAndUpdate(req.params.id, { status: 'available' }, { new: true, session });
-        if (!excess) throw new Error('Not found');
-        if (excess.isNewPrice) {
-            const hasVol = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
-            if (hasVol && !hasVol.prices.includes(excess.selectedPrice)) {
-                hasVol.prices.push(excess.selectedPrice);
-                hasVol.prices.sort((a, b) => a - b);
-                await hasVol.save({ session });
-            }
-        }
+        const excess = await excessService.approveExcess(req.params.id, session);
         await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
@@ -84,7 +78,9 @@ exports.getPendingExcesses = async (req, res) => {
 
 exports.getMyExcesses = async (req, res) => {
     try {
-        const excesses = await StockExcess.find({ pharmacy: req.user.pharmacy }).populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
+    const excesses = await StockExcess.find({ 
+        pharmacy: req.user.pharmacy,
+    }).populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -183,4 +179,17 @@ exports.getFulfilledExcesses = async (req, res) => {
 
 exports.syncExcessStatus = async (excess, session = null) => {
     return excessService.syncExcessStatus(excess, session);
+};
+
+exports.addToHub = async (req, res) => {
+    try {
+        const { excessId, hubId, quantity } = req.body;
+        if (!excessId || !hubId || !quantity) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        const result = await excessService.addToHub(excessId, hubId, quantity, req);
+        res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

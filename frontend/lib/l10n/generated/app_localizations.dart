@@ -152,6 +152,36 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get actionAdd;
 
+  /// No description provided for @actionAddToHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Hub'**
+  String get actionAddToHub;
+
+  /// No description provided for @titleAddToHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Hub'**
+  String get titleAddToHub;
+
+  /// No description provided for @labelSelectHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Hub'**
+  String get labelSelectHub;
+
+  /// No description provided for @labelHubQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity to Move'**
+  String get labelHubQuantity;
+
+  /// No description provided for @msgMoveToHubSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully moved to hub'**
+  String get msgMoveToHubSuccess;
+
   /// No description provided for @actionEdit.
   ///
   /// In en, this message translates to:

@@ -31,6 +31,38 @@ exports.updateShortage = async (req, res) => {
     }
 };
 
+// Cancel shortage (User/Admin)
+exports.cancelShortage = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const StockShortage = mongoose.model('StockShortage');
+        // Ownership check inside service or here?
+        // Service generally handles logic, but controller handles auth.
+        // Let's do a quick check here before calling service, or pass pharmacyId to service.
+        // The service logic I wrote takes (shortageId, session, req).
+        // It doesn't explicitly check pharmacy ownership inside cancelShortage yet.
+        // I should probably add ownership check in controller.
+        
+        const shortage = await StockShortage.findById(req.params.id);
+        if (!shortage) return res.status(404).json({ success: false, message: 'Not found' });
+        
+        if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
+             return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+
+        await shortageService.cancelShortage(req.params.id, session, req);
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: 'Cancelled successfully' });
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+};
+
 // Delete shortage (Admin/Owner/Manager)
 exports.deleteShortage = async (req, res) => {
     try {
@@ -58,7 +90,9 @@ exports.getActiveShortages = async (req, res) => {
 // Get shortages for my pharmacy
 exports.getMyShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ pharmacy: req.user.pharmacy })
+        const shortages = await StockShortage.find({ 
+            pharmacy: req.user.pharmacy,
+        })
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });

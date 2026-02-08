@@ -11,7 +11,8 @@ const {
     resetUserPassword,
     getUsersWithPendingUpdates,
     reviewUpdateData,
-    getPharmacyDetail
+    getPharmacyDetail,
+    getHubs
 } = require('../controllers/adminController');
 const { getPharmacyOrders } = require('../controllers/orderController');
 const { getPharmacyBalanceHistory } = require('../controllers/balanceHistoryController');
@@ -32,6 +33,7 @@ router.put('/reset-password/:id', sensitiveLimiter, resetUserPassword);
 router.get('/pending-updates', getLimiter, getUsersWithPendingUpdates);
 router.put('/review-update/:id', strictLimiter, reviewUpdateData);
 router.get('/pharmacies/:id', getLimiter, getPharmacyDetail);
+router.get('/hubs', getLimiter, getHubs);
 router.get('/pharmacies/:pharmacyId/orders', getLimiter, getPharmacyOrders);
 router.get('/pharmacies/:pharmacyId/balance-history', getLimiter, getPharmacyBalanceHistory);
 

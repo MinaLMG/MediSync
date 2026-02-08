@@ -270,7 +270,16 @@ class _AdminDeliveryRequestsScreenState
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
-                              child: Text(l10n.actionReject),
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.red,
+                                      ),
+                                    )
+                                  : Text(l10n.actionReject),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(

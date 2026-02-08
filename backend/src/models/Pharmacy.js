@@ -91,6 +91,10 @@ const pharmacySchema = new mongoose.Schema({
     balance: {
         type: Number,
         default: 0
+    },
+    isHub: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

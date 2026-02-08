@@ -55,7 +55,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         });
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -112,7 +112,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   }
 
   Widget _buildUserList(List<dynamic> users, {required bool isWaiting}) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading && users.isEmpty)
+      return const Center(child: CircularProgressIndicator());
 
     final filteredUsers = users.where((u) {
       return SearchUtils.matches(u['name'], _searchQuery) ||
@@ -121,7 +122,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           SearchUtils.matches(u['pharmacy']?['name'], _searchQuery);
     }).toList();
 
-    if (filteredUsers.isEmpty) {
+    if (filteredUsers.isEmpty && !_isLoading) {
       return Center(
         child: Text(
           _searchQuery.isEmpty
@@ -131,44 +132,47 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
       );
     }
 
-    return ListView.builder(
-      itemCount: filteredUsers.length,
-      itemBuilder: (context, index) {
-        final user = filteredUsers[index];
-        final pharmacy = user['pharmacy'];
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: ListTile(
-            title: Text(user['name']),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(user['email']),
-                InkWell(
-                  onTap: pharmacy != null
-                      ? () => UIUtils.showPharmacyInfo(context, pharmacy)
-                      : null,
-                  child: Text(
-                    pharmacy?['name'] ??
-                        AppLocalizations.of(context)!.noPharmacyLinked,
-                    style: TextStyle(
-                      color: pharmacy != null ? Colors.blue : Colors.grey,
-                      fontWeight: pharmacy != null
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+    return RefreshIndicator(
+      onRefresh: _fetchUsers,
+      child: ListView.builder(
+        itemCount: filteredUsers.length,
+        itemBuilder: (context, index) {
+          final user = filteredUsers[index];
+          final pharmacy = user['pharmacy'];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              title: Text(user['name']),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user['email']),
+                  InkWell(
+                    onTap: pharmacy != null
+                        ? () => UIUtils.showPharmacyInfo(context, pharmacy)
+                        : null,
+                    child: Text(
+                      pharmacy?['name'] ??
+                          AppLocalizations.of(context)!.noPharmacyLinked,
+                      style: TextStyle(
+                        color: pharmacy != null ? Colors.blue : Colors.grey,
+                        fontWeight: pharmacy != null
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              isThreeLine: true,
+              trailing: isWaiting
+                  ? const Icon(Icons.pending_actions, color: Colors.orange)
+                  : const Icon(Icons.check_circle, color: Colors.green),
+              onTap: () => _showUserDetails(user, isWaiting),
             ),
-            isThreeLine: true,
-            trailing: isWaiting
-                ? const Icon(Icons.pending_actions, color: Colors.orange)
-                : const Icon(Icons.check_circle, color: Colors.green),
-            onTap: () => _showUserDetails(user, isWaiting),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -177,211 +181,235 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        builder: (context, scrollController) => ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text(
-              AppLocalizations.of(context)!.userInformation,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            ListTile(
-              title: Text(AppLocalizations.of(context)!.labelName),
-              subtitle: Text(user['name']),
-            ),
-            ListTile(
-              title: Text(AppLocalizations.of(context)!.labelPhone),
-              subtitle: Text(user['phone']),
-            ),
-            if (pharmacy != null) ...[
-              const Divider(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            children: [
               Text(
-                AppLocalizations.of(context)!.pharmacyDocumentation,
+                AppLocalizations.of(context)!.userInformation,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               ListTile(
-                title: Text(AppLocalizations.of(context)!.labelPharmacyName),
-                subtitle: Text(pharmacy['name']),
+                title: Text(AppLocalizations.of(context)!.labelName),
+                subtitle: Text(user['name']),
               ),
               ListTile(
-                title: Text(AppLocalizations.of(context)!.labelOwnerName),
-                subtitle: Text(pharmacy['ownerName']),
+                title: Text(AppLocalizations.of(context)!.labelPhone),
+                subtitle: Text(user['phone']),
               ),
-              ListTile(
-                title: Text(AppLocalizations.of(context)!.labelNationalId),
-                subtitle: Text(pharmacy['nationalId']),
-              ),
-              ListTile(
-                title: Text(AppLocalizations.of(context)!.labelPharmacyAddress),
-                subtitle: Text(pharmacy['address'] ?? 'N/A'),
-              ),
-              _buildImageSection(
-                AppLocalizations.of(context)!.labelPharmacistCard,
-                pharmacy['pharmacistCard'],
-              ),
-              _buildImageSection(
-                AppLocalizations.of(context)!.labelCommercialRegistry,
-                pharmacy['commercialRegistry'],
-              ),
-              _buildImageSection(
-                AppLocalizations.of(context)!.labelTaxCard,
-                pharmacy['taxCard'],
-              ),
-              _buildImageSection(
-                AppLocalizations.of(context)!.labelLicense,
-                pharmacy['pharmacyLicense'],
-              ),
-            ],
-            if (isWaiting) ...[
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _isLoading
-                          ? null
-                          : () => _confirmAction(
-                              title: AppLocalizations.of(
-                                context,
-                              )!.dialogRejectRequest,
-                              message: AppLocalizations.of(
-                                context,
-                              )!.dialogRejectMessage,
-                              onConfirm: () =>
-                                  _reviewUser(user['_id'], 'rejected'),
-                            ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(AppLocalizations.of(context)!.actionReject),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _isLoading
-                          ? null
-                          : () => _confirmAction(
-                              title: AppLocalizations.of(
-                                context,
-                              )!.dialogApproveUser,
-                              message: AppLocalizations.of(
-                                context,
-                              )!.dialogApproveMessage,
-                              onConfirm: () =>
-                                  _reviewUser(user['_id'], 'active'),
-                            ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(AppLocalizations.of(context)!.actionApprove),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 12),
-              Text(
-                AppLocalizations.of(context)!.managementActions,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              if (pharmacy != null) ...[
+                const Divider(),
+                Text(
+                  AppLocalizations.of(context)!.pharmacyDocumentation,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(
-                        user['status'] == 'suspended'
-                            ? Icons.play_arrow
-                            : Icons.block,
-                      ),
-                      label: Text(
-                        user['status'] == 'suspended'
-                            ? AppLocalizations.of(context)!.actionActivate
-                            : AppLocalizations.of(context)!.actionSuspend,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: user['status'] == 'suspended'
-                            ? Colors.green
-                            : Colors.orange,
-                      ),
-                      onPressed: _isLoading
-                          ? null
-                          : () => _confirmAction(
-                              title: user['status'] == 'suspended'
-                                  ? AppLocalizations.of(
-                                      context,
-                                    )!.dialogActivateUser
-                                  : AppLocalizations.of(
-                                      context,
-                                    )!.dialogSuspendUser,
-                              message: user['status'] == 'suspended'
-                                  ? AppLocalizations.of(
-                                      context,
-                                    )!.dialogActivateUserMessage
-                                  : AppLocalizations.of(
-                                      context,
-                                    )!.dialogSuspendUserMessage,
-                              onConfirm: () =>
-                                  _adminAction(user['_id'], 'suspend'),
-                            ),
-                    ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context)!.labelPharmacyName),
+                  subtitle: Text(pharmacy['name']),
+                ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context)!.labelOwnerName),
+                  subtitle: Text(pharmacy['ownerName']),
+                ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context)!.labelNationalId),
+                  subtitle: Text(pharmacy['nationalId']),
+                ),
+                ListTile(
+                  title: Text(
+                    AppLocalizations.of(context)!.labelPharmacyAddress,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.password),
-                      label: Text(
-                        AppLocalizations.of(context)!.actionResetPass,
+                  subtitle: Text(pharmacy['address'] ?? 'N/A'),
+                ),
+                _buildImageSection(
+                  AppLocalizations.of(context)!.labelPharmacistCard,
+                  pharmacy['pharmacistCard'],
+                ),
+                _buildImageSection(
+                  AppLocalizations.of(context)!.labelCommercialRegistry,
+                  pharmacy['commercialRegistry'],
+                ),
+                _buildImageSection(
+                  AppLocalizations.of(context)!.labelTaxCard,
+                  pharmacy['taxCard'],
+                ),
+                _buildImageSection(
+                  AppLocalizations.of(context)!.labelLicense,
+                  pharmacy['pharmacyLicense'],
+                ),
+              ],
+              if (isWaiting) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _isLoading
+                            ? null
+                            : () => _confirmAction(
+                                title: AppLocalizations.of(
+                                  context,
+                                )!.dialogRejectRequest,
+                                message: AppLocalizations.of(
+                                  context,
+                                )!.dialogRejectMessage,
+                                onConfirm: () async {
+                                  final res = await _reviewUser(
+                                    user['_id'],
+                                    'rejected',
+                                  );
+                                  if (res && mounted) setSheetState(() {});
+                                },
+                              ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(AppLocalizations.of(context)!.actionReject),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      onPressed: _isLoading
-                          ? null
-                          : () => _confirmAction(
-                              title: AppLocalizations.of(
-                                context,
-                              )!.dialogResetPassword,
-                              message: AppLocalizations.of(
-                                context,
-                              )!.dialogResetPasswordMessage,
-                              onConfirm: () =>
-                                  _adminAction(user['_id'], 'reset-password'),
-                            ),
                     ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _isLoading
+                            ? null
+                            : () => _confirmAction(
+                                title: AppLocalizations.of(
+                                  context,
+                                )!.dialogApproveUser,
+                                message: AppLocalizations.of(
+                                  context,
+                                )!.dialogApproveMessage,
+                                onConfirm: () async {
+                                  final res = await _reviewUser(
+                                    user['_id'],
+                                    'active',
+                                  );
+                                  if (res && mounted) setSheetState(() {});
+                                },
+                              ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(AppLocalizations.of(context)!.actionApprove),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context)!.managementActions,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: Icon(
+                          user['status'] == 'suspended'
+                              ? Icons.play_arrow
+                              : Icons.block,
+                        ),
+                        label: Text(
+                          user['status'] == 'suspended'
+                              ? AppLocalizations.of(context)!.actionActivate
+                              : AppLocalizations.of(context)!.actionSuspend,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: user['status'] == 'suspended'
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                        onPressed: _isLoading
+                            ? null
+                            : () => _confirmAction(
+                                title: user['status'] == 'suspended'
+                                    ? AppLocalizations.of(
+                                        context,
+                                      )!.dialogActivateUser
+                                    : AppLocalizations.of(
+                                        context,
+                                      )!.dialogSuspendUser,
+                                message: user['status'] == 'suspended'
+                                    ? AppLocalizations.of(
+                                        context,
+                                      )!.dialogActivateUserMessage
+                                    : AppLocalizations.of(
+                                        context,
+                                      )!.dialogSuspendUserMessage,
+                                onConfirm: () async {
+                                  await _adminAction(user['_id'], 'suspend');
+                                  if (mounted) setSheetState(() {});
+                                },
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.password),
+                        label: Text(
+                          AppLocalizations.of(context)!.actionResetPass,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                        onPressed: _isLoading
+                            ? null
+                            : () => _confirmAction(
+                                title: AppLocalizations.of(
+                                  context,
+                                )!.dialogResetPassword,
+                                message: AppLocalizations.of(
+                                  context,
+                                )!.dialogResetPasswordMessage,
+                                onConfirm: () async {
+                                  await _adminAction(
+                                    user['_id'],
+                                    'reset-password',
+                                  );
+                                  if (mounted) setSheetState(() {});
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -390,29 +418,41 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   void _confirmAction({
     required String title,
     required String message,
-    required VoidCallback onConfirm,
+    required Future<void> Function() onConfirm,
   }) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.actionCancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            child: Text(
-              AppLocalizations.of(context)!.actionConfirm,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
+              child: Text(AppLocalizations.of(context)!.actionCancel),
             ),
-          ),
-        ],
+            TextButton(
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      setDialogState(() => _isLoading = true);
+                      await onConfirm();
+                      setDialogState(() => _isLoading = false);
+                      if (mounted) Navigator.pop(context);
+                    },
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      AppLocalizations.of(context)!.actionConfirm,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -431,7 +471,6 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
       );
       final data = json.decode(response.body);
       if (data['success']) {
-        if (mounted) Navigator.pop(context);
         _fetchUsers();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -445,6 +484,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -514,12 +555,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
             child: Text(AppLocalizations.of(context)!.actionCancel),
           ),
           StatefulBuilder(
-            builder: (context, setDialogState) => ElevatedButton(
+            builder: (context, setState) => ElevatedButton(
               onPressed: _isLoading
                   ? null
                   : () async {
                       if (formKey.currentState!.validate()) {
-                        setDialogState(() => _isLoading = true);
+                        setState(() => _isLoading = true);
                         final token = Provider.of<AuthProvider>(
                           context,
                           listen: false,
@@ -566,7 +607,7 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                             );
                           }
                         } finally {
-                          setDialogState(() => _isLoading = false);
+                          if (mounted) setState(() => _isLoading = false);
                         }
                       }
                     },
@@ -648,7 +689,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
     );
   }
 
-  Future<void> _reviewUser(String id, String status) async {
+  Future<bool> _reviewUser(String id, String status) async {
+    bool success = false;
     setState(() => _isLoading = true);
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     try {
@@ -661,12 +703,13 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
         body: json.encode({'status': status}),
       );
       if (json.decode(response.body)['success']) {
-        if (mounted) Navigator.pop(context);
         _fetchUsers();
+        success = true;
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+    return success;
   }
 }
 

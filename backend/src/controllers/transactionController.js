@@ -130,166 +130,11 @@ exports.createTransaction = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { shortageId, quantityTaken, excessSources, buyerCommissionRatio, sellerBonusRatio, commissionRatio } = req.body;
-
-        // 1. Check shortage
-        const shortage = await StockShortage.findById(shortageId).session(session);
-        if (!shortage || !['active', 'partially_fulfilled'].includes(shortage.status)) {
-            throw new Error('Shortage not found or not active');
-        }
-
-        // 1.1 Check Product Status
-        const productObj = await mongoose.model('Product').findById(shortage.product).session(session);
-        if (!productObj || productObj.status !== 'active') {
-            throw new Error('This product is currently inactive and cannot be transacted.');
-        }
-
-        const remainingNeeded = shortage.remainingQuantity;
-        if (quantityTaken > remainingNeeded) {
-            throw new Error(`Requested quantity (${quantityTaken}) exceeds remaining needed (${remainingNeeded})`);
-        }
-
-        let totalAmount = 0;
-        let totalQuantity = 0;
-        const refinedSources = [];
-
-        // 2. Check and update excesses
-        for (const source of excessSources) {
-            const excess = await StockExcess.findById(source.stockExcessId).session(session);
-            if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
-                throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
-            }
-
-            // Deduct from excess (don't sync status yet - transaction not saved)
-            excess.remainingQuantity -= source.quantity;
-            await excess.save({ session });
-
-            const amount = source.quantity * excess.selectedPrice;
-            totalAmount += amount;
-            totalQuantity += source.quantity;
-
-            refinedSources.push({
-                stockExcess: excess._id,
-                quantity: source.quantity,
-                agreedPrice: excess.selectedPrice,
-                totalAmount: amount
-            });
-        }
-
-        if (totalQuantity !== quantityTaken) {
-            throw new Error('Total quantity from sources does not match quantity taken from shortage');
-        }
-
-        // 3. Update shortage
-        shortage.remainingQuantity -= quantityTaken;
-        await syncShortageStatus(shortage);
-        await shortage.save({ session });
-
-        // 4. Generate Serial atomically
-        const serial = await serialService.generateDateSerial('transaction');
-
-        // 5. Create transaction
-        const settings = await Settings.getSettings();
-        const transaction = new Transaction({
-            serial, // Add serial
-            stockShortage: {
-                shortage: shortageId,
-                quantityTaken
-            },
-            stockExcessSources: refinedSources,
-            totalQuantity,
-            totalAmount,
-            status: 'pending',
-            shortage_fulfillment: req.body.shortage_fulfillment !== undefined ? req.body.shortage_fulfillment : true,
-            commissionRatio: commissionRatio !== undefined ? commissionRatio / 100 : settings.minimumCommission / 100, // Default snapshot for real excess
-            buyerCommissionRatio: buyerCommissionRatio !== undefined ? buyerCommissionRatio / 100 : settings.shortageCommission / 100,
-            sellerBonusRatio: sellerBonusRatio !== undefined ? sellerBonusRatio / 100 : settings.shortageSellerReward / 100
-        });
-
-        await transaction.save({ session });
-
-        // 6. NOW sync excess statuses (after transaction is saved)
-        for (const source of excessSources) {
-            const excess = await StockExcess.findById(source.stockExcessId).session(session);
-            await syncExcessStatus(excess, session);
-            await excess.save({ session });
-        }
-
+        const transaction = await transactionService.createTransaction(req.body, session, req);
         await session.commitTransaction();
 
-        // 7. Decrease reservations for the sources used in this transaction
-        try {
-            const shortage = await StockShortage.findById(shortageId).populate('order');
-            
-            if (shortage && shortage.order) {
-                for (const source of excessSources) {
-                    const excess = await StockExcess.findById(source.stockExcessId).populate('product volume');
-                    if (excess) {
-                        // Decrease reservation for this order
-                        await Reservation.findOneAndUpdate(
-                            {
-                                product: excess.product._id,
-                                volume: excess.volume._id,
-                                price: excess.selectedPrice
-                            },
-                            {
-                                $inc: { quantity: -source.quantity }
-                            }
-                        );
-                    }
-                }
-            }
-        } catch (reservationErr) {
-            console.error('⚠️ [Transaction] Reservation update error:', reservationErr);
-            // Non-critical, continue
-        }
-
-        // Notify Buyer about transaction creation
-        try {
-            console.log('🔔 [Transaction] Notifying Buyer(s)...');
-            const product = await mongoose.model('Product').findById(shortage.product);
-            const buyerPharmacy = await Pharmacy.findById(shortage.pharmacy);
-            const buyerUsers = await User.find({ pharmacy: shortage.pharmacy });
-            
-            for (const buyer of buyerUsers) {
-                console.log(`   -> Queueing for Buyer: ${buyer._id}`);
-                await addNotificationJob(
-                    buyer._id.toString(),
-                    'transaction',
-                    `Transaction #${serial}: New transaction created for "${product?.name || 'unknown medicine'}".`,
-                    {
-                        relatedEntity: transaction._id,
-                        relatedEntityType: 'Transaction'
-                    },
-                    `المعاملة #${serial}: معاملة جديدة تم إنشاؤها لـ "${product?.name || 'دواء غير معروف'}".`
-                );
-            }
-
-            // Notify Seller(s) about new transaction request
-            console.log('🔔 [Transaction] Notifying Seller(s)...');
-            for (const source of transaction.stockExcessSources) {
-                const excess = await StockExcess.findById(source.stockExcess).populate('pharmacy');
-                if (excess) {
-                    const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
-                    for (const seller of sellerUsers) {
-                        console.log(`   -> Queueing for Seller: ${seller._id} (Pharmacy: ${excess.pharmacy.name})`);
-                        await addNotificationJob(
-                            seller._id.toString(),
-                            'transaction',
-                            `Transaction #${serial}: New request for "${product?.name}"`,
-                            {
-                                relatedEntity: transaction._id,
-                                relatedEntityType: 'Transaction'
-                            },
-                            `المعاملة #${serial}: طلب جديد لـ "${product?.name}"`
-                        );
-                    }
-                }
-            }
-            console.log('✅ [Transaction] Notification jobs queued successfully.');
-        } catch (notifErr) {
-            console.error('❌ [Transaction] Notification error in createTransaction:', notifErr);
-        }
+        // Centralized Notifications (called after commit)
+        await transactionService.notifyParties(transaction);
 
         res.status(201).json({ success: true, data: transaction });
     } catch (error) {
@@ -443,46 +288,11 @@ exports.updateTransactionStatus = async (req, res) => {
     session.startTransaction();
     try {
         const { status } = req.body;
-        const transaction = await Transaction.findById(req.params.id).session(session);
-
-        if (!transaction) {
-            throw new Error('Transaction not found');
-        }
-
-        if (transaction.status === 'completed' || transaction.status === 'cancelled') {
-            throw new Error('Cannot change status of a finished transaction');
-        }
-
-        const oldStatus = transaction.status;
-        transaction.status = status;
-
-        if (status === 'cancelled' || status === 'rejected') {
-            // Rollback logic
-            // 1. Restore excess quantities
-            for (const source of transaction.stockExcessSources) {
-                const excess = await StockExcess.findById(source.stockExcess).session(session);
-                if (excess) {
-                    excess.remainingQuantity += source.quantity;
-                    await syncExcessStatus(excess, session);
-                    await excess.save({ session });
-                }
-            }
-
-            // 2. Reduce shortage fulfillment
-            const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
-            if (shortage) {
-                shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-                await syncShortageStatus(shortage, session);
-                await shortage.save({ session });
-            }
-        } else if (status === 'completed') {
-            await transactionService.settleTransaction(transaction, session);
-        }
-
-        await transaction.save({ session });
+        const transaction = await transactionService.updateTransactionStatus(req.params.id, status, session, req);
+        
         await session.commitTransaction();
 
-        // Centralized Notifications
+        // Centralized Notifications (called after commit)
         await transactionService.notifyParties(transaction);
 
         res.status(200).json({ success: true, data: transaction });
@@ -661,6 +471,15 @@ exports.revertTransaction = async (req, res) => {
                     throw new Error('Expense amount cannot be negative');
                 }
             }
+        }
+
+        // Special handling for "Add to Hub" transactions
+        if (transaction.added_to_hub && transaction.added_to_hub.excessId) {
+            console.log("here 1")
+             await transactionService.revertAddToHub(transaction, session, req);
+             await session.commitTransaction();
+             await transactionService.notifyParties(transaction);
+             return res.status(200).json({ success: true, data: transaction });
         }
 
         // Change transaction status FIRST so sync status helpers ignore this transaction

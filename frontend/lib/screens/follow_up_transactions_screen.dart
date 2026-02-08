@@ -75,7 +75,7 @@ class _FollowUpTransactionsScreenState
         children: [
           _buildFilterBar(),
           Expanded(
-            child: tp.isLoading
+            child: tp.isLoading && tp.transactions.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: () async {
@@ -156,6 +156,7 @@ class _FollowUpTransactionsScreenState
   }
 
   Widget _buildTransactionCard(dynamic tx) {
+    final tp = Provider.of<TransactionProvider>(context);
     final shortage = tx['stockShortage']['shortage'];
     final product = shortage['product']['name'];
     final buyer = shortage['pharmacy']['name'];
@@ -165,6 +166,9 @@ class _FollowUpTransactionsScreenState
     final orderSerial = isOrder
         ? tx['stockShortage']['shortage']['order']['serial']
         : null;
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final isAdmin = auth.userRole == 'admin';
 
     return Card(
       color: isOrder ? Colors.blue[100] : null,
@@ -306,121 +310,179 @@ class _FollowUpTransactionsScreenState
                     children: [
                       if (tx['status'] == 'pending')
                         TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(l10n.dialogConfirmAccept),
-                                content: Text(l10n.msgConfirmAcceptTransaction),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: Text(l10n.actionNo),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      _updateStatus(tx['_id'], 'accepted');
-                                    },
-                                    child: Text(l10n.actionYesAccept),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                          onPressed: tp.isLoading
+                              ? null
+                              : () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text(l10n.dialogConfirmAccept),
+                                      content: Text(
+                                        l10n.msgConfirmAcceptTransaction,
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: tp.isLoading
+                                              ? null
+                                              : () => Navigator.pop(ctx),
+                                          child: Text(l10n.actionNo),
+                                        ),
+                                        TextButton(
+                                          onPressed: tp.isLoading
+                                              ? null
+                                              : () {
+                                                  Navigator.pop(ctx);
+                                                  _updateStatus(
+                                                    tx['_id'],
+                                                    'accepted',
+                                                  );
+                                                },
+                                          child: tp.isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Text(l10n.actionYesAccept),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                           child: const Text('Accept'),
                         ),
                       if (tx['status'] == 'accepted')
                         TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(l10n.dialogConfirmComplete),
-                                content: Text(
-                                  l10n.msgConfirmCompleteTransaction,
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: Text(l10n.actionNo),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      _updateStatus(tx['_id'], 'completed');
-                                    },
-                                    child: Text(l10n.actionYesComplete),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                          onPressed: tp.isLoading
+                              ? null
+                              : () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text(l10n.dialogConfirmComplete),
+                                      content: Text(
+                                        l10n.msgConfirmCompleteTransaction,
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: tp.isLoading
+                                              ? null
+                                              : () => Navigator.pop(ctx),
+                                          child: Text(l10n.actionNo),
+                                        ),
+                                        TextButton(
+                                          onPressed: tp.isLoading
+                                              ? null
+                                              : () {
+                                                  Navigator.pop(ctx);
+                                                  _updateStatus(
+                                                    tx['_id'],
+                                                    'completed',
+                                                  );
+                                                },
+                                          child: tp.isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Text(l10n.actionYesComplete),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                           child: const Text('Complete'),
                         ),
                       TextButton(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(l10n.dialogConfirmCancel),
-                              content: Text(l10n.msgConfirmCancelTransaction),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: Text(l10n.actionNo),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(ctx);
-                                    _updateStatus(tx['_id'], 'cancelled');
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
+                        onPressed: tp.isLoading
+                            ? null
+                            : () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(l10n.dialogConfirmCancel),
+                                    content: Text(
+                                      l10n.msgConfirmCancelTransaction,
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: tp.isLoading
+                                            ? null
+                                            : () => Navigator.pop(ctx),
+                                        child: Text(l10n.actionNo),
+                                      ),
+                                      TextButton(
+                                        onPressed: tp.isLoading
+                                            ? null
+                                            : () {
+                                                Navigator.pop(ctx);
+                                                _updateStatus(
+                                                  tx['_id'],
+                                                  'cancelled',
+                                                );
+                                              },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                        child: tp.isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.red,
+                                                    ),
+                                              )
+                                            : Text(l10n.actionYesCancel),
+                                      ),
+                                    ],
                                   ),
-                                  child: Text(l10n.actionYesCancel),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                );
+                              },
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.red,
                         ),
                         child: const Text('Cancel'),
                       ),
                       TextButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (ctx) =>
-                                  AdminEditTransactionScreen(transaction: tx),
-                            ),
-                          );
-                          if (result == true) {
-                            Provider.of<TransactionProvider>(
-                              context,
-                              listen: false,
-                            ).fetchTransactions(status: selectedStatus);
-                          }
-                        },
+                        onPressed: tp.isLoading
+                            ? null
+                            : () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (ctx) =>
+                                        AdminEditTransactionScreen(
+                                          transaction: tx,
+                                        ),
+                                  ),
+                                );
+                                if (result == true) {
+                                  tp.fetchTransactions(status: selectedStatus);
+                                }
+                              },
                         icon: const Icon(Icons.edit, size: 16),
                         label: Text(
                           l10n.labelEdit,
                           style: const TextStyle(fontSize: 12),
                         ),
                       ),
-                      if (Provider.of<AuthProvider>(
-                                context,
-                                listen: false,
-                              ).userRole ==
-                              'admin' &&
+                      if (isAdmin &&
                           tx['status'] != 'completed' &&
                           tx['status'] != 'cancelled' &&
                           _isShortageFulfillment(tx))
                         TextButton.icon(
-                          onPressed: () => _showEditRatiosDialog(tx),
+                          onPressed: tp.isLoading
+                              ? null
+                              : () => _showEditRatiosDialog(tx),
                           icon: const Icon(Icons.percent, size: 16),
                           label: Text(
                             l10n.labelEditRatios,
@@ -429,62 +491,69 @@ class _FollowUpTransactionsScreenState
                         ),
                     ],
                   ),
-                  if (Provider.of<AuthProvider>(
-                            context,
-                            listen: false,
-                          ).userRole ==
-                          'admin' &&
-                      tx['delivery'] != null)
+                  if (isAdmin && tx['delivery'] != null)
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(l10n.dialogDetachDelivery),
-                              content: Text(l10n.msgDetachDelivery),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: Text(l10n.actionClose),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    Navigator.pop(ctx);
-                                    final success =
-                                        await Provider.of<TransactionProvider>(
-                                          context,
-                                          listen: false,
-                                        ).unassignTransaction(tx['_id']);
-                                    if (mounted && success) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            l10n.msgDeliveryDetached,
-                                          ),
+                        onPressed: tp.isLoading
+                            ? null
+                            : () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(l10n.dialogDetachDelivery),
+                                    content: Text(l10n.msgDetachDelivery),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: tp.isLoading
+                                            ? null
+                                            : () => Navigator.pop(ctx),
+                                        child: Text(l10n.actionClose),
+                                      ),
+                                      TextButton(
+                                        onPressed: tp.isLoading
+                                            ? null
+                                            : () async {
+                                                Navigator.pop(ctx);
+                                                final success = await tp
+                                                    .unassignTransaction(
+                                                      tx['_id'],
+                                                    );
+                                                if (mounted && success) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        l10n.msgDeliveryDetached,
+                                                      ),
+                                                    ),
+                                                  );
+                                                  // Refresh with current filter
+                                                  tp.fetchTransactions(
+                                                    status: selectedStatus,
+                                                  );
+                                                }
+                                              },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.orange,
                                         ),
-                                      );
-                                      // Refresh with current filter
-                                      Provider.of<TransactionProvider>(
-                                        context,
-                                        listen: false,
-                                      ).fetchTransactions(
-                                        status: selectedStatus,
-                                      );
-                                    }
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.orange,
+                                        child: tp.isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.orange,
+                                                    ),
+                                              )
+                                            : Text(l10n.actionDetach),
+                                      ),
+                                    ],
                                   ),
-                                  child: Text(l10n.actionDetach),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                );
+                              },
                         icon: const Icon(Icons.person_remove, size: 16),
                         label: Text(l10n.dialogDetachDelivery),
                         style: TextButton.styleFrom(
@@ -504,15 +573,14 @@ class _FollowUpTransactionsScreenState
               style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
             if (tx['status'] == 'completed' &&
-                Provider.of<AuthProvider>(context, listen: false).userRole ==
-                    'admin' &&
+                isAdmin &&
                 (tx['reversalTicket'] == null ||
                     (tx['reversalTicket'] is Map &&
                         tx['reversalTicket']['revertedAt'] == null)))
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => _showRevertDialog(tx),
+                  onPressed: tp.isLoading ? null : () => _showRevertDialog(tx),
                   icon: const Icon(
                     Icons.settings_backup_restore,
                     color: Colors.red,
@@ -526,12 +594,13 @@ class _FollowUpTransactionsScreenState
               ),
             if (tx['status'] == 'cancelled' &&
                 tx['reversalTicket'] != null &&
-                Provider.of<AuthProvider>(context, listen: false).userRole ==
-                    'admin')
+                isAdmin)
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => _showEditTicketDialog(tx),
+                  onPressed: tp.isLoading
+                      ? null
+                      : () => _showEditTicketDialog(tx),
                   icon: const Icon(
                     Icons.receipt_long,
                     size: 16,
@@ -735,30 +804,40 @@ class _FollowUpTransactionsScreenState
             child: Text(l10n.actionCancel),
           ),
           TextButton(
-            onPressed: () async {
-              final data = {
-                'commissionRatio': null,
-                'buyerCommissionRatio': double.tryParse(
-                  buyerCommController.text,
-                ),
-                'sellerBonusRatio': double.tryParse(sellerRewController.text),
-              };
-              Navigator.pop(ctx);
-              final success = await Provider.of<TransactionProvider>(
-                context,
-                listen: false,
-              ).updateTransactionRatios(tx['_id'], data);
-              if (mounted && success) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Ratios updated')));
-                Provider.of<TransactionProvider>(
-                  context,
-                  listen: false,
-                ).fetchTransactions(status: selectedStatus);
-              }
-            },
-            child: Text(l10n.actionUpdateTicket),
+            onPressed: Provider.of<TransactionProvider>(context).isLoading
+                ? null
+                : () async {
+                    final data = {
+                      'commissionRatio': null,
+                      'buyerCommissionRatio': double.tryParse(
+                        buyerCommController.text,
+                      ),
+                      'sellerBonusRatio': double.tryParse(
+                        sellerRewController.text,
+                      ),
+                    };
+                    Navigator.pop(ctx);
+                    final success = await Provider.of<TransactionProvider>(
+                      context,
+                      listen: false,
+                    ).updateTransactionRatios(tx['_id'], data);
+                    if (mounted && success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Ratios updated')),
+                      );
+                      Provider.of<TransactionProvider>(
+                        context,
+                        listen: false,
+                      ).fetchTransactions(status: selectedStatus);
+                    }
+                  },
+            child: Provider.of<TransactionProvider>(context).isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(l10n.actionUpdateTicket),
           ),
         ],
       ),
@@ -875,17 +954,27 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
           child: Text(l10n.actionCancel),
         ),
         ElevatedButton(
-          onPressed: () =>
-              widget.onConfirm(_expenses, _descriptionController.text),
+          onPressed: Provider.of<TransactionProvider>(context).isLoading
+              ? null
+              : () => widget.onConfirm(_expenses, _descriptionController.text),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isEditing ? Colors.blue : Colors.red,
             foregroundColor: Colors.white,
           ),
-          child: Text(
-            widget.isEditing
-                ? l10n.actionUpdateTicket
-                : l10n.actionConfirmReversion,
-          ),
+          child: Provider.of<TransactionProvider>(context).isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  widget.isEditing
+                      ? l10n.actionUpdateTicket
+                      : l10n.actionConfirmReversion,
+                ),
         ),
       ],
     );

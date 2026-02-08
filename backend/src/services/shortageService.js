@@ -1,4 +1,4 @@
-const { StockShortage, StockExcess, Product, Order, Reservation } = require('../models');
+const { StockShortage, StockExcess, Product, Pharmacy, Order, Reservation } = require('../models');
 const auditService = require('./auditService');
 const serialService = require('./serialService');
 const mongoose = require('mongoose');
@@ -6,10 +6,10 @@ const mongoose = require('mongoose');
 /**
  * Creates a single stock shortage.
  */
-exports.createShortage = async (data, pharmacyId, req = null) => {
-    const { product: productId, volume, quantity, notes, targetPrice } = data;
+exports.createShortage = async (data, pharmacyId, req = null, session = null) => {
+    const { product: productId, volume, quantity, notes, targetPrice, isSystemGenerated } = data;
 
-    const product = await Product.findById(productId);
+    const product = await Product.findById(productId).session(session);
     if (!product || product.status !== 'active') {
         throw new Error('This product is currently inactive and cannot be added as a shortage.');
     }
@@ -18,23 +18,42 @@ exports.createShortage = async (data, pharmacyId, req = null) => {
         pharmacy: pharmacyId,
         product: productId,
         status: { $in: ['pending', 'available', 'partially_fulfilled'] }
-    });
+    }).session(session);
 
-    if (existingExcess) {
-        throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
+    if (existingExcess) { 
+        // Allow ONLY hubs to have both shortage and excess for the same product
+        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
+        if (!pharmacy || !pharmacy.isHub) {
+            throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
+        }
     }
 
-    const shortage = await StockShortage.create({
-        pharmacy: pharmacyId,
-        product: productId,
-        volume,
-        quantity,
-        remainingQuantity: quantity,
-        notes,
-        targetPrice,
-        type: 'request',
-        status: 'active'
-    });
+    const shortage = session 
+        ? (await StockShortage.create([{
+            pharmacy: pharmacyId,
+            product: productId,
+            volume,
+            quantity,
+            remainingQuantity: quantity,
+            notes,
+            targetPrice,
+            targetPrice,
+            type: 'request',
+            status: 'active',
+            isSystemGenerated: isSystemGenerated || false
+        }], { session }))[0]
+        : await StockShortage.create({
+            pharmacy: pharmacyId,
+            product: productId,
+            volume,
+            quantity,
+            remainingQuantity: quantity,
+            notes,
+            targetPrice,
+            type: 'request',
+            status: 'active',
+            isSystemGenerated: isSystemGenerated || false
+        });
 
     await auditService.logAction({
         user: req?.user?._id,
@@ -177,13 +196,6 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) 
                     { session }
                 );
 
-                // Delete reservation if quantity reaches 0 or below
-                await Reservation.deleteMany(
-                    {
-                        quantity: { $lte: 0 }
-                    },
-                    { session }
-                );
             }
         }
 
@@ -220,6 +232,9 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) 
  * Synchronizes the status of a shortage.
  */
 exports.syncShortageStatus = async (shortage, session = null) => {
+    // Don't change cancelled status
+    if (shortage.status === 'cancelled') return;
+
     if (shortage.remainingQuantity === 0) {
         shortage.status = 'fulfilled';
     } else if (shortage.remainingQuantity < shortage.quantity) {
@@ -237,7 +252,7 @@ exports.updateOrderTotals = async (orderId, session = null) => {
     const order = await Order.findById(orderId).session(session);
     if (!order) return;
 
-    const remainingShortages = await StockShortage.find({ order: orderId }).session(session);
+    const remainingShortages = await StockShortage.find({ order: orderId, status: { $ne: 'cancelled' } }).session(session);
     
     // 1. Update Counts
     order.totalItems = remainingShortages.length;
@@ -265,6 +280,74 @@ exports.updateOrderTotals = async (orderId, session = null) => {
 /**
  * Deletes a shortage and cleans up its reservation and order.
  */
+/**
+ * Cancels a shortage (instead of deleting it).
+ * Sets status to 'cancelled', remainingQuantity to 0, and updates linked entities.
+ */
+exports.cancelShortage = async (shortageId, session, req = null) => {
+    console.log("here 4", shortageId)
+    const shortage = await StockShortage.findById(shortageId).session(session);
+    if (!shortage) throw new Error('Shortage not found');
+
+    // Check if fully available (no transactions/fulfillments yet)
+    // The user requested: "same conditions for deleting the shortage, it should have the quantiy equal to remaining quantity"
+    if (shortage.remainingQuantity !== shortage.quantity) {
+        throw new Error('Cannot cancel a shortage that has been partially or fully fulfilled.');
+    }
+
+    // 1. Cleanup Reservation (similar to delete)
+    if (shortage.order && shortage.targetPrice && shortage.remainingQuantity > 0) {
+        await Reservation.findOneAndUpdate(
+            {
+                product: shortage.product,
+                volume: shortage.volume,
+                price: shortage.targetPrice
+            },
+            {
+                $inc: { quantity: -shortage.remainingQuantity }
+            },
+            { session }
+        );
+
+    }
+
+    // 2. Set Status to Cancelled and Clear Quantity
+    shortage.status = 'cancelled';
+    shortage.remainingQuantity = 0;
+    await shortage.save({ session });
+
+    // 3. Update Order Totals if linked
+    if (shortage.order) {
+        // We need to update order totals. 
+        // Note: updateOrderTotals fetches *all* shortages for the order.
+        // Since we didn't delete the record, but set status to 'cancelled', 
+        // we need to make sure updateOrderTotals handles 'cancelled' correctly (invokes sync logic or ignores).
+        // Let's check updateOrderTotals logic.
+        // It fetches ALL shortages.
+        // It sums quantity * targetPrice. 
+        // If status is cancelled, should it count towards totals? Probably not.
+        // We should modify updateOrderTotals to exclude cancelled/rejected shortages from sums if that's the desired behavior.
+        // Or, since we set remainingQuantity to 0, maybe that's enough?
+        // Wait, updateOrderTotals uses `s.quantity` for total amount, not `s.remainingQuantity`.
+        // So we might need to adjust logic there too or ensure cancelled items are skipped.
+        // Let's modify updateOrderTotals as well to be safe.
+        await exports.updateOrderTotals(shortage.order, session);
+    }
+    
+    // Log action
+    if (req) {
+         await auditService.logAction({
+            user: req.user?._id,
+            action: 'CANCEL',
+            entityType: 'StockShortage',
+            entityId: shortage._id,
+            changes: { status: 'cancelled' }
+        }, req);
+    }
+    
+    return shortage;
+};
+
 exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -293,8 +376,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
                 },
                 { session }
             );
-
-            await Reservation.deleteMany({ quantity: { $lte: 0 } }, { session });
         }
 
         const orderId = shortage.order;

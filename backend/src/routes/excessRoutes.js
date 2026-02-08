@@ -4,7 +4,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 const excessController = require('../controllers/excessController');
 
 const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
-const validate = require('../middlewares/validationMiddleware');
 // Routes
 router.post('/', protect, authorize('pharmacy_owner', 'manager'), strictLimiter, excessController.createExcess);
 router.put('/:id', protect, authorize('admin', 'pharmacy_owner', 'manager'), strictLimiter, excessController.updateExcess);
@@ -15,6 +14,7 @@ router.get('/fulfilled', protect, authorize('admin'), getLimiter, excessControll
 router.get('/available', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getAvailableExcesses);
 router.put('/:id/approve', protect, authorize('admin'), strictLimiter, excessController.approveExcess);
 router.put('/:id/reject', protect, authorize('admin'), strictLimiter, excessController.rejectExcess);
+router.post('/add-to-hub', protect, authorize('admin'), strictLimiter, excessController.addToHub);
 router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, excessController.deleteExcess);
 
 module.exports = router;

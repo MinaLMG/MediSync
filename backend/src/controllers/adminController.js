@@ -336,6 +336,18 @@ const getPharmacyDetail = async (req, res) => {
     }
 };
 
+// @desc    Get all hub pharmacies
+// @route   GET /api/admin/hubs
+// @access  Admin
+const getHubs = async (req, res) => {
+    try {
+        const hubs = await Pharmacy.find({ isHub: true }).sort({ name: 1 });
+        res.status(200).json({ success: true, count: hubs.length, data: hubs });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getWaitingUsers,
     getActiveUsers,
@@ -347,5 +359,6 @@ module.exports = {
     suspendUser,
     resetUserPassword,
     getUsersWithPendingUpdates,
-    reviewUpdateData
+    reviewUpdateData,
+    getHubs
 };

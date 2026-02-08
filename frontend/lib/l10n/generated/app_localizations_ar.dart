@@ -36,6 +36,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get actionAdd => 'إضافة';
 
   @override
+  String get actionAddToHub => 'إضافة للمركز';
+
+  @override
+  String get titleAddToHub => 'نقل للمركز';
+
+  @override
+  String get labelSelectHub => 'اختر المركز';
+
+  @override
+  String get labelHubQuantity => 'الكمية للنقل';
+
+  @override
+  String get msgMoveToHubSuccess => 'تم النقل للمركز بنجاح';
+
+  @override
   String get actionEdit => 'تعديل';
 
   @override

@@ -82,6 +82,12 @@ const transactionSchema = new mongoose.Schema({
     reversalTicket: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ReversalTicket'
+    },
+    added_to_hub: {
+        excessId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'StockExcess'
+        }
     }
 }, {
     timestamps: true

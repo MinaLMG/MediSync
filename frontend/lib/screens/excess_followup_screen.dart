@@ -111,6 +111,106 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
     );
   }
 
+  void _showHubSelectionDialog(Map<String, dynamic> item) {
+    final provider = Provider.of<ExcessProvider>(context, listen: false);
+    String? selectedHubId;
+    final qtyController = TextEditingController(
+      text: item['remainingQuantity'].toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(AppLocalizations.of(context)!.titleAddToHub),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelSelectHub,
+                  ),
+                  value: selectedHubId,
+                  items: provider.hubs.map((hub) {
+                    return DropdownMenuItem<String>(
+                      value: hub['_id'],
+                      child: Text(hub['name']),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => selectedHubId = val),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: qtyController,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.labelHubQuantity,
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(AppLocalizations.of(context)!.actionCancel),
+            ),
+            ElevatedButton(
+              onPressed:
+                  provider.isLoading ||
+                      selectedHubId == null ||
+                      qtyController.text.isEmpty
+                  ? null
+                  : () async {
+                      final qty = int.tryParse(qtyController.text);
+                      if (qty == null ||
+                          qty <= 0 ||
+                          qty > item['remainingQuantity']) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(context)!.msgInvalidQuantity,
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      final success = await provider.addToHub(
+                        item['_id'],
+                        selectedHubId!,
+                        qty,
+                      );
+
+                      if (success && mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(context)!.msgMoveToHubSuccess,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+              child: provider.isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(AppLocalizations.of(context)!.actionConfirm),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFulfilledList() {
     return Consumer<ExcessProvider>(
       builder: (context, provider, child) {
@@ -253,7 +353,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
             itemCount: provider.pendingExcesses.length,
             itemBuilder: (context, index) {
               final item = provider.pendingExcesses[index];
-              // Highlighting Logic
               final expiryStr = item['expiryDate'];
               final isNewPrice = item['isNewPrice'] == true;
               final isShortageFulfillment =
@@ -278,7 +377,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item['product']['name'] ?? 'Unknown Product',
+                        item['product']?['name'] ?? 'Unknown Product',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -288,7 +387,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         onTap: () =>
                             UIUtils.showPharmacyInfo(context, item['pharmacy']),
                         child: Text(
-                          '${item['pharmacy']['name']}',
+                          '${item['pharmacy']?['name']}',
                           style: const TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
@@ -296,7 +395,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-
                       Row(
                         children: [
                           if (isNewPrice)
@@ -338,8 +436,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             ),
                         ],
                       ),
-
-                      // Always show percentage (default if not provided)
                       Builder(
                         builder: (context) {
                           final settings = Provider.of<SettingsProvider>(
@@ -359,14 +455,12 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           );
                         },
                       ),
-
                       Text(
                         '${AppLocalizations.of(context)!.labelPrice}: ${item['selectedPrice']} ${AppLocalizations.of(context)!.coinsSuffix}',
                       ),
                       Text(
                         '${AppLocalizations.of(context)!.labelQuantity}: ${item['originalQuantity']}',
                       ),
-
                       Text(
                         '${AppLocalizations.of(context)!.labelExpiry}: $expiryStr',
                         style: TextStyle(
@@ -374,7 +468,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           color: _isNearExpiry(expiryStr) ? Colors.red : null,
                         ),
                       ),
-
                       if (isRejected && item['rejectionReason'] != null) ...[
                         const SizedBox(height: 8),
                         Container(
@@ -393,68 +486,76 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           ),
                         ),
                       ],
-
                       const Divider(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () {
-                              final int total = item['originalQuantity'] ?? 0;
-                              final int remaining =
-                                  item['remainingQuantity'] ?? 0;
-                              if (total - remaining > 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      AppLocalizations.of(
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    final int total =
+                                        item['originalQuantity'] ?? 0;
+                                    final int remaining =
+                                        item['remainingQuantity'] ?? 0;
+                                    if (total - remaining > 0) {
+                                      ScaffoldMessenger.of(
                                         context,
-                                      )!.msgCannotDeleteTakenExcess,
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.labelConfirmDelete,
-                                  ),
-                                  content: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.msgConfirmDeleteExcess,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionCancel,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.msgCannotDeleteTakenExcess,
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.labelConfirmDelete,
+                                        ),
+                                        content: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.msgConfirmDeleteExcess,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionCancel,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: provider.isLoading
+                                                ? null
+                                                : () {
+                                                    Navigator.pop(ctx);
+                                                    provider.deleteExcess(
+                                                      item['_id'],
+                                                    );
+                                                  },
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionDelete,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        provider.deleteExcess(item['_id']);
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionDelete,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    );
+                                  },
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
                             ),
@@ -464,137 +565,169 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           ),
                           const SizedBox(width: 8),
                           TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      AddExcessScreen(initialData: item),
-                                ),
-                              ).then((_) {
-                                if (mounted) {
-                                  provider.fetchPendingExcesses();
-                                  provider.fetchAvailableExcesses();
-                                }
-                              });
-                            },
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AddExcessScreen(initialData: item),
+                                      ),
+                                    ).then((_) {
+                                      if (mounted) {
+                                        provider.fetchPendingExcesses();
+                                        provider.fetchAvailableExcesses();
+                                      }
+                                    });
+                                  },
                             child: Text(
                               AppLocalizations.of(context)!.actionEdit,
                             ),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
-                            onPressed: () {
-                              final reasonController = TextEditingController();
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.labelRejectExcessOffer,
-                                  ),
-                                  content: TextField(
-                                    controller: reasonController,
-                                    decoration: InputDecoration(
-                                      labelText: AppLocalizations.of(
-                                        context,
-                                      )!.labelRejectionReason,
-                                      hintText: AppLocalizations.of(
-                                        context,
-                                      )!.hintRejectionReason,
-                                    ),
-                                    maxLines: 2,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionCancel,
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    final reasonController =
+                                        TextEditingController();
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.labelRejectExcessOffer,
+                                        ),
+                                        content: TextField(
+                                          controller: reasonController,
+                                          decoration: InputDecoration(
+                                            labelText: AppLocalizations.of(
+                                              context,
+                                            )!.labelRejectionReason,
+                                            hintText: AppLocalizations.of(
+                                              context,
+                                            )!.hintRejectionReason,
+                                          ),
+                                          maxLines: 2,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionCancel,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: provider.isLoading
+                                                ? null
+                                                : () {
+                                                    if (reasonController.text
+                                                        .trim()
+                                                        .isEmpty)
+                                                      return;
+                                                    Navigator.pop(ctx);
+                                                    provider.rejectExcess(
+                                                      item['_id'],
+                                                      reasonController.text
+                                                          .trim(),
+                                                    );
+                                                  },
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionReject,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        if (reasonController.text
-                                            .trim()
-                                            .isEmpty)
-                                          return;
-                                        Navigator.pop(ctx);
-                                        provider.rejectExcess(
-                                          item['_id'],
-                                          reasonController.text.trim(),
-                                        );
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionReject,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    );
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange,
                               foregroundColor: Colors.white,
                             ),
-                            child: Text(
-                              AppLocalizations.of(context)!.actionReject,
-                            ),
+                            child: provider.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    AppLocalizations.of(context)!.actionReject,
+                                  ),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.labelConfirmApproval,
-                                  ),
-                                  content: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.msgConfirmApproveExcess,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionCancel,
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.labelConfirmApproval,
+                                        ),
+                                        content: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.msgConfirmApproveExcess,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionCancel,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: provider.isLoading
+                                                ? null
+                                                : () {
+                                                    Navigator.pop(ctx);
+                                                    provider.approveExcess(
+                                                      item['_id'],
+                                                    );
+                                                  },
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionApprove,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        provider.approveExcess(item['_id']);
-                                      },
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionApprove,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    );
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
                             ),
-                            child: Text(
-                              AppLocalizations.of(context)!.actionApprove,
-                            ),
+                            child: provider.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    AppLocalizations.of(context)!.actionApprove,
+                                  ),
                           ),
                         ],
                       ),
@@ -638,7 +771,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
             itemCount: provider.availableExcesses.length,
             itemBuilder: (context, index) {
               final item = provider.availableExcesses[index];
-              // Highlighting Logic
               final expiryStr = item['expiryDate'];
               final isShortageFulfillment =
                   item['shortage_fulfillment'] == true;
@@ -655,7 +787,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         children: [
                           Expanded(
                             child: Text(
-                              item['product']['name'] ?? 'Unknown Product',
+                              item['product']?['name'] ?? 'Unknown Product',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -694,7 +826,7 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         onTap: () =>
                             UIUtils.showPharmacyInfo(context, item['pharmacy']),
                         child: Text(
-                          '${item['pharmacy']['name']}',
+                          '${item['pharmacy']?['name']}',
                           style: const TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
@@ -702,7 +834,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                         ),
                       ),
                       const SizedBox(height: 8),
-
                       if (isShortageFulfillment)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -718,8 +849,6 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             style: TextStyle(color: Colors.white, fontSize: 10),
                           ),
                         ),
-
-                      // Always show percentage (default if not provided)
                       Builder(
                         builder: (context) {
                           final settings = Provider.of<SettingsProvider>(
@@ -739,14 +868,12 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           );
                         },
                       ),
-
                       Text(
                         '${AppLocalizations.of(context)!.labelPrice}: ${item['selectedPrice']} ${AppLocalizations.of(context)!.coinsSuffix}',
                       ),
                       Text(
                         '${AppLocalizations.of(context)!.labelRemaining}: ${item['remainingQuantity']}/${item['originalQuantity']}',
                       ),
-
                       Text(
                         '${AppLocalizations.of(context)!.labelExpiry}: $expiryStr',
                         style: TextStyle(
@@ -754,68 +881,76 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           color: _isNearExpiry(expiryStr) ? Colors.red : null,
                         ),
                       ),
-
                       const Divider(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () {
-                              final int total = item['originalQuantity'] ?? 0;
-                              final int remaining =
-                                  item['remainingQuantity'] ?? 0;
-                              if (total - remaining > 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      AppLocalizations.of(
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    final int total =
+                                        item['originalQuantity'] ?? 0;
+                                    final int remaining =
+                                        item['remainingQuantity'] ?? 0;
+                                    if (total - remaining > 0) {
+                                      ScaffoldMessenger.of(
                                         context,
-                                      )!.msgCannotDeleteTakenExcess,
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.labelConfirmDelete,
-                                  ),
-                                  content: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.msgConfirmDeleteExcessAvailable,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionCancel,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.msgCannotDeleteTakenExcess,
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.labelConfirmDelete,
+                                        ),
+                                        content: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.msgConfirmDeleteExcessAvailable,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionCancel,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: provider.isLoading
+                                                ? null
+                                                : () {
+                                                    Navigator.pop(ctx);
+                                                    provider.deleteExcess(
+                                                      item['_id'],
+                                                    );
+                                                  },
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.actionDelete,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        provider.deleteExcess(item['_id']);
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                      child: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.actionDelete,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                                    );
+                                  },
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
                             ),
@@ -825,23 +960,55 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                           ),
                           const SizedBox(width: 8),
                           TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      AddExcessScreen(initialData: item),
-                                ),
-                              ).then((_) {
-                                if (mounted) {
-                                  provider.fetchPendingExcesses();
-                                  provider.fetchAvailableExcesses();
-                                }
-                              });
-                            },
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AddExcessScreen(initialData: item),
+                                      ),
+                                    ).then((_) {
+                                      if (mounted) {
+                                        provider.fetchPendingExcesses();
+                                        provider.fetchAvailableExcesses();
+                                      }
+                                    });
+                                  },
                             child: Text(
                               AppLocalizations.of(context)!.actionEdit,
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    provider.fetchHubs().then((_) {
+                                      if (mounted) {
+                                        _showHubSelectionDialog(item);
+                                      }
+                                    });
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: provider.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.actionAddToHub,
+                                  ),
                           ),
                         ],
                       ),
