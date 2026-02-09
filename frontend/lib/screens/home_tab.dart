@@ -30,7 +30,7 @@ class _HomeTabState extends State<HomeTab> {
   final PageController _pageController = PageController();
   Timer? _timer;
   int _currentPage = 0;
-  String _searchQuery = '';
+  bool _isInteracting = false; // Flag to track user interaction
 
   @override
   void initState() {
@@ -47,8 +47,13 @@ class _HomeTabState extends State<HomeTab> {
         listen: false,
       ).fetchPendingCounts();
     });
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
-      if (!mounted) return;
+      if (!mounted || _isInteracting) return;
       final provider = Provider.of<ShortageProvider>(context, listen: false);
       if (provider.globalShortages.length > 1) {
         if (_pageController.hasClients) {
@@ -66,6 +71,10 @@ class _HomeTabState extends State<HomeTab> {
         }
       }
     });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
   }
 
   Future<void> _onRefresh() async {
@@ -87,7 +96,7 @@ class _HomeTabState extends State<HomeTab> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _stopTimer();
     _pageController.dispose();
     super.dispose();
   }
@@ -145,8 +154,7 @@ class _HomeTabState extends State<HomeTab> {
     return RefreshIndicator(
       onRefresh: _onRefresh,
       child: SingleChildScrollView(
-        physics:
-            const AlwaysScrollableScrollPhysics(), // Ensure it's always scrollable for refresh
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
             // News Line (Shortages Marquee)
@@ -191,86 +199,97 @@ class _HomeTabState extends State<HomeTab> {
                               ),
                             ),
                           )
-                        : PageView.builder(
-                            controller: _pageController,
-                            itemCount: shortages.length,
-                            itemBuilder: (context, index) {
-                              return Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                  ),
-                                  child: Text(
-                                    '• ${shortages[index]} •',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                        : Listener(
+                            onPointerDown: (_) {
+                              setState(() => _isInteracting = true);
+                              _stopTimer();
+                            },
+                            onPointerUp: (_) {
+                              setState(() => _isInteracting = false);
+                              _startTimer();
+                            },
+                            onPointerCancel: (_) {
+                              setState(() => _isInteracting = false);
+                              _startTimer();
+                            },
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: shortages.length,
+                              onPageChanged: (index) {
+                                _currentPage = index;
+                              },
+                              itemBuilder: (context, index) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
+                                    ),
+                                    child: Text(
+                                      '• ${shortages[index]} •',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
                   ),
                 ],
               ),
             ),
-
-            if (_searchQuery.isEmpty) ...[
-              // Advertisement space
-              Container(
-                height: 120,
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ), // Added margin to avoid overlap
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue[400]!, Colors.blue[800]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withAlpha(76),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+            // Advertisement space
+            Container(
+              height: 120,
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[400]!, Colors.blue[800]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Menu Grid
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.0,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withAlpha(76),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
                   ),
-                  itemCount: menuItems.length,
-                  itemBuilder: (context, index) {
-                    final item = menuItems[index];
-                    return _buildMenuCard(
-                      context,
-                      item['title'] ?? 'Menu Item',
-                      item['originalTitle'] ?? '',
-                      item['icon'] ?? Icons.help,
-                      item['color'] ?? Colors.blue,
-                    );
-                  },
-                ),
+                ],
               ),
-            ],
+            ),
+            const SizedBox(height: 16),
+            // Menu Grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: menuItems.length,
+                itemBuilder: (context, index) {
+                  final item = menuItems[index];
+                  return _buildMenuCard(
+                    context,
+                    item['title'] ?? 'Menu Item',
+                    item['originalTitle'] ?? '',
+                    item['icon'] ?? Icons.help,
+                    item['color'] ?? Colors.blue,
+                  );
+                },
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -287,15 +306,12 @@ class _HomeTabState extends State<HomeTab> {
     int badgeCount = 0,
   }) {
     final effectiveColor = color ?? Colors.blue;
-
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          // Use originalTitle for logic comparison to avoid localization issues in logic
           final logicTitle = originalTitle.isNotEmpty ? originalTitle : title;
-
           if (logicTitle == 'Add Excess') {
             Navigator.push(
               context,
@@ -343,10 +359,6 @@ class _HomeTabState extends State<HomeTab> {
                 builder: (context) => const BalanceHistoryScreen(),
               ),
             );
-          } else {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Tapped on $title')));
           }
         },
         borderRadius: BorderRadius.circular(16),
