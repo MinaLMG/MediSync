@@ -38,50 +38,99 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   void _addToCart(Map<String, dynamic> item) {
     final l10n = AppLocalizations.of(context)!;
-    // Get all price options for this product/volume
     final productId = item['product']['_id'];
     final volumeId = item['volume']['_id'];
 
-    final excesses = Provider.of<ExcessProvider>(
-      context,
-      listen: false,
-    ).marketExcesses;
-    final priceOptions = excesses
-        .where(
-          (e) =>
-              e['product']['_id'] == productId &&
-              e['volume']['_id'] == volumeId,
-        )
-        .toList();
+    final List<dynamic> priceOptions = (item['prices'] as List<dynamic>?) ?? [];
 
-    // Sort by price
-    priceOptions.sort(
-      (a, b) => (a['price'] as num).compareTo(b['price'] as num),
-    );
+    // Flatten all combinations: each (price, expiry, sale) becomes a separate option
+    final List<Map<String, dynamic>> allCombinations = [];
+
+    for (var priceGroup in priceOptions) {
+      final price = (priceGroup['price'] as num).toDouble();
+      final items = (priceGroup['items'] as List<dynamic>?) ?? [];
+
+      for (var itemDetail in items) {
+        allCombinations.add({
+          'price': price,
+          'expiryDate': itemDetail['expiryDate'] as String? ?? '',
+          'salePercentage': (itemDetail['salePercentage'] as num? ?? 0)
+              .toDouble(),
+          'originalSalePercentage':
+              (itemDetail['originalSalePercentage'] as num? ??
+                      itemDetail['salePercentage'] as num? ??
+                      0)
+                  .toDouble(),
+          'userSale': (itemDetail['userSale'] as num? ?? 0).toDouble(),
+          'quantity': (itemDetail['quantity'] as num? ?? 0).toInt(),
+        });
+      }
+    }
+
+    // Sort combinations: 1) price (low→high), 2) expiry (nearest→farthest), 3) sale (low→high)
+    allCombinations.sort((a, b) {
+      // First by price
+      final priceCompare = a['price'].compareTo(b['price']);
+      if (priceCompare != 0) return priceCompare;
+
+      // Then by expiry date (parse MM/YY format)
+      final expiryA = a['expiryDate'] as String;
+      final expiryB = b['expiryDate'] as String;
+
+      if (expiryA.isNotEmpty && expiryB.isNotEmpty) {
+        try {
+          final partsA = expiryA.split('/');
+          final partsB = expiryB.split('/');
+          if (partsA.length == 2 && partsB.length == 2) {
+            final dateA = int.parse(
+              '20${partsA[1]}${partsA[0].padLeft(2, '0')}',
+            );
+            final dateB = int.parse(
+              '20${partsB[1]}${partsB[0].padLeft(2, '0')}',
+            );
+            final dateCompare = dateA.compareTo(dateB);
+            if (dateCompare != 0) return dateCompare;
+          }
+        } catch (e) {}
+      } else if (expiryA.isEmpty && expiryB.isNotEmpty) {
+        return 1; // Empty expiry goes last
+      } else if (expiryA.isNotEmpty && expiryB.isEmpty) {
+        return -1;
+      }
+
+      // Finally by sale percentage
+      return a['salePercentage'].compareTo(b['salePercentage']);
+    });
 
     showDialog(
       context: context,
       builder: (ctx) {
-        // Map to track quantities for each price: Map<price, quantity>
-        final Map<double, int> priceQuantities = {};
+        // Cart key format: "productId_volumeId_price_expiry_sale"
+        final Map<String, int> combinationQuantities = {};
 
         // Initialize with existing cart values
-        for (var option in priceOptions) {
-          final price = (option['price'] as num).toDouble();
-          final key = '${productId}_${volumeId}_$price';
-          priceQuantities[price] = _cart[key]?['quantity'] ?? 0;
+        for (var combo in allCombinations) {
+          final key =
+              '${productId}_${volumeId}_${combo['price']}_${combo['expiryDate']}_${combo['salePercentage']}';
+          combinationQuantities[key] = _cart[key]?['quantity'] ?? 0;
         }
 
         return StatefulBuilder(
           builder: (context, setState) {
-            final totalQuantity = priceQuantities.values.fold(
-              0,
-              (sum, qty) => sum + qty,
-            );
-            final totalCost = priceQuantities.entries.fold(
-              0.0,
-              (sum, entry) => sum + (entry.key * entry.value),
-            );
+            int totalQuantity = 0;
+            double totalCost = 0;
+
+            for (var i = 0; i < allCombinations.length; i++) {
+              final combo = allCombinations[i];
+              final key =
+                  '${productId}_${volumeId}_${combo['price']}_${combo['expiryDate']}_${combo['salePercentage']}';
+              final qty = combinationQuantities[key] ?? 0;
+              totalQuantity += qty;
+              totalCost +=
+                  (combo['price'] as double) *
+                  (1 - (combo['userSale'] as double) / 100) *
+                  qty;
+            }
 
             return AlertDialog(
               title: Column(
@@ -113,10 +162,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...priceOptions.map((option) {
-                      final price = (option['price'] as num).toDouble();
-                      final maxQty = option['totalQuantity'];
-                      final currentQty = priceQuantities[price] ?? 0;
+                    ...allCombinations.map((combo) {
+                      final price = combo['price'] as double;
+                      final expiry = combo['expiryDate'] as String;
+                      final userSale = combo['userSale'] as double;
+                      final maxQty = combo['quantity'] as int;
+
+                      final key =
+                          '${productId}_${volumeId}_${price}_${expiry}_${combo['salePercentage']}';
+                      final currentQty = combinationQuantities[key] ?? 0;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -130,12 +184,56 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    l10n.priceCoins(price.toString()),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.blue,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          l10n.priceCoins(price.toString()),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                        if (expiry.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
+                                            child: Text(
+                                              '${l10n.labelExpiry}: $expiry',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ),
+                                        if (userSale > 0)
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                              top: 4,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius:
+                                                  BorderRadius.circular(3),
+                                            ),
+                                            child: Text(
+                                              '${l10n.labelSale} ${userSale.toStringAsFixed(0)}%',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                   Text(
@@ -154,7 +252,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   IconButton(
                                     onPressed: currentQty > 0
                                         ? () => setState(
-                                            () => priceQuantities[price] =
+                                            () => combinationQuantities[key] =
                                                 currentQty - 1,
                                           )
                                         : null,
@@ -200,14 +298,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                             newQty >= 0 &&
                                             newQty <= maxQty) {
                                           setState(
-                                            () =>
-                                                priceQuantities[price] = newQty,
-                                          );
-                                        } else if (newQty != null &&
-                                            newQty > maxQty) {
-                                          setState(
-                                            () =>
-                                                priceQuantities[price] = maxQty,
+                                            () => combinationQuantities[key] =
+                                                newQty,
                                           );
                                         }
                                       },
@@ -216,7 +308,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   IconButton(
                                     onPressed: currentQty < maxQty
                                         ? () => setState(
-                                            () => priceQuantities[price] =
+                                            () => combinationQuantities[key] =
                                                 currentQty + 1,
                                           )
                                         : null,
@@ -229,7 +321,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Text(
                                     l10n.labelSubtotalAmount(
-                                      (price * currentQty).toStringAsFixed(2),
+                                      (price *
+                                              (1 - userSale / 100) *
+                                              currentQty)
+                                          .toStringAsFixed(2),
                                     ),
                                     style: TextStyle(
                                       fontSize: 12,
@@ -286,16 +381,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ElevatedButton(
                   onPressed: () {
                     this.setState(() {
-                      // Update cart for each price option
-                      for (var option in priceOptions) {
-                        final price = (option['price'] as num).toDouble();
-                        final key = '${productId}_${volumeId}_$price';
-                        final qty = priceQuantities[price] ?? 0;
+                      // Update cart for each combination
+                      for (var combo in allCombinations) {
+                        final key =
+                            '${productId}_${volumeId}_${combo['price']}_${combo['expiryDate']}_${combo['salePercentage']}';
+                        final qty = combinationQuantities[key] ?? 0;
 
-                        if (qty == 0) {
-                          _cart.remove(key);
+                        if (qty > 0) {
+                          _cart[key] = {
+                            'item': {
+                              ...item,
+                              'selectedPrice': combo['price'],
+                              'selectedExpiry': combo['expiryDate'],
+                              'selectedSale': combo['salePercentage'],
+                              'selectedOriginalSale':
+                                  combo['originalSalePercentage'],
+                              'selectedUserSale': combo['userSale'],
+                            },
+                            'quantity': qty,
+                          };
                         } else {
-                          _cart[key] = {'item': option, 'quantity': qty};
+                          _cart.remove(key);
                         }
                       }
                     });
@@ -329,8 +435,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   double _calculateTotal() {
     return _cart.values.fold(0.0, (sum, cartItem) {
       final item = cartItem['item'];
-      final quantity = cartItem['quantity'];
-      return sum + (item['price'] * quantity);
+      final quantity = (cartItem['quantity'] as num? ?? 0).toDouble();
+      final price = (item['selectedPrice'] as num? ?? 0.0).toDouble();
+      final sale = (item['selectedSale'] as num? ?? 0.0).toDouble();
+      final unitPrice = price * (1 - (sale / 100));
+      return sum + (unitPrice * quantity);
     });
   }
 
@@ -355,7 +464,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           'product': item['product']['_id'],
           'volume': item['volume']['_id'],
           'quantity': quantity,
-          'targetPrice': item['price'],
+          'targetPrice': item['selectedPrice'],
+          'expiryDate': item['selectedExpiry'],
+          'salePercentage': item['selectedSale'],
+          'originalSalePercentage': item['selectedOriginalSale'],
           'notes': '',
         };
       }).toList();
@@ -371,6 +483,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.msgOrderPlaced)));
+        // First pop closes the modal (cart)
+        Navigator.pop(context);
+        // Second pop closes the screen (CreateOrderScreen)
         Navigator.pop(context);
       } else if (mounted) {
         final error = Provider.of<ShortageProvider>(
@@ -434,14 +549,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             child: ListTile(
                               title: Text(item['product']['name']),
                               subtitle: Text(
-                                '${item['volume']['name']} • ${l10n.priceCoins(item['price'].toString())} × $quantity',
+                                '${item['volume']['name']} • ${l10n.priceCoins(((item['selectedPrice'] ?? 0) * (1 - (item['selectedSale'] ?? 0) / 100)).toStringAsFixed(2))} × $quantity',
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     l10n.priceCoins(
-                                      (item['price'] * quantity)
+                                      ((item['selectedPrice'] ?? 0) *
+                                              (1 -
+                                                  (item['selectedSale'] ?? 0) /
+                                                      100) *
+                                              quantity)
                                           .toStringAsFixed(2),
                                     ),
                                     style: const TextStyle(
@@ -507,7 +626,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   onPressed: _isSubmitting
                       ? null
                       : () {
-                          Navigator.pop(ctx);
                           _submitOrder();
                         },
                   icon: _isSubmitting
@@ -544,40 +662,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     final excesses = Provider.of<ExcessProvider>(context).marketExcesses;
     final l10n = AppLocalizations.of(context)!;
 
-    // Group excesses by product/volume
-    final Map<String, Map<String, dynamic>> groupedItems = {};
-    for (var excess in excesses) {
-      final key = '${excess['product']['_id']}_${excess['volume']['_id']}';
-      final price = (excess['price'] as num).toDouble();
-
-      if (!groupedItems.containsKey(key)) {
-        // Store first occurrence with aggregated data
-        groupedItems[key] = {
-          'product': excess['product'],
-          'volume': excess['volume'],
-          'totalQuantity': excess['totalQuantity'],
-          'minPrice': price,
-          'maxPrice': price,
-          'priceCount': 1,
-        };
-      } else {
-        // Update aggregated data
-        groupedItems[key]!['totalQuantity'] += excess['totalQuantity'];
-        if (price < groupedItems[key]!['minPrice']) {
-          groupedItems[key]!['minPrice'] = price;
-        }
-        if (price > groupedItems[key]!['maxPrice']) {
-          groupedItems[key]!['maxPrice'] = price;
-        }
-        groupedItems[key]!['priceCount']++;
-      }
-    }
-
-    final groupedList = groupedItems.values.toList();
-
+    // Data is already grouped by product/volume from the API
     final filteredItems = _searchQuery.isEmpty
-        ? groupedList
-        : groupedList.where((item) {
+        ? excesses
+        : excesses.where((item) {
             final productName = item['product']['name']
                 .toString()
                 .toLowerCase();
@@ -683,7 +771,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 0.75,
+                          mainAxisExtent: 260, // Fixed height for all cards
                         ),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
@@ -696,9 +784,37 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         (key) => key.startsWith('${productId}_${volumeId}_'),
                       );
 
-                      final minPrice = item['minPrice'];
-                      final maxPrice = item['maxPrice'];
-                      final priceCount = item['priceCount'];
+                      // Calculate aggregates from 'prices' array
+                      final prices = (item['prices'] as List<dynamic>?) ?? [];
+
+                      double minPrice = 0;
+                      double maxPrice = 0;
+                      num totalQuantity = 0;
+                      double maxSale = 0; // Maximum user sale percentage
+
+                      if (prices.isNotEmpty) {
+                        minPrice = double.infinity;
+                        for (var p in prices) {
+                          final priceVal = (p['price'] as num).toDouble();
+                          if (priceVal < minPrice) minPrice = priceVal;
+                          if (priceVal > maxPrice) maxPrice = priceVal;
+
+                          // Sum quantity from items in this price group
+                          final items = (p['items'] as List<dynamic>?) ?? [];
+                          for (var i in items) {
+                            totalQuantity += (i['quantity'] as num? ?? 0);
+
+                            // Track maximum user sale
+                            final userSale = (i['userSale'] as num? ?? 0)
+                                .toDouble();
+                            if (userSale > maxSale) maxSale = userSale;
+                          }
+                        }
+                      } else {
+                        // Fallback if no prices (shouldn't happen)
+                        minPrice = (item['minPrice'] as num? ?? 0).toDouble();
+                        maxPrice = minPrice;
+                      }
 
                       return Card(
                         elevation: 4,
@@ -713,6 +829,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Sale Badge (if applicable)
+                                if (maxSale > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '${l10n.labelSaleUpTo} ${maxSale.toStringAsFixed(0)}%',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                if (maxSale > 0) const SizedBox(height: 4),
+
                                 // Product Icon
                                 Container(
                                   width: double.infinity,
@@ -730,14 +868,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 const SizedBox(height: 8),
 
                                 // Product Name
-                                Text(
-                                  item['product']['name'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                Flexible(
+                                  child: Text(
+                                    item['product']['name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
 
@@ -762,7 +902,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                     const SizedBox(width: 4),
                                     Text(
                                       l10n.labelAvailableUnits(
-                                        item['totalQuantity'],
+                                        totalQuantity.toInt(),
                                       ),
                                       style: TextStyle(
                                         fontSize: 12,
@@ -784,7 +924,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            priceCount > 1
+                                            prices.length > 1
                                                 ? '$minPrice - $maxPrice'
                                                 : '$minPrice',
                                             style: const TextStyle(
@@ -793,10 +933,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                               color: Colors.blue,
                                             ),
                                           ),
-                                          if (priceCount > 1)
+                                          if (prices.length > 1)
                                             Text(
                                               l10n.labelPriceOptions(
-                                                priceCount,
+                                                prices.length,
                                               ),
                                               style: TextStyle(
                                                 fontSize: 10,

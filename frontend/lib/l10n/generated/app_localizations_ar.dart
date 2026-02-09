@@ -797,6 +797,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelShortageRequest => 'طلب نقص';
 
   @override
+  String get labelMarketOrder => 'بند جولة التسوق';
+
+  @override
+  String get labelMarketInsight => 'رؤية السوق التنافسية';
+
+  @override
+  String get labelCompetitorExpiry => 'تاريخ الانتهاء';
+
+  @override
+  String get labelCompetitorSale => 'نسبة الخصم %';
+
+  @override
+  String get labelCompetitorQuantity => 'الكمية';
+
+  @override
+  String get msgNoMarketInsight => 'لا توجد عروض حالية لهذه المعايير.';
+
+  @override
   String get labelType => 'النوع';
 
   @override
@@ -1104,7 +1122,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelRealExcess => 'وفرة حقيقية';
 
   @override
-  String get labelPercentageValue => 'قيمة النسبة (%)';
+  String get labelPercentageValue => 'نسبة الخصم (%)';
+
+  @override
+  String msgSystemCommissionInfo(String percentage) {
+    return 'عمولة النظام الحالية هي $percentage%، استخدام نسبة خصم أعلى قد يسرع من عملية البيع';
+  }
 
   @override
   String get actionUpdateExcess => 'تحديث الوفرة';
@@ -1612,6 +1635,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String labelPortionInTx(int count) {
     return 'الجزء في هذه المعاملة: $count';
   }
+
+  @override
+  String get labelSaleUpTo => 'خصم يصل إلى';
+
+  @override
+  String get labelSale => 'خصم';
+
+  @override
+  String get labelQty => 'كمية';
+
+  @override
+  String get actionBuy => 'شراء';
+
+  @override
+  String get labelStartsFrom => 'يبدأ من';
 
   @override
   String get msgConfirmDeleteExcessAvailable =>

@@ -43,6 +43,13 @@ const transactionSchema = new mongoose.Schema({
             }
         }
     ],
+    // COMMISSION & SALE INFO
+    // For shortage fulfillment: buyerCommissionRatio, sellerBonusRatio (PAUSED values inside transaction)
+    // For regular transaction: commissionRatio (Used as system commission baseline)
+    buyerCommissionRatio: { type: Number }, // Overridden/Paused Buyer Commission
+    sellerBonusRatio: { type: Number },     // Overridden/Paused Seller Bonus
+    commissionRatio: { type: Number },      // Baseline System Commission
+    
     totalQuantity: {
         type: Number,
         required: true,
@@ -61,15 +68,6 @@ const transactionSchema = new mongoose.Schema({
     serial: {
         type: String,
         unique: true
-    },
-    commissionRatio: {
-        type: Number
-    },
-    buyerCommissionRatio: {
-        type: Number
-    },
-    sellerBonusRatio: {
-        type: Number
     },
     shortage_fulfillment: {
         type: Boolean,

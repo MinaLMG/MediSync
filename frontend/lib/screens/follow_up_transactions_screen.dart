@@ -765,8 +765,10 @@ class _FollowUpTransactionsScreenState
   void _showEditRatiosDialog(dynamic tx) {
     final l10n = AppLocalizations.of(context)!;
     // commissionRatio is 0-1 range in backend, so multiply by 100 for percentage
-    final double buyerComm = (tx['buyerCommissionRatio'] ?? 0.0) * 100;
-    final double sellerRew = (tx['sellerBonusRatio'] ?? 0.0) * 100;
+    final double buyerComm =
+        ((tx['buyerCommissionRatio'] ?? 0) as num).toDouble() * 100;
+    final double sellerRew =
+        ((tx['sellerBonusRatio'] ?? 0) as num).toDouble() * 100;
 
     final buyerCommController = TextEditingController(
       text: buyerComm.toStringAsFixed(1),

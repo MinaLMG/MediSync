@@ -327,6 +327,12 @@
   "msgShortageRequirementCompleted": "هذا الطلب مكتمل.",
   "labelExcessOffer": "عرض وفرة",
   "labelShortageRequest": "طلب نقص",
+  "labelMarketOrder": "بند جولة التسوق",
+  "labelMarketInsight": "رؤية السوق التنافسية",
+  "labelCompetitorExpiry": "تاريخ الانتهاء",
+  "labelCompetitorSale": "نسبة الخصم %",
+  "labelCompetitorQuantity": "الكمية",
+  "msgNoMarketInsight": "لا توجد عروض حالية لهذه المعايير.",
   "labelType": "النوع",
   "labelTotalQuantity": "الكمية الكلية",
   "labelRemaining": "المتبقي",
@@ -532,7 +538,15 @@
   "hintSelectExpiryDate": "اختر تاريخ الانتهاء",
   "labelRequestType": "نوع الطلب",
   "labelRealExcess": "وفرة حقيقية",
-  "labelPercentageValue": "قيمة النسبة (%)",
+  "labelPercentageValue": "نسبة الخصم (%)",
+  "msgSystemCommissionInfo": "عمولة النظام الحالية هي {percentage}%، استخدام نسبة خصم أعلى قد يسرع من عملية البيع",
+  "@msgSystemCommissionInfo": {
+    "placeholders": {
+      "percentage": {
+        "type": "String"
+      }
+    }
+  },
   "actionUpdateExcess": "تحديث الوفرة",
   "actionSubmitExcess": "إرسال الوفرة",
   "msgErrorLoadingVolumes": "خطأ في تحميل الأحجام",
@@ -798,6 +812,11 @@
   "labelTotalDistribution": "إجمالي التوزيع:",
   "msgTotalQtyCannotBeZero": "إجمالي الكمية لا يمكن أن يكون صفراً",
   "msgTransactionUpdated": "تم تحديث المعاملة بنجاح",
+  "labelSaleUpTo": "خصم يصل إلى",
+  "labelSale": "خصم",
+  "labelQty": "كمية",
+  "actionBuy": "شراء",
+  "labelStartsFrom": "يبدأ من",
   "msgExecuting": "جاري التنفيذ...",
   "labelPortionInTx": "الجزء في هذه المعاملة: {count}",
   "@labelPortionInTx": {

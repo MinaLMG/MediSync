@@ -150,9 +150,14 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
               itemCount: provider.history.length,
               itemBuilder: (context, index) {
                 final item = provider.history[index];
-                final isExcess = item['type'] == 'excess';
-                final date = DateTime.parse(item['createdAt']);
-                final status = item['displayStatus'];
+                final String type = item['type']?.toString() ?? 'excess';
+                final isExcess = type == 'excess';
+                final String createdAtStr =
+                    item['createdAt']?.toString() ??
+                    DateTime.now().toIso8601String();
+                final date = DateTime.parse(createdAtStr);
+                final String status =
+                    item['displayStatus']?.toString() ?? 'pending';
 
                 return Card(
                   margin: const EdgeInsets.symmetric(
@@ -178,12 +183,22 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                             decoration: BoxDecoration(
                               color: isExcess
                                   ? Colors.green[50]
-                                  : Colors.red[50],
+                                  : (item['itemCategory'] == 'market_order'
+                                        ? Colors.blue[50]
+                                        : Colors.red[50]),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isExcess ? Icons.add_circle : Icons.remove_circle,
-                              color: isExcess ? Colors.green : Colors.red,
+                              isExcess
+                                  ? Icons.add_circle
+                                  : (item['itemCategory'] == 'market_order'
+                                        ? Icons.shopping_cart
+                                        : Icons.remove_circle),
+                              color: isExcess
+                                  ? Colors.green
+                                  : (item['itemCategory'] == 'market_order'
+                                        ? Colors.blue[700]
+                                        : Colors.red),
                               size: 24,
                             ),
                           ),
@@ -205,11 +220,16 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                                 Text(
                                   isExcess
                                       ? l10n.labelExcessOffer
-                                      : l10n.labelShortageRequest,
+                                      : (item['itemCategory'] == 'market_order'
+                                            ? l10n.labelMarketOrder
+                                            : l10n.labelShortageRequest),
                                   style: TextStyle(
                                     color: isExcess
                                         ? Colors.green[700]
-                                        : Colors.red[700],
+                                        : (item['itemCategory'] ==
+                                                  'market_order'
+                                              ? Colors.blue[800]
+                                              : Colors.red[700]),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -280,16 +300,37 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
         title: Column(
           children: [
             Icon(
-              isExcess ? Icons.add_circle : Icons.remove_circle,
-              color: isExcess ? Colors.green : Colors.red,
+              isExcess
+                  ? Icons.add_circle
+                  : (item['itemCategory'] == 'market_order'
+                        ? Icons.shopping_cart
+                        : Icons.remove_circle),
+              color: isExcess
+                  ? Colors.green
+                  : (item['itemCategory'] == 'market_order'
+                        ? Colors.blue[700]
+                        : Colors.red),
               size: 40,
             ),
             const SizedBox(height: 8),
             Text(
-              item['product']['name'],
+              item['product']?['name'] ?? 'Unknown Product',
               textAlign: TextAlign.center,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
+            if (!isExcess)
+              Text(
+                item['itemCategory'] == 'market_order'
+                    ? l10n.labelMarketOrder
+                    : l10n.labelShortageRequest,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: item['itemCategory'] == 'market_order'
+                      ? Colors.blue[800]
+                      : Colors.red[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
           ],
         ),
         content: SingleChildScrollView(
@@ -301,10 +342,12 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                 l10n.labelType,
                 isExcess ? l10n.labelExcess : l10n.labelShortage,
               ),
-              _detailRow(l10n.labelVolume, item['volume']['name']),
+              _detailRow(l10n.labelVolume, item['volume']?['name'] ?? 'N/A'),
               _detailRow(
                 l10n.labelTotalQuantity,
-                (isExcess ? item['originalQuantity'] : item['quantity'])
+                (isExcess
+                        ? (item['originalQuantity'] ?? 0)
+                        : (item['quantity'] ?? 0))
                     .toString(),
               ),
               _detailRow(
@@ -313,34 +356,42 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
                 color: Colors.blue[800],
                 isBold: true,
               ),
-              if (isExcess) ...[
-                _detailRow(l10n.labelPrice, '${item['selectedPrice']} coins'),
-                _detailRow(l10n.labelExpiry, item['expiryDate'] ?? 'N/A'),
-                if (item['salePercentage'] != null) ...[
-                  const Divider(),
-                  Text(
-                    l10n.labelExcessOffer,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  _detailRow(l10n.labelDiscount, '${item['salePercentage']}%'),
+              if (item['expiryDate'] != null)
+                _detailRow(l10n.labelExpiry, item['expiryDate']),
+              if (isExcess)
+                _detailRow(
+                  l10n.labelPrice,
+                  '${item['selectedPrice'] ?? 0} coins',
+                )
+              else if (item['targetPrice'] != null)
+                _detailRow(l10n.labelPrice, '${item['targetPrice']} coins'),
+              if (item['salePercentage'] != null &&
+                  item['salePercentage'] != 0) ...[
+                const Divider(),
+                _detailRow(l10n.labelDiscount, '${item['salePercentage']}%'),
+                if (item['saleAmount'] != null)
                   _detailRow(
                     l10n.labelDiscountAmount,
                     '${item['saleAmount']} coins',
                   ),
-                  _detailRow(
-                    l10n.labelFinalPrice,
-                    '${(item['selectedPrice'] - (item['saleAmount'] ?? 0)).toStringAsFixed(2)} coins',
-                    color: Colors.green[700],
-                    isBold: true,
-                  ),
-                ],
+                _detailRow(
+                  l10n.labelFinalPrice,
+                  '${((item['selectedPrice'] ?? item['targetPrice'] ?? 0) - (item['saleAmount'] ?? 0)).toStringAsFixed(2)} coins',
+                  color: Colors.green[700],
+                  isBold: true,
+                ),
               ],
 
               const Divider(),
               _detailRow(
                 'Status',
-                _getLocalizedStatus(context, item['displayStatus']),
-                color: _getStatusColor(item['displayStatus']),
+                _getLocalizedStatus(
+                  context,
+                  item['displayStatus']?.toString() ?? 'pending',
+                ),
+                color: _getStatusColor(
+                  item['displayStatus']?.toString() ?? 'pending',
+                ),
                 isBold: true,
               ),
 
@@ -388,9 +439,12 @@ class _RequestsHistoryScreenState extends State<RequestsHistoryScreen> {
               const SizedBox(height: 8),
               Text(
                 l10n.labelCreated(
-                  DateFormat(
-                    'yyyy-MM-dd HH:mm',
-                  ).format(DateTime.parse(item['createdAt'])),
+                  DateFormat('yyyy-MM-dd HH:mm').format(
+                    DateTime.parse(
+                      item['createdAt']?.toString() ??
+                          DateTime.now().toIso8601String(),
+                    ),
+                  ),
                 ),
                 style: const TextStyle(fontSize: 10, color: Colors.grey),
               ),

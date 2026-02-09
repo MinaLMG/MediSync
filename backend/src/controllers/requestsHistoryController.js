@@ -10,12 +10,18 @@ exports.getMyRequestsHistory = async (req, res) => {
             .populate('volume', 'name')
             .lean(); // Convert to plain JS objects
 
-        // Add 'type' field to distinguish
-        const formattedExcesses = excesses.map(item => ({
-            ...item,
-            type: 'excess',
-            displayStatus: item.status
-        }));
+        // Add 'type' field and calculate sale info
+        const formattedExcesses = excesses.map(item => {
+            const salePercent = item.salePercentage || 0;
+            const price = item.selectedPrice || 0;
+            const saleAmount = price * (salePercent / 100);
+            return {
+                ...item,
+                type: 'excess',
+                displayStatus: item.status,
+                saleAmount
+            };
+        });
 
         // 2. Fetch Requesting User's Shortages
         const shortages = await StockShortage.find({ pharmacy: req.user.pharmacy })
@@ -23,11 +29,18 @@ exports.getMyRequestsHistory = async (req, res) => {
             .populate('volume', 'name')
             .lean();
 
-        const formattedShortages = shortages.map(item => ({
-            ...item,
-            type: 'shortage',
-            displayStatus: item.status
-        }));
+        const formattedShortages = shortages.map(item => {
+            const salePercent = item.salePercentage || 0;
+            const price = item.targetPrice || 0;
+            const saleAmount = price * (salePercent / 100);
+            return {
+                ...item,
+                type: 'shortage',
+                itemCategory: item.type, // Preserve original type (request/market_order)
+                displayStatus: item.status,
+                saleAmount
+            };
+        });
 
         // 3. Combine and Sort
         const allRequests = [...formattedExcesses, ...formattedShortages];

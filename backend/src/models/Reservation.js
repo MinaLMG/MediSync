@@ -20,11 +20,19 @@ const reservationSchema = new mongoose.Schema({
         required: true,
         min: 1
     },
+    expiryDate: {
+        type: String, // MM/YY
+        required: true
+    },
+    salePercentage: {
+        type: Number,
+        default: 0
+    },
 }, {
     timestamps: true
 });
 
 // Create a compound index for efficient querying
-reservationSchema.index({ product: 1, volume: 1, price: 1 });
+reservationSchema.index({ product: 1, volume: 1, price: 1, expiryDate: 1, salePercentage: 1 });
 
 module.exports = mongoose.model('Reservation', reservationSchema);

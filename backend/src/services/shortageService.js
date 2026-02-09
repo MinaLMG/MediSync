@@ -102,7 +102,10 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
                 type: 'market_order',
                 status: 'active',
                 order: order._id,
-                notes: item.notes
+                notes: item.notes,
+                originalSalePercentage: item.originalSalePercentage || 0,
+                salePercentage: item.salePercentage || 0,
+                expiryDate: item.expiryDate // Store selected expiry
             });
             await shortage.save({ session });
             createdShortages.push(shortage._id);
@@ -118,11 +121,16 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
         for (const item of items) {
             if (item.targetPrice) {
                 // Create or update reservation for this product/volume/price combination
+                // MUST match specific batch attributes (Original Sale)
+                const saleToReserve = item.originalSalePercentage || 0; 
+                
                 await Reservation.findOneAndUpdate(
                     {
                         product: item.product,
                         volume: item.volume,
-                        price: item.targetPrice
+                        price: item.targetPrice,
+                        expiryDate: item.expiryDate || "ANY",
+                        salePercentage: saleToReserve
                     },
                     {
                         $inc: { quantity: item.quantity }
@@ -188,7 +196,9 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) 
                     {
                         product: shortage.product,
                         volume: shortage.volume,
-                        price: shortage.targetPrice
+                        price: shortage.targetPrice,
+                        expiryDate: shortage.expiryDate || "ANY",
+                        salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
                     },
                     {
                         $inc: { quantity: quantityDiff }
@@ -301,7 +311,9 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
             {
                 product: shortage.product,
                 volume: shortage.volume,
-                price: shortage.targetPrice
+                price: shortage.targetPrice,
+                expiryDate: shortage.expiryDate || "ANY",
+                salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
             },
             {
                 $inc: { quantity: -shortage.remainingQuantity }
@@ -369,7 +381,9 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
                 {
                     product: shortage.product,
                     volume: shortage.volume,
-                    price: shortage.targetPrice
+                    price: shortage.targetPrice,
+                    expiryDate: shortage.expiryDate || "ANY",
+                    salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
                 },
                 {
                     $inc: { quantity: -shortage.remainingQuantity }

@@ -33,15 +33,41 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     if (existingShortage) { // Only check for regular user adds
         throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
     }
-
     const isShortageFulfillment = shortage_fulfillment === true;
-    let finalSalePercentage = 0;
-    let finalSaleAmount = 0;
+
+    const settings = await Settings.getSettings();
+    const systemMinComm = settings.minimumCommission;
 
     if (!isShortageFulfillment) {
-        finalSalePercentage = salePercentage || 0;
-        finalSaleAmount = (selectedPrice * finalSalePercentage) / 100;
+        // If regular excess, unsure salePercentage defaults to system min (10%) if not provided
+        // or if provided as 0, it means 0 user discount, but we still take 10% commission?
+        // User said: "If the sale is less than 30%, we still take our minimum commission of 10%".
+        // "If the sale is 10%, the user sees no sale." -> Means totalSale=10, Commission=10, UserSale=0.
+        // So `salePercentage` stored in DB should be the TOTAL cut (System + User).
+        // If user enters 0, we effectively take 10%.
+        // But if user enters 0, is it "0 sale to end user" or "0 cut"? 
+        // "note for the sale that notified the users that the mininmum commision sale % is x"
+        // So the input `salePercentage` IS the total sale.
+        // If not provided, we should default it to `systemMinComm` (e.g. 10).
+        if (salePercentage === undefined || salePercentage === null) {
+            finalSalePercentage = systemMinComm;
+        } else {
+             // Ensure it's at least min comm?
+             // "If the sale is 10%, the user sees no sale." -> Implies we accept 10%.
+             // What if they enter 5%? Then we take 5%? Or 10%?
+             // "we still take our minimum commission of 10%".
+             // So if they enter 5%, we must take 10%. 
+             // We should probably force it to be at least systemMinComm.
+             finalSalePercentage = Math.max(salePercentage, systemMinComm);
+        }
+    } else {
+        // Shortage: we use provided or 0? 
+        // Usually shortage has its own logic (buyer pays commission). 
+        // We'll leave it as is or default to 0 if null.
+        finalSalePercentage = 0; 
     }
+
+
 
     // Check if Selected Price is New
     const hasVolume = await HasVolume.findOne({ product, volume }).session(session);
@@ -59,8 +85,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         expiryDate,
         selectedPrice,
         salePercentage: finalSalePercentage,
-        saleAmount: finalSaleAmount,
-        shortage_fulfillment: isShortageFulfillment,
+         shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
         status: 'pending' 
     };

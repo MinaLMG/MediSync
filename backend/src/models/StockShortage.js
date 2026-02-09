@@ -38,11 +38,7 @@ const stockShortageSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 0
-    },
-    targetPrice: {
-        type: Number,
-        min: 0
-    },
+    },  
     status: {
         type: String,
         enum: ['active', 'fulfilled', 'partially_fulfilled', 'cancelled'],
@@ -53,10 +49,29 @@ const stockShortageSchema = new mongoose.Schema({
         enum: ['request', 'market_order'],
         default: 'request'
     },
-    notes: {
+    
+    // Order Data (Optional)
+    targetPrice: {
+        type: Number,
+        min: 0
+    },
+    originalSalePercentage: {
+        type: Number,
+        min: 0,
+        max: 100
+    },
+    salePercentage: { // Agreed Sale
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
+    expiryDate: {
         type: String,
-        trim: true
-    }
+        required: false
+    },
+
+  
 }, {
     timestamps: true
 });

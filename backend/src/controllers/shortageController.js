@@ -111,7 +111,10 @@ exports.getOrders = async (req, res) => {
         const { Order } = require('../models');
         const orders = await Order.find(query).populate('pharmacy', 'name address phone').sort({ createdAt: -1 });
         const ordersWithItems = await Promise.all(orders.map(async (order) => {
-            const items = await StockShortage.find({ order: order._id }).populate('product', 'name').populate('volume', 'name');
+            const items = await StockShortage.find({ order: order._id })
+                .populate('product', 'name')
+                .populate('volume', 'name')
+                .select('+expiryDate +originalSalePercentage +salePercentage +targetPrice'); // Ensure all fields are there
             return { ...order.toObject(), items };
         }));
         res.status(200).json({ success: true, count: ordersWithItems.length, data: ordersWithItems });

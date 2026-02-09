@@ -10,6 +10,7 @@ class ExcessProvider with ChangeNotifier {
   List<dynamic> _fulfilledExcesses = [];
   List<dynamic> _marketExcesses = [];
   List<dynamic> _hubs = [];
+  List<dynamic> _marketInsight = [];
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -18,6 +19,7 @@ class ExcessProvider with ChangeNotifier {
   List<dynamic> get fulfilledExcesses => _fulfilledExcesses;
   List<dynamic> get marketExcesses => _marketExcesses;
   List<dynamic> get hubs => _hubs;
+  List<dynamic> get marketInsight => _marketInsight;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -302,6 +304,49 @@ class ExcessProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  // Fetch Market Insight
+  Future<void> fetchMarketInsight(
+    String productId,
+    String volumeId,
+    double price,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _marketInsight = [];
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(Constants.tokenKey);
+
+      final response = await http.get(
+        Uri.parse(
+          '${Constants.baseUrl}/excess/market-insight?product=$productId&volume=$volumeId&price=$price',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _marketInsight = data['data'];
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to fetch market insight';
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

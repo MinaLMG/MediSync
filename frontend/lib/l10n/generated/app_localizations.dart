@@ -1604,6 +1604,42 @@ abstract class AppLocalizations {
   /// **'Shortage Request'**
   String get labelShortageRequest;
 
+  /// No description provided for @labelMarketOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping Tour Item'**
+  String get labelMarketOrder;
+
+  /// No description provided for @labelMarketInsight.
+  ///
+  /// In en, this message translates to:
+  /// **'Competitive Market Insight'**
+  String get labelMarketInsight;
+
+  /// No description provided for @labelCompetitorExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry'**
+  String get labelCompetitorExpiry;
+
+  /// No description provided for @labelCompetitorSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale %'**
+  String get labelCompetitorSale;
+
+  /// No description provided for @labelCompetitorQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get labelCompetitorQuantity;
+
+  /// No description provided for @msgNoMarketInsight.
+  ///
+  /// In en, this message translates to:
+  /// **'No existing offers found for those criteria.'**
+  String get msgNoMarketInsight;
+
   /// No description provided for @labelType.
   ///
   /// In en, this message translates to:
@@ -2159,8 +2195,14 @@ abstract class AppLocalizations {
   /// No description provided for @labelPercentageValue.
   ///
   /// In en, this message translates to:
-  /// **'Percentage Value (%)'**
+  /// **'Sale Percentage (%)'**
   String get labelPercentageValue;
+
+  /// No description provided for @msgSystemCommissionInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'The current system commission is {percentage}%, using higher sales can accelerate your transactions'**
+  String msgSystemCommissionInfo(String percentage);
 
   /// No description provided for @actionUpdateExcess.
   ///
@@ -3091,6 +3133,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Portion in this transaction: {count}'**
   String labelPortionInTx(int count);
+
+  /// No description provided for @labelSaleUpTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale up to'**
+  String get labelSaleUpTo;
+
+  /// No description provided for @labelSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale'**
+  String get labelSale;
+
+  /// No description provided for @labelQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get labelQty;
+
+  /// No description provided for @actionBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy'**
+  String get actionBuy;
+
+  /// No description provided for @labelStartsFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts from'**
+  String get labelStartsFrom;
 
   /// No description provided for @msgConfirmDeleteExcessAvailable.
   ///

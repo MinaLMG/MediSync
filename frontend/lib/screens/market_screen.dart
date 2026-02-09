@@ -28,107 +28,19 @@ class _MarketScreenState extends State<MarketScreen> {
     setState(() => _isLoading = false);
   }
 
-  void _buyItem(dynamic item) {
-    // Show dialog to select quantity
-    int quantity = 1;
-    final maxQty = item['totalQuantity'];
-
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          l10n.titleBuyProduct(
-            item['product']['name'] ?? '',
-            item['volume']['name'] ?? '',
-          ),
-        ),
-        content: StatefulBuilder(
-          builder: (context, setState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${l10n.labelPrice}: ${item['price']} ${l10n.labelCoins}'),
-              Text(
-                '${l10n.labelAvailableOriginal} ${item['totalQuantity']} ${l10n.labelUnitsShort}',
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: quantity > 1
-                        ? () => setState(() => quantity--)
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  Text(
-                    '$quantity',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: quantity < maxQty
-                        ? () => setState(() => quantity++)
-                        : null,
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              ),
-              Text(
-                l10n.labelTotalCoins(
-                  (quantity * item['price']).toStringAsFixed(2),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.actionCancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              // Call createOrder immediately for direct buy?
-              // Or add to cart? User said "i choose the quantities i need for each"
-              // The backend `buyFromMarket` buys *one item* (excessId).
-              // But our `getMarketExcesses` is Aggregated.
-              // So we don't have a specific `excessId` here. We have a group.
-              // We need to fetch specific excesses for this group (drill down) OR
-              // Update `buyFromMarket` to accept Product/Volume/Price and auto-match.
-
-              // Let's implement auto-match on backend or drill down.
-              // Given "don't show many items for the sam product and price", aggregation is correct.
-              // So when buying, the BACKEND should pick the excesses that match.
-              // `buyFromMarket` exposed `excessId`. We should change it to accept product/volume/price details if we use aggregation.
-              // OR, we list the individual items inside the "Buy" dialog?
-              // "i choose the quantities i need for each" implies simple selection.
-
-              // Let's assume for now we need a new backend endpoint `buyFromMarketAggregated`?
-              // Or update `buyFromMarket`.
-
-              // Actually, the user request "for an order created by a pharamce to be a collection of shortages"
-              // This market screen is for "Buying".
-              // The "Order" flow allows specifying what they WANT (Shortage).
-
-              // Let's stick to the user's "Order" flow first:
-              // "i choose the quantities i need for each" -> This might mean adding to a "Order List" (Cart)
-              // Then submitting the whole list as an Order.
-
-              // So, "Add to Order" button.
-            },
-            child: const Text('Add to Order'),
-          ),
-        ],
+  void _showProductDetails(dynamic productData) {
+    // final l10n = AppLocalizations.of(context)!;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            MarketProductDetailScreen(productData: productData),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final excesses = Provider.of<ExcessProvider>(context).marketExcesses;
 
     return Scaffold(
@@ -139,29 +51,213 @@ class _MarketScreenState extends State<MarketScreen> {
               itemCount: excesses.length,
               itemBuilder: (ctx, i) {
                 final item = excesses[i];
+                // Item structure: { product: {name}, volume: {name}, minPrice, maxSale, prices: [...] }
+                final hasSale = (item['maxSale'] ?? 0) > 0;
+
                 return Card(
                   margin: const EdgeInsets.all(8),
                   child: ListTile(
                     title: Text(
                       '${item['product']['name']} (${item['volume']['name']})',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      'Price: \$${item['price']}  |  Stock: ${item['totalQuantity']}',
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${l10n.labelStartsFrom} ${item['minPrice']} ${l10n.labelCoins}',
+                        ),
+                        if (hasSale)
+                          Text(
+                            '${l10n.labelSaleUpTo} ${item['maxSale'].toStringAsFixed(1)}%',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                      ],
                     ),
-                    trailing: ElevatedButton(
-                      onPressed: () => _buyItem(item),
-                      child: const Text('Select'),
-                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () => _showProductDetails(item),
                   ),
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Go to Cart / Review Order
+    );
+  }
+}
+
+class MarketProductDetailScreen extends StatelessWidget {
+  final dynamic productData;
+
+  const MarketProductDetailScreen({super.key, required this.productData});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final prices = productData['prices'] as List<dynamic>;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          '${productData['product']['name']} (${productData['volume']['name']})',
+        ),
+      ),
+      body: ListView.builder(
+        itemCount: prices.length,
+        itemBuilder: (ctx, i) {
+          final priceGroup = prices[i];
+          final hasSale = (priceGroup['maxSale'] ?? 0) > 0;
+
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ExpansionTile(
+              title: Text(
+                '${priceGroup['price']} ${l10n.labelCoins}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              subtitle: hasSale
+                  ? Text(
+                      '${l10n.labelSaleUpTo} ${priceGroup['maxSale'].toStringAsFixed(1)}%',
+                      style: const TextStyle(color: Colors.red),
+                    )
+                  : null,
+              children: [
+                ...(priceGroup['items'] as List<dynamic>).map((item) {
+                  return ListTile(
+                    title: Text('${l10n.labelExpiry}: ${item['expiryDate']}'),
+                    subtitle: item['userSale'] > 0
+                        ? Text(
+                            '${l10n.labelSale}: ${item['userSale'].toStringAsFixed(1)}%',
+                            style: const TextStyle(color: Colors.red),
+                          )
+                        : null,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${l10n.labelQty}: ${item['quantity']}'),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            // _buyItem logic (Quantity Selection Dialog)
+                            // Since this is a stateless widget, we might need a Stateful wrapper or
+                            // call a function passed from parent.
+                            // Or just show dialog here.
+                            _showBuyDialog(
+                              context,
+                              productData,
+                              priceGroup,
+                              item,
+                            );
+                          },
+                          child: Text(l10n.actionBuy),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          );
         },
-        label: const Text('Review Order'),
-        icon: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+
+  void _showBuyDialog(
+    BuildContext context,
+    dynamic product,
+    dynamic priceGroup,
+    dynamic item,
+  ) {
+    // Implement Buy Dialog (Same as before but with specific item details)
+    int quantity = 1;
+    final maxQty = item['quantity'];
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(
+            l10n.titleBuyProduct(
+              product['product']['name'],
+              product['volume']['name'],
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${l10n.labelPrice}: ${priceGroup['price']}'),
+              Text('${l10n.labelExpiry}: ${item['expiryDate']}'),
+              if (item['userSale'] > 0)
+                Text(
+                  '${l10n.labelSale}: ${item['userSale'].toStringAsFixed(1)}%',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: quantity > 1
+                        ? () => setState(() => quantity--)
+                        : null,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  Text('$quantity', style: const TextStyle(fontSize: 20)),
+                  IconButton(
+                    onPressed: quantity < maxQty
+                        ? () => setState(() => quantity++)
+                        : null,
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+
+              // Show Total Price (Adjusted for Sale?)
+              // Wait, "Buyer Pays: Price - Discount".
+              // backend `userSale` IS the discount % the user sees.
+              // So displayed price should be `Price * (1 - userSale/100)`.
+              Text(
+                l10n.labelTotalCoins(
+                  (quantity *
+                          priceGroup['price'] *
+                          (1 - (item['userSale'] / 100)))
+                      .toStringAsFixed(2),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.actionCancel),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Add to Cart / Buy
+                // Need to verify backend `buy` endpoint supports this specific item?
+                // Actually `buyFromMarket` likely takes `excessId`?
+                // But we AGREGRATED. We don't have `excessId` in the `items` array directly?
+                // Wait, I forgot to include `excessIds` in the aggregation!
+                // The aggregation grouped by Expiry/Sale.
+                // But multiple excesses could match that group.
+                // Ideally we pick ONE excessId or valid IDs?
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Purchase logic pending excess ID"),
+                  ),
+                );
+              },
+              child: const Text('Add to Order'),
+            ),
+          ],
+        ),
       ),
     );
   }

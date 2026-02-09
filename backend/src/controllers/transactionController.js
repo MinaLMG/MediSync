@@ -104,6 +104,15 @@ exports.getMatchesForProduct = async (req, res) => {
             // Convert to number for proper comparison
             excessQuery.selectedPrice = parseFloat(req.query.price);
         }
+        
+        if (req.query.expiryDate) {
+            excessQuery.expiryDate = req.query.expiryDate;
+        }
+
+        if (req.query.salePercentage) {
+            excessQuery.salePercentage = parseFloat(req.query.salePercentage);
+        }
+
         const excesses = await StockExcess.find(excessQuery)
             .populate('pharmacy', 'name balance address phone')
             .populate('volume', 'name')
@@ -167,24 +176,33 @@ exports.buyFromMarket = async (req, res) => {
         }
 
         // 1. Create a "Market Order" Shortage
+        const settings = await Settings.getSettings();
+
+        const systemMinCommPercent = settings.minimumCommission;
+        const originalSale = excess.salePercentage || 0;
+        const commissionPercent = Math.max(originalSale, systemMinCommPercent);
+        const salePercent = Math.max(0, originalSale - systemMinCommPercent);
+        
         const shortage = new StockShortage({
             pharmacy: req.user.pharmacy,
             product: excess.product._id,
             volume: excess.volume,
             quantity: quantity,
-            remainingQuantity: quantity, // Will be reduced immediately by transaction creation logic below
+            remainingQuantity: quantity, 
             status: 'active',
             type: 'market_order',
-            notes: `Market purchase from ${excess.pharmacy.name}`
+            notes: `Market purchase from ${excess.pharmacy.name}`,
+            originalSalePercentage: originalSale,
+            salePercentage: salePercent,
+            expiryDate: excess.expiryDate
         });
         await shortage.save({ session });
 
         // 2. Prepare Transaction Data
-        // Reuse logic from createTransaction but for single source
-        const settings = await Settings.getSettings();
         
         // Deduct from excess
         excess.remainingQuantity -= quantity;
+        const { syncExcessStatus } = require('../services/excessService');
         await syncExcessStatus(excess, session);
         await excess.save({ session });
 
@@ -192,7 +210,8 @@ exports.buyFromMarket = async (req, res) => {
         
         // Deduct from shortage immediately as it is "filled" by this order
         shortage.remainingQuantity -= quantity;
-        await syncShortageStatus(shortage);
+        const { syncShortageStatus } = require('../services/shortageService');
+        await syncShortageStatus(shortage, session);
         await shortage.save({ session });
 
         // Generate Serial atomically
@@ -505,21 +524,21 @@ exports.revertTransaction = async (req, res) => {
 
         // 2. Restore Reservations
         if (shortage && shortage.order) {
+            const saleToLookup = shortage.originalSalePercentage || shortage.salePercentage || 0;
             for (const source of transaction.stockExcessSources) {
-                const excess = source.stockExcess; // Now populated with product and volume
-                if (excess) {
-                    await Reservation.findOneAndUpdate(
-                        {
-                            product: excess.product._id || excess.product,
-                            volume: excess.volume._id || excess.volume,
-                            price: excess.selectedPrice
-                        },
-                        {
-                            $inc: { quantity: source.quantity }
-                        },
-                        { upsert: true, session }
-                    );
-                }
+                await Reservation.findOneAndUpdate(
+                    {
+                        product: shortage.product,
+                        volume: shortage.volume,
+                        price: shortage.targetPrice,
+                        expiryDate: shortage.expiryDate || "ANY",
+                        salePercentage: saleToLookup
+                    },
+                    {
+                        $inc: { quantity: source.quantity }
+                    },
+                    { upsert: true, session }
+                );
             }
         }
 

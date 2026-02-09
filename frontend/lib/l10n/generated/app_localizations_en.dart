@@ -802,6 +802,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelShortageRequest => 'Shortage Request';
 
   @override
+  String get labelMarketOrder => 'Shopping Tour Item';
+
+  @override
+  String get labelMarketInsight => 'Competitive Market Insight';
+
+  @override
+  String get labelCompetitorExpiry => 'Expiry';
+
+  @override
+  String get labelCompetitorSale => 'Sale %';
+
+  @override
+  String get labelCompetitorQuantity => 'Quantity';
+
+  @override
+  String get msgNoMarketInsight =>
+      'No existing offers found for those criteria.';
+
+  @override
   String get labelType => 'Type';
 
   @override
@@ -1109,7 +1128,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelRealExcess => 'Real Excess';
 
   @override
-  String get labelPercentageValue => 'Percentage Value (%)';
+  String get labelPercentageValue => 'Sale Percentage (%)';
+
+  @override
+  String msgSystemCommissionInfo(String percentage) {
+    return 'The current system commission is $percentage%, using higher sales can accelerate your transactions';
+  }
 
   @override
   String get actionUpdateExcess => 'Update Excess';
@@ -1619,6 +1643,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String labelPortionInTx(int count) {
     return 'Portion in this transaction: $count';
   }
+
+  @override
+  String get labelSaleUpTo => 'Sale up to';
+
+  @override
+  String get labelSale => 'Sale';
+
+  @override
+  String get labelQty => 'Qty';
+
+  @override
+  String get actionBuy => 'Buy';
+
+  @override
+  String get labelStartsFrom => 'Starts from';
 
   @override
   String get msgConfirmDeleteExcessAvailable =>

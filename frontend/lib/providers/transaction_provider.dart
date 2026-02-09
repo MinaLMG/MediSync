@@ -54,6 +54,8 @@ class TransactionProvider with ChangeNotifier {
   Future<Map<String, dynamic>> fetchMatchesForProduct(
     String productId, {
     double? price,
+    String? expiryDate,
+    double? salePercentage,
     bool excludeShortageFulfillment = false,
   }) async {
     isLoading = true;
@@ -65,6 +67,12 @@ class TransactionProvider with ChangeNotifier {
       List<String> queryParams = [];
       if (price != null) {
         queryParams.add('price=$price');
+      }
+      if (expiryDate != null && expiryDate != 'ANY') {
+        queryParams.add('expiryDate=$expiryDate');
+      }
+      if (salePercentage != null) {
+        queryParams.add('salePercentage=$salePercentage');
       }
       if (excludeShortageFulfillment) {
         queryParams.add('excludeShortageFulfillment=true');

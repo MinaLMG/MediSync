@@ -153,6 +153,24 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
       (e) => e['shortage_fulfillment'] == true,
     );
 
+    if (isAnySF) {
+      final buyerComm = double.tryParse(_buyerCommController.text) ?? 0.0;
+      final sellerBonus = double.tryParse(_sellerRewardController.text) ?? 0.0;
+
+      if (buyerComm < sellerBonus) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Buyer Commission must be greater than or equal to Seller Bonus (Reward)',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     final success =
         await Provider.of<TransactionProvider>(
           context,

@@ -72,6 +72,19 @@ if (excess.shortage_fulfillment) {
 
     // 5. Create transaction
     const settings = await Settings.getSettings();
+    
+    // CASE 1 (Fulfillment): Ratios can be paused (overridden) at creation
+    const finalBuyerCommission = buyerCommissionRatio !== undefined 
+        ? buyerCommissionRatio / 100 
+        : settings.shortageCommission / 100;
+
+    const finalSellerBonus = sellerBonusRatio !== undefined 
+        ? sellerBonusRatio / 100 
+        : settings.shortageSellerReward / 100;
+
+    // CASE 2 (Regular): System commission is FIXED and never paused
+    const baselineSystemCommission = settings.minimumCommission / 100;
+
     const transaction = new Transaction({
         serial,
         stockShortage: {
@@ -83,9 +96,9 @@ if (excess.shortage_fulfillment) {
         totalAmount,
         status: 'pending',
         shortage_fulfillment: shortage_fulfillment,
-        commissionRatio: commissionRatio !== undefined ? commissionRatio / 100 : settings.minimumCommission / 100,
-        buyerCommissionRatio: buyerCommissionRatio !== undefined ? buyerCommissionRatio / 100 : settings.shortageCommission / 100,
-        sellerBonusRatio: sellerBonusRatio !== undefined ? sellerBonusRatio / 100 : settings.shortageSellerReward / 100
+        commissionRatio: baselineSystemCommission,
+        buyerCommissionRatio: finalBuyerCommission,
+        sellerBonusRatio: finalSellerBonus
     });
 
     await transaction.save({ session });
@@ -103,16 +116,19 @@ if (excess.shortage_fulfillment) {
         try {
             const shortagePopulated = await StockShortage.findById(shortageId).populate('order');
             if (shortagePopulated && shortagePopulated.order) {
-                // we don't need refinedSources, when we created the reservation we used the stock shortage
+                // Determine which sale percentage to use for lookup
+                const saleToLookup = shortagePopulated.originalSalePercentage || shortagePopulated.salePercentage || 0;
                
-                        await Reservation.findOneAndUpdate(
-                            {
-                                product: shortagePopulated.product._id,
-                                volume: shortagePopulated.volume._id,
-                                price: shortagePopulated.targetPrice
-                            },
-                            { $inc: { quantity: -quantityTaken} }
-                        );
+                await Reservation.findOneAndUpdate(
+                    {
+                        product: shortagePopulated.product._id || shortagePopulated.product,
+                        volume: shortagePopulated.volume._id || shortagePopulated.volume,
+                        price: shortagePopulated.targetPrice,
+                        expiryDate: shortagePopulated.expiryDate || "ANY",
+                        salePercentage: saleToLookup
+                    },
+                    { $inc: { quantity: -quantityTaken} }
+                );
             }
         } catch (reservationErr) {
             console.error('⚠️ [Transaction Service] Reservation update error:', reservationErr);
@@ -160,6 +176,24 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
             await syncShortageStatus(shortage, session);
             await shortage.save({ session });
+
+            // 3. Restore Reservations if part of an order
+            if (shortage.order && shortage.targetPrice) {
+                const saleToLookup = shortage.originalSalePercentage || shortage.salePercentage || 0;
+                await Reservation.findOneAndUpdate(
+                    {
+                        product: shortage.product,
+                        volume: shortage.volume,
+                        price: shortage.targetPrice,
+                        expiryDate: shortage.expiryDate || "ANY",
+                        salePercentage: saleToLookup
+                    },
+                    {
+                        $inc: { quantity: transaction.stockShortage.quantityTaken }
+                    },
+                    { upsert: true, session }
+                );
+            }
         }
     } else if (status === 'completed') {
             await exports.settleTransaction(transaction, session);
@@ -175,6 +209,8 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
  * MUST be called within a session.
  */
 exports.settleTransaction = async (transaction, session) => {
+    console.log('[DEBUG] settleTransaction called for transaction:', transaction._id, 'status:', transaction.status);
+    
     const settings = await Settings.getSettings();
     const systemMinCommRatio = settings.minimumCommission / 100;
 
@@ -197,6 +233,7 @@ exports.settleTransaction = async (transaction, session) => {
             let sourceBuyerDetails = {};
 
             if (excess.shortage_fulfillment) {
+                // CASE 1: Shortage Fulfillment
                 let bonusRatio = transaction.sellerBonusRatio !== undefined
                     ? transaction.sellerBonusRatio
                     : (settings.shortageSellerReward / 100);
@@ -224,30 +261,51 @@ exports.settleTransaction = async (transaction, session) => {
                     excessId: excess._id
                 };
             } else {
-                let excessComm = (excess.salePercentage !== undefined && excess.salePercentage !== null)
-                    ? (excess.salePercentage / 100)
-                    : systemMinCommRatio;
-
-                // Override for Hub Seller
-                if (sellerPh.isHub) {
-                    excessComm = 0;
+                // CASE 2: REGULAR TRANSACTION (Market Order or Direct Match)
+                
+                // 1. Validation: original sale percentage must match if it exists
+                if (shortage.originalSalePercentage && shortage.originalSalePercentage !== excess.salePercentage) {
+                    console.warn(`[settleTransaction] Original sale percentage mismatch for excess ${excess._id}. Expected ${shortage.originalSalePercentage}, found ${excess.salePercentage}`);
+                    // We continue but log the warning as per requirement "assigning correct excess to correct shortage"
                 }
 
-                const finalCommRatio = Math.max(sellerPh.isHub ? 0 : systemMinCommRatio, excessComm);
-                sellerEffect = (1 - finalCommRatio) * source.totalAmount;
+                // 2. Calculate Commission Ratio (Seller Pays)
+                // Commission = max(system default commission, excess sale value)
+                let sellerCommissionRatio = Math.max(
+                    settings.minimumCommission / 100,
+                    (excess.salePercentage || 0) / 100
+                );
+
+                // 3. Calculate Sale Ratio (Buyer Receives)
+                // The sale the buyer explicitly selected and agreed on (from shortage)
+                let buyerSaleRatio = (shortage.salePercentage || 0) / 100;
+
+                // Hub Rule: If either party is a hub, commission must be set to 0%
+                if (sellerPh.isHub) {
+                    sellerCommissionRatio = 0;
+                }
+                if (buyerPh.isHub) { 
+                    buyerSaleRatio = 0;
+                }
+
+                // Financials
+                // Seller Receives: Price * (1 - sellerCommissionRatio)
+                sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
+                
                 sellerDetails = {
                     type: 'excess_rebalance',
                     baseAmount: source.totalAmount,
-                    commissionRatio: finalCommRatio,
-                    systemMinRatio: sellerPh.isHub ? 0 : systemMinCommRatio,
-                    offeredRatio: excessComm
+                    commissionRatio: sellerCommissionRatio,
+                    originalSale: excess.salePercentage
                 };
 
-                sourceBuyerEffect = -source.totalAmount;
+                // Buyer Pays: Price * (1 - buyerSaleRatio)
+                sourceBuyerEffect = -(1 - buyerSaleRatio) * source.totalAmount;
+                
                 sourceBuyerDetails = {
                     type: 'excess_rebalance',
                     baseAmount: source.totalAmount,
-                    commissionRatio: 0,
+                    saleRatio: buyerSaleRatio,
                     excessId: excess._id
                 };
             }
@@ -328,6 +386,8 @@ exports.settleTransaction = async (transaction, session) => {
             await excess.save({ session });
         }
     }
+    
+    console.log('[DEBUG] settleTransaction completed successfully for transaction:', transaction._id);
 };
 
 /**

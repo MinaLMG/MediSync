@@ -66,6 +66,9 @@ class _AdminOrderFulfillmentScreenState
           ).fetchMatchesForProduct(
             productId,
             price: targetPrice,
+            expiryDate: item['expiryDate'],
+            salePercentage: (item['originalSalePercentage'] as num?)
+                ?.toDouble(),
             excludeShortageFulfillment: true,
           );
 
@@ -314,6 +317,23 @@ class _AdminOrderFulfillmentScreenState
                                             color: Colors.grey[600],
                                           ),
                                         ),
+                                        if (item['expiryDate'] != null ||
+                                            item['originalSalePercentage'] !=
+                                                null ||
+                                            item['salePercentage'] != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2.0,
+                                            ),
+                                            child: Text(
+                                              '${item['expiryDate'] != null ? "${l10n.labelExpiryPrefix} ${item['expiryDate']}" : ""} ${(item['originalSalePercentage'] ?? item['salePercentage']) != null ? "| Sale: ${item['originalSalePercentage'] ?? item['salePercentage']}%" : ""}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue[800],
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),

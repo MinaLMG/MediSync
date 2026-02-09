@@ -166,6 +166,20 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
     }
   }
 
+  void _fetchMarketInsight() {
+    if (_selectedProductId != null && _selectedVolumeId != null) {
+      double? price = _isManualPrice
+          ? double.tryParse(_manualPriceController.text)
+          : _selectedPrice;
+      if (price != null && price > 0) {
+        Provider.of<ExcessProvider>(
+          context,
+          listen: false,
+        ).fetchMarketInsight(_selectedProductId!, _selectedVolumeId!, price);
+      }
+    }
+  }
+
   void _submitForm() async {
     final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
@@ -381,6 +395,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           } finally {
                             if (mounted)
                               setState(() => _isFetchingVolumes = false);
+                            _fetchMarketInsight();
                           }
                         },
                         validator: (v) =>
@@ -427,6 +442,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             : (value) => setState(() {
                                 _selectedVolumeId = value;
                                 _selectedPrice = null;
+                                _fetchMarketInsight();
                               }),
                         validator: (v) => v == null ? 'Required' : null,
                       ),
@@ -455,8 +471,10 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) =>
-                              setState(() => _selectedPrice = value),
+                          onChanged: (value) => setState(() {
+                            _selectedPrice = value;
+                            _fetchMarketInsight();
+                          }),
                         ),
                       Row(
                         children: [
@@ -483,9 +501,12 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                             ),
                           ],
                           validator: (v) => v!.isEmpty ? 'Required' : null,
+                          onChanged: (v) => _fetchMarketInsight(),
                         ),
                       const SizedBox(height: 16),
                     ],
+
+                    _buildMarketInsightTable(l10n),
 
                     TextFormField(
                       controller: _quantityController,
@@ -498,6 +519,12 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         final qty = int.tryParse(v);
                         if (qty == null || qty <= 0) return 'Invalid quantity';
                         if (isEditMode) {
+                          final int originalQuantity =
+                              widget.initialData?['originalQuantity'] ?? 0;
+                          final int remainingQuantity =
+                              widget.initialData?['remainingQuantity'] ?? 0;
+                          final int taken =
+                              (originalQuantity - remainingQuantity);
                           if (qty > originalQuantity) return 'Too high';
                           if (qty < taken) return 'Too low';
                         }
@@ -549,11 +576,12 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      if (!_shortageFulfillment)
+                      if (!_shortageFulfillment) ...[
                         TextFormField(
                           controller: _saleValueController,
                           decoration: InputDecoration(
                             labelText: l10n.labelPercentageValue,
+                            hintText: l10n.labelPercentageValue,
                             border: const OutlineInputBorder(),
                             suffixText: '%',
                           ),
@@ -565,6 +593,28 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           ],
                           validator: (v) => null,
                         ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            border: Border.all(color: Colors.black),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            l10n.msgSystemCommissionInfo(
+                              Provider.of<SettingsProvider>(
+                                context,
+                              ).minimumCommission.toStringAsFixed(0),
+                            ),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
 
                     const SizedBox(height: 32),
@@ -593,6 +643,129 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildMarketInsightTable(AppLocalizations l10n) {
+    final excessProvider = Provider.of<ExcessProvider>(context);
+    final insights = excessProvider.marketInsight;
+
+    // Only show if product and volume are selected
+    if (_selectedProductId == null || _selectedVolumeId == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Check if price is set
+    double? price = _isManualPrice
+        ? double.tryParse(_manualPriceController.text)
+        : _selectedPrice;
+    if (price == null || price <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    if (excessProvider.isLoading && insights.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (insights.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+        child: Text(
+          l10n.msgNoMarketInsight,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.blue[100]!),
+      ),
+      color: Colors.blue[50]!.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.query_stats, size: 20, color: Colors.blue[800]),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.labelMarketInsight,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.blue[900],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            SizedBox(
+              width: double.infinity,
+              child: DataTable(
+                headingRowHeight: 35,
+                dataRowHeight: 40,
+                columnSpacing: 10,
+                horizontalMargin: 8,
+                headingTextStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Colors.blue[900],
+                ),
+                columns: [
+                  DataColumn(label: Text(l10n.labelCompetitorExpiry)),
+                  DataColumn(label: Text(l10n.labelCompetitorSale)),
+                ],
+                rows: insights.map((item) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          item['expiryDate'] ?? '-',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${item['salePercentage']}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

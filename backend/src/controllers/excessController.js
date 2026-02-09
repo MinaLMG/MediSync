@@ -1,5 +1,6 @@
 const excessService = require('../services/excessService');
-const { StockExcess, HasVolume } = require('../models');
+const { StockExcess, HasVolume, Settings, Reservation } = require('../models');
+const { default: mongoose } = require('mongoose');
 
 exports.createExcess = async (req, res) => {
     try {
@@ -87,64 +88,6 @@ exports.getMyExcesses = async (req, res) => {
     }
 };
 
-exports.getMarketExcesses = async (req, res) => {
-    try {
-        const mongoose = require('mongoose');
-        const { product, volume, excludeShortageFulfillment } = req.query;
-        let matchStage = { remainingQuantity: { $gt: 0 }, status: { $in: ['available', 'partially_fulfilled'] } };
-        if (excludeShortageFulfillment === 'true') {
-            matchStage.shortage_fulfillment = { $ne: true };
-        }
-        if (product) matchStage.product = new mongoose.Types.ObjectId(product);
-        if (volume) matchStage.volume = new mongoose.Types.ObjectId(volume);
-        if (req.user.pharmacy) matchStage.pharmacy = { $ne: new mongoose.Types.ObjectId(req.user.pharmacy) };
-        const aggregated = await StockExcess.aggregate([
-            { $match: matchStage },
-            { $group: { _id: { product: "$product", volume: "$volume", price: "$selectedPrice" }, totalQuantity: { $sum: "$remainingQuantity" } } },
-            // Look up reservations for this product/volume/price
-            {
-                $lookup: {
-                    from: "reservations",
-                    let: { prod: "$_id.product", vol: "$_id.volume", pri: "$_id.price" },
-                    pipeline: [
-                         { $match: {
-                             $expr: {
-                                 $and: [
-                                     { $eq: ["$product", "$$prod"] },
-                                     { $eq: ["$volume", "$$vol"] },
-                                     { $eq: ["$price", "$$pri"] },
-                                  ]
-                             }
-                         }},
-                         { $group: { _id: null, reservedTotal: { $sum: "$quantity" } } }
-                    ],
-                    as: "reservationInfo"
-                }
-            },
-            {
-                $addFields: {
-                    reservedQty: { $ifNull: [{ $arrayElemAt: ["$reservationInfo.reservedTotal", 0] }, 0] }
-                }
-            },
-            {
-                $addFields: {
-                    availableQuantity: { $subtract: ["$totalQuantity", "$reservedQty"] }
-                }
-            },
-            { $match: { availableQuantity: { $gt: 0 } } }, // Hide if fully reserved
-            { $lookup: { from: "products", localField: "_id.product", foreignField: "_id", as: "productDetails" } },
-            { $unwind: "$productDetails" },
-            { $lookup: { from: "volumes", localField: "_id.volume", foreignField: "_id", as: "volumeDetails" } },
-            { $unwind: "$volumeDetails" },
-            { $project: { _id: 0, product: { _id: "$_id.product", name: "$productDetails.name" }, volume: { _id: "$_id.volume", name: "$volumeDetails.name" }, price: "$_id.price", totalQuantity: "$availableQuantity" } },
-            { $sort: { "product.name": 1, price: 1 } }
-        ]);
-        res.status(200).json({ success: true, data: aggregated });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
 exports.getAvailableExcesses = async (req, res) => {
     try {
         const excesses = await StockExcess.find({ 
@@ -189,6 +132,213 @@ exports.addToHub = async (req, res) => {
         }
         const result = await excessService.addToHub(excessId, hubId, quantity, req);
         res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get market excesses grouped by product -> prices -> items
+// @route   GET /api/excess/market
+// @access  Pharmacy Owner, Manager
+exports.getMarketExcesses = async (req, res) => {
+    try {
+        const settings = await Settings.getSettings();
+        const systemMinComm = settings.minimumCommission || 10;
+        // 1. Get raw aggregated excesses (Grouped by Product -> Price -> Expiry/Sale)
+        const marketItems = await StockExcess.aggregate([
+            {
+                $match: {
+                    status: { $in: ['available', 'partially_fulfilled'] },
+                    remainingQuantity: { $gt: 0 },
+                    // Filter out shortage fulfillment (specific requests)
+                    shortage_fulfillment: { $ne: true }
+                }
+            },
+            { $sort: { expiryDate: 1 } },
+            // Group by strict criteria: Product, Volume, Price, Expiry, Sale
+            {
+                $group: {
+                    _id: { 
+                        product: "$product", 
+                        volume: "$volume", 
+                        price: "$selectedPrice",
+                        expiryDate: "$expiryDate",
+                        salePercentage: "$salePercentage"
+                    },
+                    totalQuantity: { $sum: "$remainingQuantity" } // Sum quantity for this batch
+                }
+            },
+            // Lookup Product and Volume details early or later?
+            // We need to deduct reservations first.
+        ]);
+        // 2. Get Active Reservations for these products
+        // We can match reservations that correspond to the found products?
+        // Or just getAll reservations for safety (or optimize).
+        // Optimization: Get reservations where product IN [marketItems.products].
+        
+        const productIds = marketItems.map(i => i._id.product);
+        const reservations = await Reservation.aggregate([
+            {
+                $match: {
+                    product: { $in: productIds }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        product: "$product",
+                        volume: "$volume",
+                        price: "$price",
+                        expiryDate: "$expiryDate",
+                        salePercentage: "$salePercentage"
+                    },
+                    reservedQuantity: { $sum: "$quantity" }
+                }
+            }
+        ]);
+
+        // Map Reservations for O(1) lookup
+        const reservationMap = {};
+        reservations.forEach(r => {
+            const key = `${r._id.product}-${r._id.volume}-${r._id.price}-${r._id.expiryDate}-${r._id.salePercentage}`;
+            reservationMap[key] = r.reservedQuantity;
+        });
+
+        // 3. Process Market Items: Deduct Reservations & Calculate Sale
+        const processedItems = [];
+
+        for (const group of marketItems) {
+            const key = `${group._id.product}-${group._id.volume}-${group._id.price}-${group._id.expiryDate}-${group._id.salePercentage}`;
+           
+            const reserved = reservationMap[key] || 0;
+            const available = group.totalQuantity - reserved;
+
+            if (available > 0) {
+                const originalSale = group._id.salePercentage || 0;
+                // Logic: 
+                // 1. comm = max(systemMinComm, ceil(originalSale / 3))
+                // 2. agreedSale = max(0, originalSale - comm)
+                const comm = Math.max(systemMinComm, Math.ceil(originalSale / 3));
+                let agreedSale = Math.max(0, originalSale - comm);
+
+                processedItems.push({
+                    product: group._id.product,
+                    volume: group._id.volume,
+                    price: group._id.price,
+                    // Item Details
+                    quantity: available,
+                    expiryDate: group._id.expiryDate,
+                    originalSalePercentage: originalSale, // To backend
+                    salePercentage: agreedSale, // To frontend (User sees this)
+                    userSale: agreedSale // Compatibility
+                });
+            }
+        }
+
+        // 4. Re-Structure into Hierarchy (Product -> Volume -> Prices -> Items)
+        // Group by Product+Volume
+        const productMap = {};
+
+        for (const item of processedItems) {
+            const prodKey = `${item.product}-${item.volume}`;
+            if (!productMap[prodKey]) {
+                productMap[prodKey] = {
+                    product: item.product,
+                    volume: item.volume,
+                    minPrice: item.price,
+                    maxSale: item.userSale,
+                    prices: {}
+                };
+            }
+            
+            const pGroup = productMap[prodKey];
+            pGroup.minPrice = Math.min(pGroup.minPrice, item.price);
+            pGroup.maxSale = Math.max(pGroup.maxSale, item.userSale);
+
+            if (!pGroup.prices[item.price]) {
+                pGroup.prices[item.price] = {
+                    price: item.price,
+                    maxSale: item.userSale,
+                    items: []
+                };
+            }
+            const priceGroup = pGroup.prices[item.price];
+            priceGroup.maxSale = Math.max(priceGroup.maxSale, item.userSale);
+            priceGroup.items.push({
+                quantity: item.quantity,
+                expiryDate: item.expiryDate,
+                salePercentage: item.salePercentage, // Agreed
+                originalSalePercentage: item.originalSalePercentage, // Hidden/Stored
+                userSale: item.userSale
+            });
+        }
+
+        // Convert Map to Array and Populate
+        const finalResult = Object.values(productMap).map(p => ({
+            product: p.product,
+            volume: p.volume,
+            minPrice: p.minPrice,
+            maxSale: p.maxSale,
+            prices: Object.values(p.prices).sort((a,b) => a.price - b.price)
+        }));
+
+        // Populate Product/Volume Details (We have IDs)
+        // Note: Population in aggregation is faster usually, but we did logic in JS.
+        // We can Populate manually.
+        await StockExcess.populate(finalResult, [
+            { path: 'product', select: 'name' },
+            { path: 'volume', select: 'name' }
+        ]);
+        
+        // Final Sort by Product Name
+        finalResult.sort((a, b) => (a.product?.name || '').localeCompare(b.product?.name || ''));
+
+        res.status(200).json({ success: true, count: finalResult.length, data: finalResult });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+// @desc    Get market insight (available excesses for specific product/volume/price)
+// @route   GET /api/excess/market-insight
+// @access  Pharmacy Owner, Manager
+exports.getMarketInsight = async (req, res) => {
+    try {
+        const { product, volume, price } = req.query;
+        if (!product || !volume || !price) {
+            return res.status(400).json({ success: false, message: 'Product, volume, and price are required' });
+        }
+
+        const excesses = await StockExcess.aggregate([
+            {
+                $match: {
+                    product: new mongoose.Types.ObjectId(product),
+                    volume: new mongoose.Types.ObjectId(volume),
+                    selectedPrice: parseFloat(price),
+                    status: { $in: ['available', 'partially_fulfilled'] },
+                    remainingQuantity: { $gt: 0 },
+                    shortage_fulfillment: { $ne: true }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        expiryDate: "$expiryDate",
+                        salePercentage: "$salePercentage"
+                    },
+                    totalQuantity: { $sum: "$remainingQuantity" }
+                }
+            },
+            { $sort: { "_id.expiryDate": 1 } }, // Near to far
+            {
+                $project: {
+                    _id: 0,
+                    expiryDate: "$_id.expiryDate",
+                    salePercentage: "$_id.salePercentage"
+                }
+            }
+        ]);
+
+        res.status(200).json({ success: true, data: excesses });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

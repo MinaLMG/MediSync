@@ -719,7 +719,90 @@ async function run() {
             assert(updateFulfilled.status !== 200, 'Reject update of fulfilled excess', PHASE19, `Got ${updateFulfilled.status}`);
         }
         
-        console.log('\n\x1b[32m✓ All test phases completed (19 comprehensive phases)!\x1b[0m');
+        // ═══════════════════════════════════════════════════════════════
+        // PHASE 20: MARKET & SALE LOGIC
+        // ═══════════════════════════════════════════════════════════════
+        const PHASE20 = 'Phase 20: Market & Sale Logic';
+        logSection(PHASE20);
+
+        // 1. Create Excess with Sale > 10% (e.g. 20%)
+        // Price: 100. Sale: 20%. Expiry: '01/27'.
+        // Expectation: 
+        // - System Commission: 10% (min)
+        // - Buyer Discount: 10% (20% total - 10% comm)
+        // - Buyer Pays: 90 (100 * 0.9)
+        // - Seller Receives: 80 (100 * 0.8)
+        
+        const exSale = await apiCall('/excess', 'POST', {
+            product: ids.prod.toString(),
+            volume: ids.vol.toString(),
+            quantity: 10,
+            expiryDate: '01/27',
+            selectedPrice: 100,
+            shortage_fulfillment: true, // Auto-approved or need manual approval?
+            salePercentage: 20
+        }, tokens.s1); 
+        // Note: 'shortage_fulfillment: true' usually bypasses approval if matches, 
+        // but here we might not have a matching shortage yet. 
+        // If it returns pending, we approve.
+        
+        let exSaleId = exSale.data.data?._id;
+        if (exSale.data.data?.status === 'pending') {
+             await apiCall(`/excess/${exSaleId}/approve`, 'PUT', {}, tokens.admin);
+        }
+
+        // 2. Create Shortage
+        const shSale = await apiCall('/shortage', 'POST', {
+            product: ids.prod.toString(),
+            volume: ids.vol.toString(),
+            quantity: 10
+        }, tokens.buyer);
+        let shSaleId = shSale.data.data?._id;
+
+        // Get initial balances
+        const buyerBalStart = await getPharmacyBalance(tokens.buyer);
+        const s1BalStart = await getPharmacyBalance(tokens.s1);
+
+        // 3. Create Transaction
+        const txSale = await apiCall('/transaction', 'POST', {
+            shortageId: shSaleId,
+            quantityTaken: 10,
+            excessSources: [{ stockExcessId: exSaleId, quantity: 10 }]
+        }, tokens.admin);
+        
+        assert(txSale.status === 201, 'Create transaction with sale', PHASE20);
+        const txSaleId = txSale.data.data?._id;
+
+        // 4. Complete Transaction
+        const dSaleReq = await apiCall('/delivery-requests', 'POST', { transactionId: txSaleId, requestType: 'accept' }, tokens.d1);
+        await apiCall(`/delivery-requests/${dSaleReq.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const dSaleComp = await apiCall('/delivery-requests', 'POST', { transactionId: txSaleId, requestType: 'complete' }, tokens.d1);
+        await apiCall(`/delivery-requests/${dSaleComp.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for settlement
+
+        // 5. Verify Balances
+        const buyerBalEnd = await getPharmacyBalance(tokens.buyer);
+        const s1BalEnd = await getPharmacyBalance(tokens.s1);
+
+        // Check verification
+        // Buyer Cost: 10 items * 100 price * 0.9 (10% discount) = 900
+        // Seller Gain: 10 items * 100 price * 0.8 (20% fee) = 800
+        
+        const buyerDiff = buyerBalStart - buyerBalEnd; // Should be positive 900 (cost)
+        const sellerDiff = s1BalEnd - s1BalStart;      // Should be positive 800 (gain)
+
+        // Allow small float margin
+        const isBuyerCorrect = Math.abs(buyerDiff - 900) < 1;
+        const isSellerCorrect = Math.abs(sellerDiff - 800) < 1;
+
+        assert(isBuyerCorrect, 'Buyer pays discounted price (90%)', PHASE20, `Paid ${buyerDiff}, Expected 900`);
+        assert(isSellerCorrect, 'Seller receives post-commission amount (80%)', PHASE20, `Recv ${sellerDiff}, Expected 800`);
+
+        console.log('\n\x1b[32m✓ All test phases completed (20 comprehensive phases)!\x1b[0m');
         
     } catch (err) {
         console.error('\n\x1b[31m✗ Test execution error:\x1b[0m', err.message);
