@@ -131,7 +131,7 @@ if (excess.shortage_fulfillment) {
                 );
             }
         } catch (reservationErr) {
-            console.error('⚠️ [Transaction Service] Reservation update error:', reservationErr);
+            throw new Error(`Critical: Reservation update failed: ${reservationErr.message}`);
         }
     });
 
@@ -209,7 +209,7 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
  * MUST be called within a session.
  */
 exports.settleTransaction = async (transaction, session) => {
-    console.log('[DEBUG] settleTransaction called for transaction:', transaction._id, 'status:', transaction.status);
+
     
     const settings = await Settings.getSettings();
     const systemMinCommRatio = settings.minimumCommission / 100;
@@ -265,8 +265,7 @@ exports.settleTransaction = async (transaction, session) => {
                 
                 // 1. Validation: original sale percentage must match if it exists
                 if (shortage.originalSalePercentage && shortage.originalSalePercentage !== excess.salePercentage) {
-                    console.warn(`[settleTransaction] Original sale percentage mismatch for excess ${excess._id}. Expected ${shortage.originalSalePercentage}, found ${excess.salePercentage}`);
-                    // We continue but log the warning as per requirement "assigning correct excess to correct shortage"
+                    throw new Error(`Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%. Please re-list or adjust stock.`);
                 }
 
                 // 2. Calculate Commission Ratio (Seller Pays)
@@ -387,7 +386,7 @@ exports.settleTransaction = async (transaction, session) => {
         }
     }
     
-    console.log('[DEBUG] settleTransaction completed successfully for transaction:', transaction._id);
+
 };
 
 /**

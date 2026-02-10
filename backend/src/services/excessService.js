@@ -152,6 +152,9 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
 
     // Validate quantity decrease
     if (quantity !== undefined) {
+        if (quantity > excess.originalQuantity) {
+             throw new Error('Excesses can only be decreased in quantity, not increased.');
+        }
         if (quantity < taken) throw new Error(`Quantity cannot be less than taken (${taken}).`);
         excess.originalQuantity = quantity;
         excess.remainingQuantity = quantity - taken;
@@ -302,6 +305,7 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             await session.abortTransaction();
         }
         console.error('❌ [Excess Service] addToHub failed:', error);
+
         throw error;
     } finally {
         session.endSession();

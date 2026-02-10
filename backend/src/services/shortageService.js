@@ -295,7 +295,7 @@ exports.updateOrderTotals = async (orderId, session = null) => {
  * Sets status to 'cancelled', remainingQuantity to 0, and updates linked entities.
  */
 exports.cancelShortage = async (shortageId, session, req = null) => {
-    console.log("here 4", shortageId)
+
     const shortage = await StockShortage.findById(shortageId).session(session);
     if (!shortage) throw new Error('Shortage not found');
 

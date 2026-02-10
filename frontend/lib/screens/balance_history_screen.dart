@@ -182,14 +182,66 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
                 ),
                 if (details.isNotEmpty) ...[
                   const Divider(),
-                  Text(
-                    l10n.labelBreakdown,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...details.entries.map(
-                    (e) => _detailRow(e.key.capitalize(), e.value.toString()),
-                  ),
+                  if (details['sources'] != null && details['sources'] is List)
+                    ...(details['sources'] as List).map((source) {
+                      final s = source as Map<String, dynamic>;
+                      final base = (s['baseAmount'] as num?)?.toDouble() ?? 0.0;
+                      final ratio =
+                          (s['saleRatio'] as num? ??
+                                  s['commissionRatio'] as num? ??
+                                  0.0)
+                              .toDouble();
+
+                      final baseAmountStr = base.toStringAsFixed(2);
+                      final ratioStr = (ratio * 100).toStringAsFixed(0);
+                      final ratioValueStr = (base * ratio).toStringAsFixed(2);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12.0),
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${l10n.labelBreakdown} (Source ${details['sources'].indexOf(source) + 1})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _detailRow('Base Amount', '\$$baseAmountStr'),
+                            _detailRow('Ratio', '$ratioStr%'),
+                            _detailRow('Ratio Value', '\$$ratioValueStr'),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
+                  // Show other internal details excluding noise and source breakdown
+                  ...details.entries
+                      .where(
+                        (e) => ![
+                          'systemMinComm',
+                          'offeredRatio',
+                          'commission_at_creation',
+                          'bonus_at_creation',
+                          'totalBuyerEffect',
+                          'sources',
+                        ].contains(e.key),
+                      )
+                      .map(
+                        (e) =>
+                            _detailRow(e.key.capitalize(), e.value.toString()),
+                      ),
                 ],
               ],
             ),
@@ -206,9 +258,8 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
   }
 
   Widget _detailRow(String label, String? value) {
-    final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -220,10 +271,7 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
             ),
           ),
           Expanded(
-            child: Text(
-              value ?? l10n.labelNotAvailable,
-              style: const TextStyle(fontSize: 13),
-            ),
+            child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 13)),
           ),
         ],
       ),

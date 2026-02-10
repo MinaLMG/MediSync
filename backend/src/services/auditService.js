@@ -23,6 +23,7 @@ exports.logAction = async ({ user, action, entityType, entityId, changes }, req 
         });
     } catch (error) {
         console.error('Audit Log Error:', error);
+
         // We don't throw here to avoid failing the main business action
     }
 };

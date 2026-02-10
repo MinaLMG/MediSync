@@ -31,7 +31,7 @@ exports.deleteExcess = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot delete fulfilled excess' });
         }
         if (excess.isHubGenerated) {
-            return res.status(400).json({ success: false, message: 'Hub generated excesses cannot be deleted. Please use cancellation.' });
+            return res.status(400).json({ success: false, message: 'Hub-generated excesses cannot be deleted as they represent a termed transfer. If you need to stop this listing, please use the Cancellation option to reduce the remaining quantity to 0.' });
         }
         await excess.deleteOne();
         res.status(200).json({ success: true, message: 'Deleted' });
@@ -148,6 +148,7 @@ exports.getMarketExcesses = async (req, res) => {
         const marketItems = await StockExcess.aggregate([
             {
                 $match: {
+                    pharmacy: { $ne: req.user.pharmacy },
                     status: { $in: ['available', 'partially_fulfilled'] },
                     remainingQuantity: { $gt: 0 },
                     // Filter out shortage fulfillment (specific requests)
@@ -168,14 +169,14 @@ exports.getMarketExcesses = async (req, res) => {
                     totalQuantity: { $sum: "$remainingQuantity" } // Sum quantity for this batch
                 }
             },
-            // Lookup Product and Volume details early or later?
+   // Lookup Product and Volume details early or later?
             // We need to deduct reservations first.
         ]);
         // 2. Get Active Reservations for these products
         // We can match reservations that correspond to the found products?
         // Or just getAll reservations for safety (or optimize).
         // Optimization: Get reservations where product IN [marketItems.products].
-        
+                
         const productIds = marketItems.map(i => i._id.product);
         const reservations = await Reservation.aggregate([
             {
@@ -298,6 +299,7 @@ exports.getMarketExcesses = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
 // @desc    Get market insight (available excesses for specific product/volume/price)
 // @route   GET /api/excess/market-insight
 // @access  Pharmacy Owner, Manager
