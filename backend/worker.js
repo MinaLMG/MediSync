@@ -34,9 +34,14 @@ const worker = new Worker('notificationQueue', async (job) => {
 
         console.log(`✅ Saved notification ${notification._id} to database`);
 
-        // 2. Push to connected user via Pusher
-        sendToUser(userId.toString(), 'notification', notification);
-        console.log(`📡 Emitted real-time event to user: ${userId}`);
+        // 2. Push to connected user via Pusher (non-critical)
+        try {
+            sendToUser(userId.toString(), 'notification', notification);
+            console.log(`📡 Emitted real-time event to user: ${userId}`);
+        } catch (pusherError) {
+            // Log but don't fail the job - notification is already in DB
+            console.error(`⚠️ Pusher notification failed (non-critical):`, pusherError);
+        }
         
         return notification;
     } catch (error) {

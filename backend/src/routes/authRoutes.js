@@ -3,15 +3,16 @@ const express = require('express');
 const router = express.Router();
 const { register, login, socialLogin, getProfile, requestProfileUpdate, changePassword, linkPharmacy, updatePreferences } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
+const { strictLimiter, } = require('../middlewares/rateLimiter');
 const upload = require('../config/uploadConfig');
 
-router.post('/register', register);
-router.post('/login',login);
-router.post('/social-login', socialLogin);
+router.post('/register', strictLimiter, register);
+router.post('/login', strictLimiter, login);
+router.post('/social-login', strictLimiter, socialLogin);
 router.get('/profile', protect, getProfile);
 router.put('/profile-update-request', protect, requestProfileUpdate);
 router.put('/preferences', protect, updatePreferences);
-router.put('/change-password', protect,  changePassword);
+router.put('/change-password', protect, strictLimiter, changePassword);
 router.post('/link-pharmacy', protect, upload.fields([
     { name: 'pharmacistCard', maxCount: 1 },
     { name: 'commercialRegistry', maxCount: 1 },

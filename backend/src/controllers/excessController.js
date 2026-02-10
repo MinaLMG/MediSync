@@ -16,7 +16,9 @@ exports.updateExcess = async (req, res) => {
         const excess = await excessService.updateExcess(req.params.id, req.body, req.user, req);
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        // Business rule violations (e.g., cannot change price, locked status)
+        const statusCode = error.message.includes('Cannot') || error.message.includes('authorized') ? 409 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     }
 };
 
@@ -50,7 +52,8 @@ exports.approveExcess = async (req, res) => {
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
         await session.abortTransaction();
-        res.status(500).json({ success: false, message: error.message });
+        const statusCode = error.message.includes('not found') ? 404 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     } finally {
         session.endSession();
     }
@@ -133,7 +136,10 @@ exports.addToHub = async (req, res) => {
         const result = await excessService.addToHub(excessId, hubId, quantity, req);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        // Business rule violations (e.g., insufficient quantity, self-dealing)
+        const statusCode = error.message.includes('not found') ? 404 : 
+                          error.message.includes('Cannot') || error.message.includes('exceeds') ? 409 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     }
 };
 

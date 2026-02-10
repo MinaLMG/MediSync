@@ -38,6 +38,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     const settings = await Settings.getSettings();
     const systemMinComm = settings.minimumCommission;
 
+    let finalSalePercentage;
     if (!isShortageFulfillment) {
         // If regular excess, unsure salePercentage defaults to system min (10%) if not provided
         // or if provided as 0, it means 0 user discount, but we still take 10% commission?
@@ -50,7 +51,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         // So the input `salePercentage` IS the total sale.
         // If not provided, we should default it to `systemMinComm` (e.g. 10).
         if (salePercentage === undefined || salePercentage === null) {
-            finalSalePercentage = systemMinComm;
+              finalSalePercentage = systemMinComm;
         } else {
              // Ensure it's at least min comm?
              // "If the sale is 10%, the user sees no sale." -> Implies we accept 10%.

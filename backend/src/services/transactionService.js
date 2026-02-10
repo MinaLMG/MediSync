@@ -10,6 +10,11 @@ const serialService = require('./serialService');
 exports.createTransaction = async (data, session, req = null) => {
     const { shortageId, quantityTaken, excessSources, buyerCommissionRatio, sellerBonusRatio, commissionRatio } = data;
 
+    // 0. Validate quantity
+    if (!quantityTaken || quantityTaken <= 0) {
+        throw new Error('Quantity taken must be a positive number');
+    }
+
     // 1. Check shortage
     const shortage = await StockShortage.findById(shortageId).session(session);
     if (!shortage || !['active', 'partially_fulfilled'].includes(shortage.status)) {
@@ -111,29 +116,23 @@ if (excess.shortage_fulfillment) {
         await excess.save({ session });
     }
 
-    // 7. Cleanup reservations (async, non-blocking for transaction)
-    setImmediate(async () => {
-        try {
-            const shortagePopulated = await StockShortage.findById(shortageId).populate('order');
-            if (shortagePopulated && shortagePopulated.order) {
-                // Determine which sale percentage to use for lookup
-                const saleToLookup = shortagePopulated.originalSalePercentage || shortagePopulated.salePercentage || 0;
-               
-                await Reservation.findOneAndUpdate(
-                    {
-                        product: shortagePopulated.product._id || shortagePopulated.product,
-                        volume: shortagePopulated.volume._id || shortagePopulated.volume,
-                        price: shortagePopulated.targetPrice,
-                        expiryDate: shortagePopulated.expiryDate || "ANY",
-                        salePercentage: saleToLookup
-                    },
-                    { $inc: { quantity: -quantityTaken} }
-                );
-            }
-        } catch (reservationErr) {
-            throw new Error(`Critical: Reservation update failed: ${reservationErr.message}`);
-        }
-    });
+    // 7. Cleanup reservations (BLOCKING - critical for data consistency)
+    if (shortage.order && shortage.targetPrice) {
+        // Determine which sale percentage to use for lookup
+        const saleToLookup = shortage.originalSalePercentage || shortage.salePercentage || 0;
+       
+        await Reservation.findOneAndUpdate(
+            {
+                product: shortage.product,
+                volume: shortage.volume,
+                price: shortage.targetPrice,
+                expiryDate: shortage.expiryDate || "ANY",
+                salePercentage: saleToLookup
+            },
+            { $inc: { quantity: -quantityTaken} },
+            { session }
+        );
+    }
 
     return transaction;
 };

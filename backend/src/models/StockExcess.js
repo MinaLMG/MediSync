@@ -38,7 +38,13 @@ const stockExcessSchema = new mongoose.Schema({
     },
     expiryDate: {
         type: String, // Stored as "MM/YY"
-        required: true
+        required: true,
+        validate: {
+            validator: function(v) {
+                return /^(0[1-9]|1[0-2])\/\d{2}$/.test(v);
+            },
+            message: 'Expiry date must be in MM/YY format'
+        }
     },
     rejectionReason: {
         type: String,

@@ -37,7 +37,6 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
             remainingQuantity: quantity,
             notes,
             targetPrice,
-            targetPrice,
             type: 'request',
             status: 'active',
             isSystemGenerated: isSystemGenerated || false

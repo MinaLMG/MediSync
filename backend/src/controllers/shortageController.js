@@ -27,7 +27,9 @@ exports.updateShortage = async (req, res) => {
         const shortage = await shortageService.updateShortage(req.params.id, req.body, req.user.pharmacy, req);
         res.status(200).json({ success: true, data: shortage });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        // Business rule violations (e.g., quantity constraints)
+        const statusCode = error.message.includes('cannot') || error.message.includes('must') ? 409 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     }
 };
 
@@ -57,7 +59,9 @@ exports.cancelShortage = async (req, res) => {
         res.status(200).json({ success: true, message: 'Cancelled successfully' });
     } catch (error) {
         await session.abortTransaction();
-        res.status(500).json({ success: false, message: error.message });
+        // Business rule violations (e.g., already fulfilled)
+        const statusCode = error.message.includes('Cannot') || error.message.includes('partially') ? 409 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     } finally {
         session.endSession();
     }
@@ -69,7 +73,9 @@ exports.deleteShortage = async (req, res) => {
         await shortageService.deleteShortage(req.params.id, req.user.pharmacy, req);
         res.status(200).json({ success: true, message: 'Deleted successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        // Business rule violations (e.g., already fulfilled, not authorized)
+        const statusCode = error.message.includes('Cannot') || error.message.includes('authorized') ? 409 : 500;
+        res.status(statusCode).json({ success: false, message: error.message });
     }
 };
 
