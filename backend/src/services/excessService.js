@@ -149,8 +149,9 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
     }
 
     const taken = excess.originalQuantity - excess.remainingQuantity;
+    const hasBeenSold = taken > 0;
 
-    // Validate quantity decrease
+    // Validate quantity decrease only
     if (quantity !== undefined) {
         if (quantity > excess.originalQuantity) {
              throw new Error('Excesses can only be decreased in quantity, not increased.');
@@ -160,19 +161,40 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
         excess.remainingQuantity = quantity - taken;
     }
 
-    // Update sale info
-    if (shortage_fulfillment !== undefined) excess.shortage_fulfillment = shortage_fulfillment;
-    
-    if (excess.shortage_fulfillment) {
-        excess.salePercentage = 0;
-        excess.saleAmount = 0;
-    } else if (salePercentage !== undefined) {
-        excess.salePercentage = salePercentage;
-        excess.saleAmount = (selectedPrice || excess.selectedPrice) * salePercentage / 100;
-    }
+    // Enforce restrictions based on sold quantity
+    if (hasBeenSold) {
+        // Stock has been sold/committed - cannot change terms
+        if (selectedPrice !== undefined) {
+            throw new Error('Cannot change price for excess with committed stock. Stock has already been sold at specific terms.');
+        }
+        if (salePercentage !== undefined) {
+            throw new Error('Cannot change sale percentage for excess with committed stock. Stock has already been sold at specific terms.');
+        }
+        if (shortage_fulfillment !== undefined) {
+            throw new Error('Cannot change fulfillment type for excess with committed stock.');
+        }
+    } else {
+        // No stock sold yet - allow updates
+        
+        // Update sale info
+        if (shortage_fulfillment !== undefined) excess.shortage_fulfillment = shortage_fulfillment;
+        
+        if (excess.shortage_fulfillment) {
+            excess.salePercentage = 0;
+            excess.saleAmount = 0;
+        } else if (salePercentage !== undefined) {
+            excess.salePercentage = salePercentage;
+            excess.saleAmount = (selectedPrice || excess.selectedPrice) * salePercentage / 100;
+        }
 
-    if (selectedPrice !== undefined && excess.status === 'pending') {
-        excess.selectedPrice = selectedPrice;
+        // Allow price updates only for pending status OR available with no sales
+        if (selectedPrice !== undefined && (excess.status === 'pending' || !hasBeenSold)) {
+            excess.selectedPrice = selectedPrice;
+            // Recalculate sale amount if we have a sale percentage
+            if (excess.salePercentage > 0) {
+                excess.saleAmount = selectedPrice * excess.salePercentage / 100;
+            }
+        }
     }
 
     await exports.syncExcessStatus(excess);
