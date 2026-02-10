@@ -75,6 +75,11 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
     try {
         const { items, notes } = orderData;
         
+        // Validate items array
+        if (!items || items.length === 0) {
+            throw new Error('Order must contain at least one item');
+        }
+        
         const serial = await serialService.generateOrderSerial();
 
         const order = new Order({
@@ -89,6 +94,11 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
 
         const createdShortages = [];
         for (const item of items) {
+            // Validate quantity
+            if (!item.quantity || item.quantity <= 0) {
+                throw new Error(`Invalid quantity for product ${item.product}. Quantity must be a positive number.`);
+            }
+            
             const product = await Product.findById(item.product).session(session);
             if (!product || product.status !== 'active') throw new Error(`Product ${item.product} is inactive.`);
 
