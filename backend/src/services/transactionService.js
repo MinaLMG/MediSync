@@ -70,7 +70,7 @@ if (excess.shortage_fulfillment) {
     shortage.remainingQuantity -= quantityTaken;
     const { syncShortageStatus } = require('./shortageService');
     await syncShortageStatus(shortage, session);
-    await shortage.save({ session });
+    // shortage.save() and updateOrderTotals are now handled inside syncShortageStatus
 
     // 4. Generate Serial atomically
     const serial = await serialService.generateDateSerial('transaction');
@@ -174,7 +174,7 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
         if (shortage) {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
             await syncShortageStatus(shortage, session);
-            await shortage.save({ session });
+            // shortage.save() and updateOrderTotals handled in syncShortageStatus
 
             // 3. Restore Reservations if part of an order
             if (shortage.order && shortage.targetPrice) {

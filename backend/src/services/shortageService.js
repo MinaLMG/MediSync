@@ -221,12 +221,11 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) 
         if (notes !== undefined) shortage.notes = notes;
 
         await exports.syncShortageStatus(shortage, session);
-        await shortage.save({ session });
+        // shortage.save() and order sync handled inside sync
+        
+         // Sync order totals if linked
+        // (Handled by syncShortageStatus now)
 
-        // Sync order totals if linked
-        if (shortage.order) {
-            await exports.updateOrderTotals(shortage.order, session);
-        }
 
         await session.commitTransaction();
 
@@ -261,7 +260,14 @@ exports.syncShortageStatus = async (shortage, session = null) => {
     } else {
         shortage.status = 'active';
     }
-    // Note: We don't save the shortage here; the caller is expected to save it.
+    
+    // Save the shortage state first so updateOrderTotals sees correct data
+    await shortage.save({ session });
+
+    // Update parent order if exists
+    if (shortage.order) {
+        await exports.updateOrderTotals(shortage.order, session);
+    }
 };
 
 /**

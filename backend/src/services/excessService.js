@@ -213,29 +213,18 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
 };
 
 exports.syncExcessStatus = async (excess, session = null) => {
-    const query = Transaction.find({ 'stockExcessSources.stockExcess': excess._id });
-    if (session) query.session(session);
-    const transactions = await query;
-    
-    const hasActiveOrCompleted = transactions.some(t => ['pending', 'accepted', 'completed'].includes(t.status));
-    
     // Don't change pending, rejected, or cancelled status
     if (['pending', 'rejected', 'cancelled'].includes(excess.status)) {
         return;
     }
-    
-    if (excess.remainingQuantity > 0) {
-        // Has remaining quantity
-        if (hasActiveOrCompleted) {
-            // Some quantity has been taken
-            excess.status = 'partially_fulfilled';
-        } else {
-            // No active transactions
-            excess.status = 'available';
-        }
-    } else {
+    if(excess.remainingQuantity==0){
         // No remaining quantity (all taken)
         excess.status = 'fulfilled';
+    }
+    else if (excess.remainingQuantity == excess.originalQuantity ) {
+        excess.status = 'available';
+    } else {
+        excess.status = 'partially_fulfilled';
     }
 };
 

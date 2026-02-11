@@ -519,7 +519,7 @@ exports.revertTransaction = async (req, res) => {
         if (shortage) {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
             await syncShortageStatus(shortage, session);
-            await shortage.save({ session });
+             // shortage.save() and updateOrderTotals are now handled inside syncShortageStatus
         }
 
         // 2. Restore Reservations
