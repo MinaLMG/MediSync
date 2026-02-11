@@ -157,15 +157,15 @@ class _FollowUpTransactionsScreenState
 
   Widget _buildTransactionCard(dynamic tx) {
     final tp = Provider.of<TransactionProvider>(context);
-    final shortage = tx['stockShortage']['shortage'];
+    final shortage = tx['stockShortage']?['shortage'];
+    if (shortage == null) return const SizedBox.shrink();
+
     final product = shortage['product']['name'];
     final buyer = shortage['pharmacy']['name'];
     final l10n = AppLocalizations.of(context)!;
 
-    final isOrder = tx['stockShortage']?['shortage']?['order'] != null;
-    final orderSerial = isOrder
-        ? tx['stockShortage']['shortage']['order']['serial']
-        : null;
+    final isOrder = shortage['order'] != null;
+    final orderSerial = isOrder ? shortage['order']['serial'] : null;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final isAdmin = auth.userRole == 'admin';
@@ -181,59 +181,63 @@ class _FollowUpTransactionsScreenState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (tx['serial'] != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[400]!),
-                        ),
-                        child: Text(
-                          '#${tx['serial']}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (tx['serial'] != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: const EdgeInsets.only(bottom: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.grey[400]!),
+                          ),
+                          child: Text(
+                            '#${tx['serial']}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
                           ),
                         ),
-                      ),
-                    if (orderSerial != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withAlpha(25),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.blue.withAlpha(76)),
-                        ),
-                        child: Text(
-                          l10n.labelOrderPrefix + orderSerial,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                      if (orderSerial != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: const EdgeInsets.only(bottom: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withAlpha(25),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.blue.withAlpha(76),
+                            ),
+                          ),
+                          child: Text(
+                            l10n.labelOrderPrefix + orderSerial,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800],
+                            ),
                           ),
                         ),
+                      Text(
+                        product,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    Text(
-                      product,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 _statusBadge(tx['status']),
               ],
@@ -280,16 +284,22 @@ class _FollowUpTransactionsScreenState
               l10n.labelSellers,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
-            ...(tx['stockExcessSources'] as List).map(
-              (s) => InkWell(
-                onTap: () => UIUtils.showPharmacyInfo(
-                  context,
-                  s['stockExcess']['pharmacy'],
-                ),
+            ...(tx['stockExcessSources'] as List).map((s) {
+              final stockExcess = s['stockExcess'];
+              final pharmacy = stockExcess?['pharmacy'];
+              final pharmacyName = pharmacy?['name'] ?? 'Unknown Pharmacy';
+              final quantity = s['quantity'];
+
+              if (stockExcess == null) return const SizedBox.shrink();
+
+              return InkWell(
+                onTap: pharmacy != null
+                    ? () => UIUtils.showPharmacyInfo(context, pharmacy)
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Text(
-                    '- ${s['stockExcess']['pharmacy']['name']} (${s['quantity']} ${l10n.labelUnitsShort})',
+                    '- $pharmacyName ($quantity ${l10n.labelUnitsShort})',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.blue,
@@ -297,8 +307,8 @@ class _FollowUpTransactionsScreenState
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            }),
             const SizedBox(height: 12),
             if (tx['status'] != 'completed' && tx['status'] != 'cancelled')
               Column(
