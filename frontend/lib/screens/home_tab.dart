@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/excess_provider.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
 import 'requests_history_screen.dart';
@@ -310,7 +311,7 @@ class _HomeTabState extends State<HomeTab> {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           final logicTitle = originalTitle.isNotEmpty ? originalTitle : title;
           if (logicTitle == 'Add Excess') {
             Navigator.push(
@@ -332,12 +333,19 @@ class _HomeTabState extends State<HomeTab> {
               ),
             );
           } else if (logicTitle == 'Shopping Tour') {
-            Navigator.push(
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => const CreateOrderScreen(),
               ),
             );
+            // Reload market excesses if order was placed successfully
+            if (result == true && mounted) {
+              await Provider.of<ExcessProvider>(
+                context,
+                listen: false,
+              ).fetchMarketExcesses();
+            }
           } else if (logicTitle == 'Suggest Product') {
             Navigator.push(
               context,

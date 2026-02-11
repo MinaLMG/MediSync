@@ -445,16 +445,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _submitOrder() async {
     final l10n = AppLocalizations.of(context)!;
-    if (_cart.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.msgCartEmpty)));
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
+    // _isSubmitting is already set to true in onPressed
     try {
+      if (_cart.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.msgCartEmpty)));
+        return;
+      }
       // Convert cart to order items
       final items = _cart.values.map((cartItem) {
         final item = cartItem['item'];
@@ -480,13 +478,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       ).createOrder(orderData);
 
       if (success && mounted) {
+        // Clear cart and notes after successful order
+        setState(() {
+          _cart.clear();
+          _notesController.clear();
+        });
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.msgOrderPlaced)));
-        // First pop closes the modal (cart)
+
+        // Remove cart modal
         Navigator.pop(context);
-        // Second pop closes the screen (CreateOrderScreen)
-        Navigator.pop(context);
+
+        // DO NOT POP MAIN SCREEN - RELOAD DATA INSTEAD
+        await _fetchMarketItems();
       } else if (mounted) {
         final error = Provider.of<ShortageProvider>(
           context,
@@ -622,32 +628,58 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                          _submitOrder();
-                        },
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.shopping_bag),
-                  label: Text(
-                    _isSubmitting
-                        ? l10n.msgPlacingOrder
-                        : l10n.actionPlaceOrder,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[800],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                  ),
+                child: StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return ElevatedButton.icon(
+                      onPressed: _isSubmitting
+                          ? null
+                          : () async {
+                              // Update UI immediately in modal
+                              setModalState(() {});
+                              // Update parent state for logic
+                              setState(() => _isSubmitting = true);
+
+                              // Perform order submission
+                              await _submitOrder();
+
+                              // Refresh modal state if still mounted (e.g. on error)
+                              if (context.mounted) {
+                                setModalState(() {});
+                              }
+                            },
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.shopping_bag),
+                      label: Text(
+                        _isSubmitting
+                            ? l10n.msgPlacingOrder
+                            : l10n.actionPlaceOrder,
+                      ),
+                      // Explicitly use different styles for different states
+                      style: _isSubmitting
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey,
+                              disabledForegroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                            )
+                          : ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[800],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                              disabledBackgroundColor: Colors.grey[400],
+                              disabledForegroundColor: Colors.white,
+                            ),
+                    );
+                  },
                 ),
               ),
             ],
