@@ -15,6 +15,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -27,33 +28,39 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.changePassword(
-        _oldPasswordController.text,
-        _newPasswordController.text,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? l10n.msgPasswordChangedSuccess
-                  : (authProvider.errorMessage ?? l10n.msgPasswordChangeFailed),
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
+      setState(() => _isSubmitting = true);
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final success = await authProvider.changePassword(
+          _oldPasswordController.text,
+          _newPasswordController.text,
         );
-        if (success) {
-          Navigator.pop(context);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success
+                    ? l10n.msgPasswordChangedSuccess
+                    : (authProvider.errorMessage ??
+                          l10n.msgPasswordChangeFailed),
+              ),
+              backgroundColor: success ? Colors.green : Colors.red,
+            ),
+          );
+          if (success) {
+            Navigator.pop(context);
+          }
         }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    // final authProvider = Provider.of<AuthProvider>(context);
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -124,16 +131,33 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: authProvider.isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[900],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: authProvider.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: _isSubmitting
+                      ? ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        )
+                      : ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[900],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : Text(
                           l10n.menuResetPassword,
                           style: const TextStyle(

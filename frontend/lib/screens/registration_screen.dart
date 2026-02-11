@@ -17,6 +17,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -29,39 +30,46 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
-      final success = await Provider.of<AuthProvider>(context, listen: false)
-          .register(
-            name: _nameController.text,
-            email: _emailController.text,
-            password: _passwordController.text,
-            phone: _phoneController.text,
+      setState(() => _isSubmitting = true);
+
+      try {
+        final success = await Provider.of<AuthProvider>(context, listen: false)
+            .register(
+              name: _nameController.text,
+              email: _emailController.text,
+              password: _passwordController.text,
+              phone: _phoneController.text,
+            );
+
+        if (!mounted) return;
+
+        if (success) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
           );
-
-      if (!mounted) return;
-
-      if (success) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              Provider.of<AuthProvider>(context, listen: false).errorMessage ??
-                  AppLocalizations.of(context)!.registrationFailed,
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    ).errorMessage ??
+                    AppLocalizations.of(context)!.registrationFailed,
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<AuthProvider>(context).isLoading;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.createAccountTitle),
@@ -139,13 +147,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: isLoading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue[800],
-                    foregroundColor: Colors.white,
-                  ),
-                  child: isLoading
+                  onPressed: _isSubmitting ? null : _register,
+                  style: _isSubmitting
+                      ? ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
+                        )
+                      : ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.blue[800],
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
+                        ),
+                  child: _isSubmitting
                       ? const SizedBox(
                           height: 20,
                           width: 20,

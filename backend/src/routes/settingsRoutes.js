@@ -7,6 +7,6 @@ const { getLimiter, strictLimiter } = require('../middlewares/rateLimiter');
 
 // All settings routes are private and admin only
 router.get('/', protect, getLimiter, getSettings);
-router.put('/', protect, strictLimiter, updateSettings);
+// router.put('/', protect, strictLimiter, updateSettings);
 
 module.exports = router;

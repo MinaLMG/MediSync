@@ -20,6 +20,7 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
   final _ownerController = TextEditingController();
   final _nationalIdController = TextEditingController();
   final _addressController = TextEditingController();
+  bool _isSubmitting = false;
 
   String? pharmacistCardPath;
   String? registryPath;
@@ -44,7 +45,6 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<AuthProvider>(context).isLoading;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -164,13 +164,21 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
 
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue[800],
-                  foregroundColor: Colors.white,
-                ),
-                child: isLoading
+                onPressed: _isSubmitting ? null : _submit,
+                style: _isSubmitting
+                    ? ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.grey,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey,
+                        disabledForegroundColor: Colors.white,
+                      )
+                    : ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.blue[800],
+                        foregroundColor: Colors.white,
+                      ),
+                child: _isSubmitting
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -260,37 +268,45 @@ class _PharmacyFormScreenState extends State<PharmacyFormScreen> {
         return;
       }
 
-      final success = await Provider.of<AuthProvider>(context, listen: false)
-          .linkPharmacy(
-            {
-              'name': _nameController.text,
-              'ownerName': _ownerController.text,
-              'nationalId': _nationalIdController.text,
-              'address': _addressController.text,
-            },
-            {
-              'pharmacistCard': pharmacistCardPath!,
-              'commercialRegistry': registryPath!,
-              'taxCard': taxPath!,
-              'pharmacyLicense': licensePath!,
-            },
-          );
+      setState(() => _isSubmitting = true);
+      try {
+        final success = await Provider.of<AuthProvider>(context, listen: false)
+            .linkPharmacy(
+              {
+                'name': _nameController.text,
+                'ownerName': _ownerController.text,
+                'nationalId': _nationalIdController.text,
+                'address': _addressController.text,
+              },
+              {
+                'pharmacistCard': pharmacistCardPath!,
+                'commercialRegistry': registryPath!,
+                'taxCard': taxPath!,
+                'pharmacyLicense': licensePath!,
+              },
+            );
 
-      if (success && mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-          (route) => false,
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              Provider.of<AuthProvider>(context, listen: false).errorMessage ??
-                  l10n.msgSubmissionFailed,
+        if (success && mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+            (route) => false,
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    ).errorMessage ??
+                    l10n.msgSubmissionFailed,
+              ),
             ),
-          ),
-        );
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }

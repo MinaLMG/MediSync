@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -29,64 +30,69 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      setState(() => _isSubmitting = true);
 
-      final success = await authProvider.login(
-        _emailController.text,
-        _passwordController.text,
-      );
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      if (!mounted) return;
+        final success = await authProvider.login(
+          _emailController.text,
+          _passwordController.text,
+        );
 
-      if (success) {
-        final role = authProvider.userRole;
-        final status = authProvider.userStatus;
+        if (!mounted) return;
 
-        if (role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AdminDashboardScreen(),
-            ),
-          );
-        } else if (role == 'delivery') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DeliveryDashboardScreen(),
-            ),
-          );
-        } else if (status == 'active') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const DashboardScreen(userType: 'manager'),
-            ),
-          );
+        if (success) {
+          final role = authProvider.userRole;
+          final status = authProvider.userStatus;
+
+          if (role == 'admin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminDashboardScreen(),
+              ),
+            );
+          } else if (role == 'delivery') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DeliveryDashboardScreen(),
+              ),
+            );
+          } else if (status == 'active') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const DashboardScreen(userType: 'manager'),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+            );
+          }
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                authProvider.errorMessage ??
+                    AppLocalizations.of(context)!.loginFailed,
+              ),
+              backgroundColor: Colors.red,
+            ),
           );
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              authProvider.errorMessage ??
-                  AppLocalizations.of(context)!.loginFailed,
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<AuthProvider>(context).isLoading;
-
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -152,13 +158,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.blue[800],
-                      foregroundColor: Colors.white,
-                    ),
-                    child: isLoading
+                    onPressed: _isSubmitting ? null : _login,
+                    style: _isSubmitting
+                        ? ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.grey,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.grey,
+                            disabledForegroundColor: Colors.white,
+                          )
+                        : ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.blue[800],
+                            foregroundColor: Colors.white,
+                          ),
+                    child: _isSubmitting
                         ? const SizedBox(
                             height: 20,
                             width: 20,

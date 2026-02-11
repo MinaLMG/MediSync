@@ -15,6 +15,7 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -37,41 +38,45 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
         return;
       }
 
-      final success = await Provider.of<ProductProvider>(
-        context,
-        listen: false,
-      ).suggestProduct({'name': _nameController.text.trim(), 'price': price});
+      setState(() => _isSubmitting = true);
+      try {
+        final success = await Provider.of<ProductProvider>(
+          context,
+          listen: false,
+        ).suggestProduct({'name': _nameController.text.trim(), 'price': price});
 
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppLocalizations.of(context)!.msgSubmittedSuccessfully,
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  AppLocalizations.of(context)!.msgSubmittedSuccessfully,
+                ),
               ),
-            ),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                Provider.of<ProductProvider>(
-                      context,
-                      listen: false,
-                    ).errorMessage ??
-                    AppLocalizations.of(context)!.msgGenericError,
+            );
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  Provider.of<ProductProvider>(
+                        context,
+                        listen: false,
+                      ).errorMessage ??
+                      AppLocalizations.of(context)!.msgGenericError,
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<ProductProvider>(context).isLoading;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -105,8 +110,14 @@ class _SuggestProductScreenState extends State<SuggestProductScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _submit,
-                  child: isLoading
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: _isSubmitting
+                      ? ElevatedButton.styleFrom(
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
+                        )
+                      : null,
+                  child: _isSubmitting
                       ? const SizedBox(
                           height: 20,
                           width: 20,

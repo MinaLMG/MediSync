@@ -415,6 +415,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : _submit,
+          style: _isSubmitting
+              ? ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey,
+                  disabledForegroundColor: Colors.white,
+                )
+              : null,
           child: _isSubmitting
               ? const SizedBox(
                   height: 20,

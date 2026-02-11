@@ -267,16 +267,20 @@ class _AdminDeliveryRequestsScreenState
                                       request['_id'],
                                       'rejected',
                                     ),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
+                              style: provider.isLoading
+                                  ? TextButton.styleFrom(
+                                      foregroundColor: Colors.grey,
+                                    )
+                                  : TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
                               child: provider.isLoading
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.red,
+                                        color: Colors.grey,
                                       ),
                                     )
                                   : Text(l10n.actionReject),
@@ -289,10 +293,17 @@ class _AdminDeliveryRequestsScreenState
                                       request['_id'],
                                       'approved',
                                     ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                              ),
+                              style: provider.isLoading
+                                  ? ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey,
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor: Colors.grey,
+                                      disabledForegroundColor: Colors.white,
+                                    )
+                                  : ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                    ),
                               child: provider.isLoading
                                   ? const SizedBox(
                                       width: 20,

@@ -636,11 +636,19 @@ class _AdminOrderFulfillmentScreenState
                               ),
                         style: const TextStyle(fontSize: 16),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(16),
-                      ),
+                      style: _isLoading
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                              disabledBackgroundColor: Colors.grey,
+                              disabledForegroundColor: Colors.white,
+                            )
+                          : ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[700],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                            ),
                     ),
                   ),
                 ),

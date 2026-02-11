@@ -12,6 +12,7 @@ class AccountDetailsScreen extends StatefulWidget {
 
 class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   bool _isEditing = false;
+  bool _isSubmitting = false;
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
@@ -51,30 +52,35 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   Future<void> _submitUpdate() async {
     final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.requestProfileUpdate({
-        'name': _nameController.text,
-        'email': _emailController.text,
-        'phone': _phoneController.text,
-        'pharmacy': {
-          'name': _phNameController.text,
-          'phone': _phPhoneController.text,
-          'address': _phAddressController.text,
-        },
-      });
+      setState(() => _isSubmitting = true);
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final success = await authProvider.requestProfileUpdate({
+          'name': _nameController.text,
+          'email': _emailController.text,
+          'phone': _phoneController.text,
+          'pharmacy': {
+            'name': _phNameController.text,
+            'phone': _phPhoneController.text,
+            'address': _phAddressController.text,
+          },
+        });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? l10n.msgUpdateRequested
-                  : (authProvider.errorMessage ?? l10n.msgUpdateFailed),
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success
+                    ? l10n.msgUpdateRequested
+                    : (authProvider.errorMessage ?? l10n.msgUpdateFailed),
+              ),
+              backgroundColor: success ? Colors.green : Colors.red,
             ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
-        if (success) setState(() => _isEditing = false);
+          );
+          if (success) setState(() => _isEditing = false);
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -211,14 +217,29 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: authProvider.isLoading ? null : _submitUpdate,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
-                      child: authProvider.isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                      onPressed: _isSubmitting ? null : _submitUpdate,
+                      style: _isSubmitting
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey,
+                              disabledForegroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                            )
+                          : ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[700],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                            ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : Text(l10n.actionSaveChanges),
                     ),
                   ),

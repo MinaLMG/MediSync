@@ -24,6 +24,7 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
 
   List<dynamic> _availableVolumes = [];
   bool _isFetchingVolumes = false;
+  bool _isSubmitting = false;
 
   bool get isEditMode => widget.initialData != null;
 
@@ -64,45 +65,51 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
         return;
       }
 
-      final shortageData = {
-        'product': _selectedProductId,
-        'volume': _selectedVolumeId,
-        'quantity': quantity,
-      };
+      setState(() => _isSubmitting = true);
 
-      final success = isEditMode
-          ? await Provider.of<ShortageProvider>(
-              context,
-              listen: false,
-            ).updateShortage(widget.initialData!['_id'], shortageData)
-          : await Provider.of<ShortageProvider>(
-              context,
-              listen: false,
-            ).createShortage(shortageData);
+      try {
+        final shortageData = {
+          'product': _selectedProductId,
+          'volume': _selectedVolumeId,
+          'quantity': quantity,
+        };
 
-      if (mounted) {
-        if (success) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isEditMode ? l10n.msgShortageUpdated : l10n.msgShortageAdded,
+        final success = isEditMode
+            ? await Provider.of<ShortageProvider>(
+                context,
+                listen: false,
+              ).updateShortage(widget.initialData!['_id'], shortageData)
+            : await Provider.of<ShortageProvider>(
+                context,
+                listen: false,
+              ).createShortage(shortageData);
+
+        if (mounted) {
+          if (success) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  isEditMode ? l10n.msgShortageUpdated : l10n.msgShortageAdded,
+                ),
               ),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                Provider.of<ShortageProvider>(
-                      context,
-                      listen: false,
-                    ).errorMessage ??
-                    l10n.msgErrorProcessingRequest,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  Provider.of<ShortageProvider>(
+                        context,
+                        listen: false,
+                      ).errorMessage ??
+                      l10n.msgErrorProcessingRequest,
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -292,18 +299,34 @@ class _AddShortageScreenState extends State<AddShortageScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed:
-                            Provider.of<ShortageProvider>(context).isLoading
-                            ? null
-                            : _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.red[800],
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Provider.of<ShortageProvider>(context).isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
+                        onPressed: _isSubmitting ? null : _submitForm,
+                        style: _isSubmitting
+                            ? ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                backgroundColor: Colors.grey,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.white,
+                              )
+                            : ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                backgroundColor: Colors.red[800],
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.white,
+                              ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(
                                 isEditMode

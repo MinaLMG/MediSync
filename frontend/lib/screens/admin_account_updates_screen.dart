@@ -270,17 +270,22 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen>
                         onPressed: _isLoading
                             ? null
                             : () => _reviewUpdate(user['_id'], 'reject'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                        ),
+                        style: _isLoading
+                            ? OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey,
+                                side: const BorderSide(color: Colors.grey),
+                              )
+                            : OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                              ),
                         child: _isLoading
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.red,
+                                  color: Colors.grey,
                                 ),
                               )
                             : Text(AppLocalizations.of(context)!.actionReject),
@@ -292,10 +297,17 @@ class _AdminAccountUpdatesScreenState extends State<AdminAccountUpdatesScreen>
                         onPressed: _isLoading
                             ? null
                             : () => _reviewUpdate(user['_id'], 'approve'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
+                        style: _isLoading
+                            ? ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.white,
+                              )
+                            : ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
                         child: _isLoading
                             ? const SizedBox(
                                 width: 20,

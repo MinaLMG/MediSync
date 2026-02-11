@@ -253,6 +253,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
                         ),
                         onPressed: _isLoading
                             ? null
@@ -289,6 +291,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          disabledForegroundColor: Colors.white,
                         ),
                         onPressed: _isLoading
                             ? null
@@ -621,6 +625,12 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                       ),
                     )
                   : Text(AppLocalizations.of(context)!.actionCreate),
+              style: _isLoading
+                  ? ElevatedButton.styleFrom(
+                      disabledBackgroundColor: Colors.grey,
+                      disabledForegroundColor: Colors.white,
+                    )
+                  : null,
             ),
           ),
         ],

@@ -36,7 +36,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
       );
       final data = json.decode(response.body);
       if (data['success']) {
-        setState(() => _pharmacies = data['data']);
+        if (mounted) setState(() => _pharmacies = data['data']);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

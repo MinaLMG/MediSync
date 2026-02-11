@@ -80,7 +80,12 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.delete, color: Colors.red),
+                          : Icon(
+                              Icons.delete,
+                              color: provider.isLoading
+                                  ? Colors.grey
+                                  : Colors.red,
+                            ),
                       onPressed: provider.isLoading
                           ? null
                           : () async {
@@ -147,6 +152,12 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                     : Text(
                                         AppLocalizations.of(context)!.actionAdd,
                                       ),
+                                style: p.isLoading
+                                    ? ElevatedButton.styleFrom(
+                                        disabledBackgroundColor: Colors.grey,
+                                        disabledForegroundColor: Colors.white,
+                                      )
+                                    : null,
                               );
                             },
                           ),
@@ -228,6 +239,12 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                         ),
                       )
                     : Text(AppLocalizations.of(context)!.actionUpdate),
+                style: provider.isLoading
+                    ? ElevatedButton.styleFrom(
+                        disabledBackgroundColor: Colors.grey,
+                        disabledForegroundColor: Colors.white,
+                      )
+                    : null,
               ),
             ],
           );
@@ -353,9 +370,11 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
                                           ? Icons.block
                                           : Icons.check_circle_outline,
                                       size: 18,
-                                      color: p['status'] == 'active'
-                                          ? Colors.red
-                                          : Colors.green,
+                                      color: provider.isLoading
+                                          ? Colors.grey
+                                          : (p['status'] == 'active'
+                                                ? Colors.red
+                                                : Colors.green),
                                     ),
                               tooltip: p['status'] == 'active'
                                   ? AppLocalizations.of(

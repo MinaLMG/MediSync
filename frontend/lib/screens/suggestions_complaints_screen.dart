@@ -15,6 +15,7 @@ class _SuggestionsComplaintsScreenState
     extends State<SuggestionsComplaintsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _contentController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -24,39 +25,43 @@ class _SuggestionsComplaintsScreenState
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      final success = await Provider.of<AppSuggestionProvider>(
-        context,
-        listen: false,
-      ).submitSuggestion(_contentController.text.trim());
+      setState(() => _isSubmitting = true);
+      try {
+        final success = await Provider.of<AppSuggestionProvider>(
+          context,
+          listen: false,
+        ).submitSuggestion(_contentController.text.trim());
 
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!.msgFeedbackSuccess),
-            ),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                Provider.of<AppSuggestionProvider>(
-                      context,
-                      listen: false,
-                    ).errorMessage ??
-                    AppLocalizations.of(context)!.msgGenericError,
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(AppLocalizations.of(context)!.msgFeedbackSuccess),
               ),
-            ),
-          );
+            );
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  Provider.of<AppSuggestionProvider>(
+                        context,
+                        listen: false,
+                      ).errorMessage ??
+                      AppLocalizations.of(context)!.msgGenericError,
+                ),
+              ),
+            );
+          }
         }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = Provider.of<AppSuggestionProvider>(context).isLoading;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -87,14 +92,29 @@ class _SuggestionsComplaintsScreenState
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                onPressed: _isSubmitting ? null : _submit,
+                style: _isSubmitting
+                    ? ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey,
+                        disabledForegroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      )
+                    : ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : Text(l10n.actionSubmit),
               ),
             ],

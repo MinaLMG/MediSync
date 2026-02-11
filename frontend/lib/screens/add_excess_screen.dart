@@ -35,6 +35,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
   List<dynamic> _availableVolumes = [];
   bool _isFetchingVolumes = false;
+  bool _isSubmitting = false;
 
   bool get isEditMode => widget.initialData != null;
 
@@ -230,48 +231,54 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
         return;
       }
 
-      final excessData = {
-        'quantity': quantity,
-        'selectedPrice': price,
-        'salePercentage': saleVal,
-        'shortage_fulfillment': _shortageFulfillment,
-      };
+      setState(() => _isSubmitting = true);
 
-      if (!isEditMode) {
-        excessData['product'] = _selectedProductId!;
-        excessData['volume'] = _selectedVolumeId!;
-        excessData['expiryDate'] = _expiryDate!;
-      }
+      try {
+        final excessData = {
+          'quantity': quantity,
+          'selectedPrice': price,
+          'salePercentage': saleVal,
+          'shortage_fulfillment': _shortageFulfillment,
+        };
 
-      final success = isEditMode
-          ? await Provider.of<ExcessProvider>(
-              context,
-              listen: false,
-            ).updateExcess(widget.initialData!['_id'], excessData)
-          : await Provider.of<ExcessProvider>(
-              context,
-              listen: false,
-            ).addExcess(excessData);
-
-      if (mounted) {
-        if (success) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.actionSuccessful)));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                Provider.of<ExcessProvider>(
-                      context,
-                      listen: false,
-                    ).errorMessage ??
-                    l10n.msgGenericError,
-              ),
-            ),
-          );
+        if (!isEditMode) {
+          excessData['product'] = _selectedProductId!;
+          excessData['volume'] = _selectedVolumeId!;
+          excessData['expiryDate'] = _expiryDate!;
         }
+
+        final success = isEditMode
+            ? await Provider.of<ExcessProvider>(
+                context,
+                listen: false,
+              ).updateExcess(widget.initialData!['_id'], excessData)
+            : await Provider.of<ExcessProvider>(
+                context,
+                listen: false,
+              ).addExcess(excessData);
+
+        if (mounted) {
+          if (success) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(l10n.actionSuccessful)));
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  Provider.of<ExcessProvider>(
+                        context,
+                        listen: false,
+                      ).errorMessage ??
+                      l10n.msgGenericError,
+                ),
+              ),
+            );
+          }
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -621,18 +628,34 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed:
-                            Provider.of<ExcessProvider>(context).isLoading
-                            ? null
-                            : _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.blue[800],
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Provider.of<ExcessProvider>(context).isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
+                        onPressed: _isSubmitting ? null : _submitForm,
+                        style: _isSubmitting
+                            ? ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                backgroundColor: Colors.grey,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.white,
+                              )
+                            : ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                backgroundColor: Colors.blue[800],
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.white,
+                              ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(
                                 isEditMode ? 'Update Excess' : 'Submit Excess',
