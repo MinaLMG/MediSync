@@ -11,7 +11,8 @@ exports.getMyBalanceHistory = async (req, res) => {
 
         const history = await BalanceHistory.find({ pharmacy: req.user.pharmacy })
             .sort({ createdAt: -1 })
-            .populate('relatedEntity');
+            .populate('relatedEntity')
+            .populate('product', 'name');
 
         res.status(200).json({
             success: true,
@@ -30,7 +31,8 @@ exports.getPharmacyBalanceHistory = async (req, res) => {
     try {
         const history = await BalanceHistory.find({ pharmacy: req.params.pharmacyId })
             .sort({ createdAt: -1 })
-            .populate('relatedEntity');
+            .populate('relatedEntity')
+            .populate('product', 'name');
 
         res.status(200).json({
             success: true,

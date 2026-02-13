@@ -326,6 +326,8 @@ exports.settleTransaction = async (transaction, session) => {
                 relatedEntityType: 'Transaction',
                 description: `Revenue for transaction #${transaction.serial}`,
                 description_ar: `عائد للمعاملة #${transaction.serial}`,
+                product: excess.product,
+                quantity: source.quantity,
                 details: sellerDetails
             }], { session });
 
@@ -361,6 +363,8 @@ exports.settleTransaction = async (transaction, session) => {
             relatedEntityType: 'Transaction',
             description: `Payment for transaction #${transaction.serial}`,
             description_ar: `دفع للمعاملة #${transaction.serial}`,
+            product: shortage.product,
+            quantity: transaction.stockShortage.quantityTaken,
             details: {
                 sources: buyerDetailsList,
                 totalBuyerEffect
@@ -569,6 +573,8 @@ exports.revertAddToHub = async (transaction, session, req) => {
             relatedEntityType: 'Transaction',
             description: `Reversal of payment for transaction #${transaction.serial}`,
             description_ar: `عكس عملية الدفع للمعاملة #${transaction.serial}`,
+            product: shortageObj.product,
+            quantity: transaction.stockShortage.quantityTaken,
             details: { type: 'reversal' }
         }], { session });
 
@@ -602,6 +608,8 @@ exports.revertAddToHub = async (transaction, session, req) => {
                     relatedEntityType: 'Transaction',
                     description: `Reversal of revenue for transaction #${transaction.serial}`,
                     description_ar: `عكس عملية التحصيل للمعاملة #${transaction.serial}`,
+                    product: excess.product,
+                    quantity: source.quantity,
                     details: { type: 'reversal' }
                 }], { session });
 

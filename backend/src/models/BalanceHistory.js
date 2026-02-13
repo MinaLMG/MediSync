@@ -40,6 +40,13 @@ const balanceHistorySchema = new mongoose.Schema({
     },
     details: {
         type: mongoose.Schema.Types.Mixed // For storing specific breakdown like commission ratios
+    },
+    product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product'
+    },
+    quantity: {
+        type: Number
     }
 }, {
     timestamps: true

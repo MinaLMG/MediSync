@@ -56,6 +56,26 @@ exports.approveExcess = async (req, res) => {
         res.status(statusCode).json({ success: false, message: error.message });
     } finally {
         session.endSession();
+        // Notify User
+        try {
+            const { addNotificationJob } = require('../utils/queueManager');
+            const { User } = require('../models');
+            const owner = await User.findOne({ pharmacy: excess.pharmacy });
+            if (owner) {
+                await addNotificationJob(
+                    owner._id.toString(),
+                    'system',
+                    `Your stock excess listing for "${productName}" was approved.`,
+                    {
+                        relatedEntity: excess._id,
+                        relatedEntityType: 'StockExcess'
+                    },
+                    `تمت الموافقة على عرض المخزون الزائد الخاص بك لـ "${productName}".`
+                );
+            }
+        } catch (err) {
+            console.error('Error in approveExcess notification:', err);
+        }
     }
 };
 
@@ -65,6 +85,30 @@ exports.rejectExcess = async (req, res) => {
         if (!rejectionReason) return res.status(400).json({ success: false, message: 'Reason required' });
         const excess = await StockExcess.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason }, { new: true });
         if (!excess) return res.status(404).json({ success: false, message: 'Not found' });
+
+        // Notify User
+        try {
+            const { addNotificationJob } = require('../utils/queueManager');
+            const { Product, User } = require('../models');
+            const product = await Product.findById(excess.product);
+            const productName = product ? product.name : 'Unknown Product';
+            const owner = await User.findOne({ pharmacy: excess.pharmacy });
+            if (owner) {
+                await addNotificationJob(
+                    owner._id.toString(),
+                    'system',
+                    `Your stock excess listing for "${productName}" was rejected. Reason: ${rejectionReason}`,
+                    {
+                        relatedEntity: excess._id,
+                        relatedEntityType: 'StockExcess'
+                    },
+                    `تم رفض عرض المخزون الزائد الخاص بك لـ "${productName}". السبب: ${rejectionReason}`
+                );
+            }
+        } catch (err) {
+            console.error('Error in rejectExcess notification:', err);
+        }
+
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

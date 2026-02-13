@@ -448,9 +448,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     // _isSubmitting is already set to true in onPressed
     try {
       if (_cart.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.msgCartEmpty)));
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(l10n.msgCartEmpty),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.actionDone),
+                ),
+              ],
+            ),
+          );
+        }
         return;
       }
       // Convert cart to order items
@@ -498,9 +509,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           context,
           listen: false,
         ).errorMessage;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error ?? l10n.msgOrderFailed)));
+
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.msgOrderFailed),
+            content: Text(error ?? l10n.msgGenericError),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.actionDone),
+              ),
+            ],
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

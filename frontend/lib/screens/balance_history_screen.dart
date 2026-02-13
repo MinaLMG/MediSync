@@ -112,6 +112,17 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(formattedDate),
+            if (item['product'] != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${item['product']['name'] ?? 'Product'} (${item['quantity'] ?? '0'})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               '${l10n.labelBalance}: ${item['previousBalance']?.toStringAsFixed(2)} → ${item['newBalance']?.toStringAsFixed(2)}',
@@ -167,6 +178,11 @@ class _BalanceHistoryScreenState extends State<BalanceHistoryScreen> {
                     'yyyy-MM-dd HH:mm:ss',
                   ).format(DateTime.parse(item['createdAt']).toLocal()),
                 ),
+                if (item['product'] != null) ...[
+                  const Divider(),
+                  _detailRow(l10n.labelProduct, item['product']['name']),
+                  _detailRow(l10n.labelQuantity, item['quantity']?.toString()),
+                ],
                 const Divider(),
                 _detailRow(
                   l10n.amountLabel,

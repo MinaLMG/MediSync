@@ -26,6 +26,7 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
         if (!pharmacy || !pharmacy.isHub) {
             throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
         }
+        throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
     }
 
     const shortage = session 
@@ -100,7 +101,14 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
             
             const product = await Product.findById(item.product).session(session);
             if (!product || product.status !== 'active') throw new Error(`Product ${item.product} is inactive.`);
-
+            const existingExcess = await StockExcess.findOne({
+                pharmacy: pharmacyId,
+                product: item.product,
+                status: { $in: ['pending', 'available', 'partially_fulfilled'] }
+            }).session(session);
+            if (existingExcess) {   
+                throw new Error(`You cannot add a shortage for ${product.name} because you already have an excess for it.`);
+            }
             const shortage = new StockShortage({
                 pharmacy: pharmacyId,
                 product: item.product,

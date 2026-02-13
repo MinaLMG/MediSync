@@ -31,7 +31,11 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     }).session(session);
 
     if (existingShortage) { // Only check for regular user adds
-        throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
+        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);   
+        if (!pharmacy ||!pharmacy.isHub) {
+            throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
+            
+        }
     }
     const isShortageFulfillment = shortage_fulfillment === true;
 
@@ -126,6 +130,28 @@ exports.approveExcess = async (excessId, session = null) => {
             hasVol.prices.sort((a, b) => a - b);
             await hasVol.save({ session });
         }
+    }
+
+    // Notify User
+    try {
+        const { addNotificationJob } = require('../utils/queueManager');
+        const product = await Product.findById(excess.product).session(session);
+        const productName = product ? product.name : 'Unknown Product';
+        const owner = await User.findOne({ pharmacy: excess.pharmacy }).session(session);
+        if (owner) {
+            await addNotificationJob(
+                owner._id.toString(),
+                'system',
+                `Your stock excess listing for "${productName}" has been approved.`,
+                {
+                    relatedEntity: excess._id,
+                    relatedEntityType: 'StockExcess'
+                },
+                `تم الموافقة على قائمة العرض الخاصة بك لـ "${productName}".`
+            );
+        }
+    } catch (err) {
+        console.error('Error in approveExcess notification:', err);
     }
 
     return excess;
