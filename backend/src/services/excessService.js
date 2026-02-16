@@ -1,4 +1,4 @@
-const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy } = require('../models');
+const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy, SalesInvoice } = require('../models');
 const auditService = require('./auditService');
 const serialService = require('./serialService');
 const mongoose = require('mongoose');
@@ -15,6 +15,9 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         selectedPrice, 
         salePercentage, 
         shortage_fulfillment,
+        isHubGenerated,
+        isHubPurchase,
+        purchasePrice,
     } = userData;
 
     // Check product status
@@ -81,17 +84,37 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         isNewPrice = true;
     }
 
+    // Check if Pharmacy is Hub to determine purchasePrice logic
+    const pharmacyObj = await Pharmacy.findById(pharmacyId).session(session);
+    const isHub = pharmacyObj && pharmacyObj.isHub;
+
+    // Calculate Purchase Price for Hub (if not already provided by Purchase Invoice)
+    let finalPurchasePrice = purchasePrice;
+    let finalIsHubGenerated = isHubGenerated || false;
+
+    if (isHub && !isHubPurchase) {
+        finalIsHubGenerated = true;
+        // Logic: Cost = Price * (1 - SalePercentage/100)
+        // SalePercentage is the discount to consumer (e.g. 20%)
+        // So Cost is the remaining value (e.g. 80%)
+        const saleRatio = finalSalePercentage ? (finalSalePercentage / 100) : 0;
+        finalPurchasePrice = selectedPrice * (1.0 - saleRatio);
+    }
+
     const excessData = {
         pharmacy: pharmacyId, 
         product,
         volume,
         originalQuantity: quantity,
-        remainingQuantity: userData.remainingQuantity !== undefined ? userData.remainingQuantity : quantity,
+        remainingQuantity: quantity,
         expiryDate,
         selectedPrice,
         salePercentage: finalSalePercentage,
          shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
+        isHubGenerated: finalIsHubGenerated,
+        isHubPurchase:  isHubPurchase || false,
+        purchasePrice: finalPurchasePrice,
         status: 'pending' 
     };
 
@@ -180,6 +203,9 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
 
     // Validate quantity decrease only
     if (quantity !== undefined) {
+        if (excess.isHubGenerated) {
+            throw new Error('Quantity for hub-generated excesses cannot be updated manually. Please update via the source invoice or "Add to Hub" record.');
+        }
         if (quantity > excess.originalQuantity) {
              throw new Error('Excesses can only be decreased in quantity, not increased.');
         }
@@ -252,6 +278,8 @@ exports.syncExcessStatus = async (excess, session = null) => {
     } else {
         excess.status = 'partially_fulfilled';
     }
+    if  (session)   
+    await excess.save({ session });
 };
 
 /**
@@ -302,23 +330,20 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         await transactionService.updateTransactionStatus(transaction._id, 'completed', session, req);
 
         // 4. Create new excess at the hub (instantly available)
+        const purchasePrice = (1 - (excess.salePercentage / 100)) * excess.selectedPrice;
+
         const hubExcess = await exports.createExcess({
             product: excess.product,
             volume: excess.volume,
             quantity: quantity,
-            remainingQuantity: quantity,
             expiryDate: excess.expiryDate,
             selectedPrice: excess.selectedPrice,
             salePercentage: excess.salePercentage,
             shortage_fulfillment: excess.shortage_fulfillment,
+            isHubGenerated: true,
+            isHubPurchase: true,
+            purchasePrice: purchasePrice,
         }, hubId, req, session);
-
-        // Approve excess (sets status to available and handles price updates)
-        await exports.approveExcess(hubExcess._id, session);
-
-        // Update hubExcess with isHubGenerated (since createExcess doesn't support it directly yet or we modify createExcess, but direct update is safer here)
-        hubExcess.isHubGenerated = true;
-        await hubExcess.save({ session });
 
         // Update transaction with added_to_hub reference
         transaction.added_to_hub = { excessId: hubExcess._id };
@@ -347,5 +372,32 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         throw error;
     } finally {
         session.endSession();
+    }
+};
+
+/**
+ * Propagates buying price update to all related sales invoices.
+ */
+exports.propagateBuyingPriceUpdate = async (excessId, newBuyingPrice, session = null) => {
+    // Find all sales invoices that contain this excess
+    const invoices = await SalesInvoice.find({ 'items.excess': excessId }).session(session);
+    
+    for (const invoice of invoices) {
+        let totalBuying = 0;
+        let totalSelling = 0;
+        
+        for (const item of invoice.items) {
+            if (item.excess.toString() === excessId.toString()) {
+                item.buyingPrice = newBuyingPrice;
+            }
+            totalBuying += (item.buyingPrice * item.quantity);
+            totalSelling += (item.sellingPrice * item.quantity);
+        }
+        
+        invoice.totalBuyingPrice = totalBuying;
+        invoice.totalSellingPrice = totalSelling;
+        invoice.totalRevenuePrice = totalSelling - totalBuying;
+        
+        await invoice.save({ session });
     }
 };

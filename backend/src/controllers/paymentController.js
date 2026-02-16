@@ -1,5 +1,6 @@
 const { Payment, Pharmacy, BalanceHistory, User } = require('../models');
 const mongoose = require('mongoose');
+const hubSummaryService = require('../services/hubSummaryService');
 const { sendToUser } = require('../utils/pusherManager');
 
 // @desc    Create a payment (Admin manually records a deposit/withdrawal)
@@ -9,18 +10,23 @@ exports.createPayment = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { pharmacyId, amount, type, method, referenceNumber, adminNote } = req.body;
+        const { pharmacyId, hubId, amount, type, method, referenceNumber, adminNote } = req.body;
         
         if (!pharmacyId) throw new Error('Pharmacy ID is required');
+        if (!hubId) throw new Error('Hub ID is required');
         if (!amount || amount <= 0) throw new Error('Invalid amount');
         if (!['deposit', 'withdrawal'].includes(type)) throw new Error('Invalid type');
 
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
         if (!pharmacy) throw new Error('Pharmacy not found');
 
+        const hub = await Pharmacy.findById(hubId).session(session);
+        if (!hub || !hub.isHub) throw new Error('Selected pharmacy is not a valid Hub');
+
         // Create Payment Record
         const payment = await Payment.create([{
             pharmacy: pharmacyId,
+            hub: hubId,
             amount,
             type,
             method,
@@ -31,26 +37,31 @@ exports.createPayment = async (req, res) => {
             processedAt: Date.now()
         }], { session });
 
-        // Update Balance
+        // 1. Update Regular Pharmacy Balance
         const prevBalance = pharmacy.balance;
-        let newBalance = prevBalance;
-        
         if (type === 'deposit') {
-            newBalance += amount;
+            pharmacy.balance += amount;
         } else {
-            newBalance -= amount;
+            pharmacy.balance -= amount;
         }
-
-        pharmacy.balance = newBalance;
         await pharmacy.save({ session });
 
-        // Create History Record
+        // 2. Update Hub Cash Balance
+        const prevCashBalance = hub.cashBalance;
+        if (type === 'deposit') {
+            hub.cashBalance += amount;
+        } else {
+            hub.cashBalance -= amount;
+        }
+        await hub.save({ session });
+
+        // 3. Create History for Regular Pharmacy
         await BalanceHistory.create([{
             pharmacy: pharmacy._id,
             type: type === 'deposit' ? 'deposit' : 'withdrawal',
             amount: type === 'deposit' ? amount : -amount,
             previousBalance: prevBalance,
-            newBalance: newBalance,
+            newBalance: pharmacy.balance,
             relatedEntity: payment[0]._id,
             relatedEntityType: 'Payment',
             description: `Manual ${type} recorded by Admin`,
@@ -58,7 +69,24 @@ exports.createPayment = async (req, res) => {
             details: { 
                 method, 
                 reference: referenceNumber,
-                adminNote 
+                hub: hub.name
+            }
+        }], { session });
+
+        // 4. Create Cash History for Hub
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: hub._id,
+            type: type === 'deposit' ? 'deposit' : 'withdrawal',
+            amount: amount,
+            previousBalance: prevCashBalance,
+            newBalance: hub.cashBalance,
+            relatedEntity: payment[0]._id,
+            relatedEntityType: 'Payment',
+            description: `Payment ${type} (via ${pharmacy.name})`,
+            description_ar: `عملية دفع ${type === 'deposit' ? 'إيداع' : 'سحب'} (عبر ${pharmacy.name})`,
+            details: { 
+                paymentId: payment[0]._id,
+                pharmacyName: pharmacy.name
             }
         }], { session });
 
@@ -67,7 +95,7 @@ exports.createPayment = async (req, res) => {
         // Notify Users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: newBalance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
         }
 
         res.status(201).json({ success: true, data: payment[0] });
@@ -118,7 +146,7 @@ exports.updatePayment = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { amount, type, method, referenceNumber, adminNote } = req.body;
+        const { amount, type, method, referenceNumber, adminNote, hubId } = req.body;
         
         const payment = await Payment.findById(req.params.id).session(session);
         if (!payment) throw new Error('Payment not found');
@@ -126,44 +154,72 @@ exports.updatePayment = async (req, res) => {
         const pharmacy = await Pharmacy.findById(payment.pharmacy).session(session);
         if (!pharmacy) throw new Error('Pharmacy not found');
 
-        // Reverse the old payment effect on balance
-        const oldAmount = payment.type === 'deposit' ? payment.amount : -payment.amount;
-        pharmacy.balance -= oldAmount;
+        const oldHub = await Pharmacy.findById(payment.hub).session(session);
+        if (!oldHub) throw new Error('Original Hub not found');
 
-        // Update payment fields
+        // 1. Revert old effects
+        const oldPaymentEffect = payment.type === 'deposit' ? payment.amount : -payment.amount;
+        pharmacy.balance -= oldPaymentEffect;
+        oldHub.cashBalance -= oldPaymentEffect;
+
+        // 2. Update payment fields
         if (amount !== undefined && amount > 0) payment.amount = amount;
         if (type && ['deposit', 'withdrawal'].includes(type)) payment.type = type;
         if (method) payment.method = method;
         if (referenceNumber !== undefined) payment.referenceNumber = referenceNumber;
         if (adminNote !== undefined) payment.adminNote = adminNote;
+        
+        let targetHub = oldHub;
+        if (hubId && hubId.toString() !== payment.hub.toString()) {
+            targetHub = await Pharmacy.findById(hubId).session(session);
+            if (!targetHub || !targetHub.isHub) throw new Error('Invalid new Hub selected');
+            payment.hub = hubId;
+        }
+
         payment.processedBy = req.user._id;
         payment.processedAt = Date.now();
 
-        // Apply new payment effect
-        const newAmount = payment.type === 'deposit' ? payment.amount : -payment.amount;
+        // 3. Apply new effects
+        const newPaymentEffect = payment.type === 'deposit' ? payment.amount : -payment.amount;
+        
         const prevBalance = pharmacy.balance;
-        pharmacy.balance += newAmount;
-        const newBalance = pharmacy.balance;
+        pharmacy.balance += newPaymentEffect;
+        
+        const prevCashBalance = targetHub.cashBalance;
+        targetHub.cashBalance += newPaymentEffect;
 
         await payment.save({ session });
         await pharmacy.save({ session });
+        if (oldHub._id.toString() !== targetHub._id.toString()) {
+            await oldHub.save({ session });
+        }
+        await targetHub.save({ session });
 
-        // Create history record for the update
+        // 4. Create history records
         await BalanceHistory.create([{
             pharmacy: pharmacy._id,
             type: payment.type === 'deposit' ? 'deposit' : 'withdrawal',
-            amount: newAmount,
+            amount: newPaymentEffect,
             previousBalance: prevBalance,
-            newBalance: newBalance,
+            newBalance: pharmacy.balance,
             relatedEntity: payment._id,
             relatedEntityType: 'Payment',
             description: `Payment updated by Admin`,
             description_ar: `تم تحديث عملية الدفع من قبل المسؤول`,
-            details: { 
-                method: payment.method, 
-                reference: payment.referenceNumber,
-                adminNote: payment.adminNote 
-            }
+            details: { method: payment.method, reference: payment.referenceNumber }
+        }], { session });
+
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: targetHub._id,
+            type: payment.type === 'deposit' ? 'deposit' : 'withdrawal',
+            amount: payment.amount,
+            previousBalance: prevCashBalance,
+            newBalance: targetHub.cashBalance,
+            relatedEntity: payment._id,
+            relatedEntityType: 'Payment',
+            description: `Payment updated (via ${pharmacy.name})`,
+            description_ar: `تم تحديث عملية الدفع (عبر ${pharmacy.name})`,
+            details: { paymentId: payment._id, pharmacyName: pharmacy.name }
         }], { session });
 
         await session.commitTransaction();
@@ -171,7 +227,7 @@ exports.updatePayment = async (req, res) => {
         // Notify users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: newBalance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
         }
 
         res.status(200).json({ success: true, data: payment });
@@ -196,37 +252,48 @@ exports.deletePayment = async (req, res) => {
         const pharmacy = await Pharmacy.findById(payment.pharmacy).session(session);
         if (!pharmacy) throw new Error('Pharmacy not found');
 
-        // Reverse the payment effect on balance
+        const hub = await Pharmacy.findById(payment.hub).session(session);
+        if (!hub) throw new Error('Hub not found');
+
+        // 1. Revert effects
         const prevBalance = pharmacy.balance;
-        if (payment.type === 'deposit') {
-            pharmacy.balance -= payment.amount;
-        } else {
-            pharmacy.balance += payment.amount;
-        }
-        const newBalance = pharmacy.balance;
+        const prevCashBalance = hub.cashBalance;
+        
+        const effect = payment.type === 'deposit' ? payment.amount : -payment.amount;
+        pharmacy.balance -= effect;
+        hub.cashBalance -= effect;
 
         await pharmacy.save({ session });
+        await hub.save({ session });
 
-        // Create history record for the reversal
+        // 2. Create history records for reversals
         await BalanceHistory.create([{
             pharmacy: pharmacy._id,
-            type: payment.type === 'deposit' ? 'withdrawal' : 'deposit', // Opposite
-            amount: payment.type === 'deposit' ? -payment.amount : payment.amount,
+            type: payment.type === 'deposit' ? 'withdrawal' : 'deposit',
+            amount: -effect,
             previousBalance: prevBalance,
-            newBalance: newBalance,
+            newBalance: pharmacy.balance,
             relatedEntity: payment._id,
             relatedEntityType: 'Payment',
-            description: `Payment deleted/reversed by Admin`,
-            description_ar: `تم حذف/عكس عملية الدفع من قبل المسؤول`,
-            details: { 
-                originalType: payment.type,
-                originalAmount: payment.amount,
-                method: payment.method,
-                reference: payment.referenceNumber
-            }
+            description: `Payment deleted by Admin`,
+            description_ar: `تم حذف عملية الدفع من قبل المسؤول`,
+            details: { originalType: payment.type, originalAmount: payment.amount }
         }], { session });
 
-        // Delete the payment
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: hub._id,
+            type: payment.type === 'deposit' ? 'withdrawal' : 'deposit',
+            amount: payment.amount,
+            previousBalance: prevCashBalance,
+            newBalance: hub.cashBalance,
+            relatedEntity: payment._id,
+            relatedEntityType: 'Payment',
+            description: `Payment deletion (via ${pharmacy.name})`,
+            description_ar: `حذف عملية الدفع (عبر ${pharmacy.name})`,
+            details: { paymentId: payment._id, pharmacyName: pharmacy.name }
+        }], { session });
+
+        // 3. Delete the payment
         await Payment.findByIdAndDelete(req.params.id).session(session);
 
         await session.commitTransaction();
@@ -234,10 +301,10 @@ exports.deletePayment = async (req, res) => {
         // Notify users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: newBalance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
         }
 
-        res.status(200).json({ success: true, message: 'Payment deleted and balance reversed' });
+        res.status(200).json({ success: true, message: 'Payment deleted and balances reversed' });
     } catch (error) {
         await session.abortTransaction();
         res.status(400).json({ success: false, message: error.message });
@@ -246,3 +313,11 @@ exports.deletePayment = async (req, res) => {
     }
 };
 
+exports.getHubCashSummary = async (req, res) => {
+    try {
+        const summary = await hubSummaryService.getCashBalanceSummary(req.user.pharmacy);
+        res.status(200).json({ success: true, data: summary });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

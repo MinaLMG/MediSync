@@ -204,7 +204,6 @@ exports.buyFromMarket = async (req, res) => {
         excess.remainingQuantity -= quantity;
         const { syncExcessStatus } = require('../services/excessService');
         await syncExcessStatus(excess, session);
-        await excess.save({ session });
 
         const amount = quantity * excess.selectedPrice;
         
@@ -212,7 +211,6 @@ exports.buyFromMarket = async (req, res) => {
         shortage.remainingQuantity -= quantity;
         const { syncShortageStatus } = require('../services/shortageService');
         await syncShortageStatus(shortage, session);
-        await shortage.save({ session });
 
         // Generate Serial atomically
         const serial = await serialService.generateDateSerial('transaction');
@@ -511,7 +509,6 @@ exports.revertTransaction = async (req, res) => {
             if (excess) {
                 excess.remainingQuantity += source.quantity;
                 await syncExcessStatus(excess, session);
-                await excess.save({ session });
             }
         }
 
@@ -648,6 +645,26 @@ exports.revertTransaction = async (req, res) => {
                         details: { type: 'expenses' }
                     }], { session });
 
+                    // [NEW] Hub Cash Balance (Expense)
+                    if (pharmacy.isHub) {
+                        const prevCash = pharmacy.cashBalance || 0;
+                        pharmacy.cashBalance = prevCash - p.amount;
+                        await pharmacy.save({ session });
+
+                        await mongoose.model('CashBalanceHistory').create([{
+                            pharmacy: pharmacy._id,
+                            type: 'expenses',
+                            amount: p.amount,
+                            previousBalance: prevCash,
+                            newBalance: pharmacy.cashBalance,
+                            relatedEntity: transaction._id,
+                            relatedEntityType: 'Transaction',
+                            description: `Expense ticket for transaction #${transaction.serial}`,
+                            description_ar: `تذكرة مصروفات للمعاملة #${transaction.serial}`,
+                            details: { type: 'expenses', ticketId: transaction.reversalTicket } 
+                        }], { session });
+                    }
+
                     // Notify users
                     const pharmUsers = await User.find({ pharmacy: pharmacy._id });
                     for (const u of pharmUsers) {
@@ -724,8 +741,28 @@ exports.updateReversalTicket = async (req, res) => {
                         relatedEntity: ticket.transaction,
                         relatedEntityType: 'Transaction',
                         description: `Refund for adjusted expense in transaction #${ticket.transaction.toString().slice(-6)}`,
-                        details: { type: 'expense_refund' }
+                        details: { type: 'expense_refund' } 
                     }], { session });
+
+                    // [NEW] Hub Cash Refund (Revert Old Expense)
+                    if (pharmacy.isHub) {
+                        const prevCash = pharmacy.cashBalance || 0;
+                        pharmacy.cashBalance = prevCash + oldE.amount;
+                        await pharmacy.save({ session });
+
+                        await mongoose.model('CashBalanceHistory').create([{
+                            pharmacy: pharmacy._id,
+                            type: 'transaction_payment', // Refund is like a payment/deposit
+                            amount: oldE.amount,
+                            previousBalance: prevCash,
+                            newBalance: pharmacy.cashBalance,
+                            relatedEntity: ticket.transaction,
+                            relatedEntityType: 'Transaction',
+                            description: `Refund for adjusted expense in transaction #${ticket.transaction.toString().slice(-6)}`,
+                            description_ar: `استرداد تكاليف معاملة معدلة #${ticket.transaction.toString().slice(-6)}`,
+                            details: { type: 'expense_refund' } 
+                        }], { session });
+                    }
 
                     // Notify users
                     const users = await User.find({ pharmacy: pharmacy._id });
@@ -774,8 +811,28 @@ exports.updateReversalTicket = async (req, res) => {
                         relatedEntityType: 'Transaction',
                         description: `Adjusted expense for transaction #${ticket.transaction.toString().slice(-6)}`,
                         description_ar: `تم تعديل تكاليف المعاملة #${ticket.transaction.toString().slice(-6)}`,
-                        details: { type: 'expense_adjustment' }
+                        details: { type: 'expense_adjustment' } 
                     }], { session });
+
+                    // [NEW] Hub Cash Expense (Apply New Expense)
+                    if (pharmacy.isHub) {
+                        const prevCash = pharmacy.cashBalance || 0;
+                        pharmacy.cashBalance = prevCash - p.amount;
+                        await pharmacy.save({ session });
+
+                        await mongoose.model('CashBalanceHistory').create([{
+                            pharmacy: pharmacy._id,
+                            type: 'expenses',
+                            amount: p.amount,
+                            previousBalance: prevCash,
+                            newBalance: pharmacy.cashBalance,
+                            relatedEntity: ticket.transaction,
+                            relatedEntityType: 'Transaction',
+                            description: `Adjusted expense for transaction #${ticket.transaction.toString().slice(-6)}`,
+                            description_ar: `تم تعديل تكاليف المعاملة #${ticket.transaction.toString().slice(-6)}`,
+                            details: { type: 'expense_adjustment' } 
+                        }], { session });
+                    }
 
                     const users = await User.find({ pharmacy: pharmacy._id });
                     for (const u of users) {
@@ -874,9 +931,7 @@ exports.updateTransaction = async (req, res) => {
             const excess = await StockExcess.findById(source.stockExcess).session(session);
             if (excess) {
                 excess.remainingQuantity += source.quantity;
-                await syncExcessStatus(excess, session);
-                await excess.save({ session });
-
+                await syncExcessStatus(excess, session);    
                 // Restore reservation
                 if (shortage && shortage.order) {
                     await Reservation.findOneAndUpdate(
@@ -915,7 +970,6 @@ exports.updateTransaction = async (req, res) => {
             // Deduct from excess
             excess.remainingQuantity -= source.quantity;
             await syncExcessStatus(excess, session);
-            await excess.save({ session });
 
             // Deduct from reservation
             if (shortage && shortage.order) {
@@ -948,8 +1002,8 @@ exports.updateTransaction = async (req, res) => {
 
         // 4. Update shortage
         shortage.remainingQuantity -= quantityTaken;
+
         await syncShortageStatus(shortage, session);
-        await shortage.save({ session });
 
         // 5. Update transaction record
         transaction.stockShortage.quantityTaken = quantityTaken;

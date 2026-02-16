@@ -95,7 +95,15 @@ const pharmacySchema = new mongoose.Schema({
     isHub: {
         type: Boolean,
         default: false
-    }
+    },
+    cashBalance: {
+        type: Number,
+        default: 0
+    },
+    linkedOwners: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Owner'
+    }]
 }, {
     timestamps: true
 });

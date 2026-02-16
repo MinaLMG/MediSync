@@ -54,4 +54,9 @@ const balanceHistorySchema = new mongoose.Schema({
 
 balanceHistorySchema.index({ pharmacy: 1, createdAt: -1 });
 
+// Safety: Prevent any deletion of balance history as it is a critical audit trail
+balanceHistorySchema.pre(['remove', 'deleteOne', 'deleteMany', 'findOneAndDelete'], function(next) {
+    next(new Error('Deletion of BalanceHistory records is strictly prohibited for data integrity and legal audit purposes.'));
+});
+
 module.exports = mongoose.model('BalanceHistory', balanceHistorySchema);

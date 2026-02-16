@@ -13,6 +13,7 @@ import 'providers/delivery_request_provider.dart';
 import 'providers/balance_history_provider.dart';
 import 'providers/requests_history_provider.dart';
 import 'providers/payment_provider.dart';
+import 'providers/hub_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
@@ -61,6 +62,12 @@ void main() {
             Provider.of<AuthProvider>(context, listen: false),
           ),
           update: (context, auth, previous) => previous!..update(auth),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, HubProvider>(
+          create: (context) => HubProvider(
+            Provider.of<AuthProvider>(context, listen: false).token,
+          ),
+          update: (context, auth, previous) => HubProvider(auth.token),
         ),
       ],
       child: const MyApp(),

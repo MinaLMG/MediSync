@@ -84,6 +84,13 @@ const stockExcessSchema = new mongoose.Schema({
     isHubGenerated: {
         type: Boolean,
         default: false
+    },
+    isHubPurchase: {
+        type: Boolean,
+        default: false
+    },
+    purchasePrice: {
+        type: Number
     }
 }, {
     timestamps: true

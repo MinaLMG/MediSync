@@ -7,18 +7,23 @@ import '../providers/product_provider.dart';
 import '../providers/excess_provider.dart';
 import 'add_excess_screen.dart';
 import 'add_shortage_screen.dart';
-import 'requests_history_screen.dart';
-import 'admin_matchable_products_screen.dart';
-import 'follow_up_transactions_screen.dart';
 import 'suggest_product_screen.dart';
 import 'suggestions_complaints_screen.dart';
-import 'admin_view_suggestions_screen.dart';
-import 'admin_manage_users_screen.dart';
 import '../providers/app_suggestion_provider.dart';
 import '../providers/notification_provider.dart';
+import 'requests_history_screen.dart';
 import 'balance_history_screen.dart';
 import 'create_order_screen.dart';
+import 'hub/hub_owners_screen.dart';
+import 'hub/hub_payments_screen.dart';
+import 'hub/hub_purchase_invoice_screen.dart';
+import 'hub/hub_sales_invoice_screen.dart';
+import 'hub/hub_calculations_widget.dart';
+import 'hub/cash_balance_history_screen.dart';
+import 'hub/system_summary_screen.dart';
+import '../providers/hub_provider.dart';
 import '../l10n/generated/app_localizations.dart';
+import 'package:intl/intl.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -86,13 +91,20 @@ class _HomeTabState extends State<HomeTab> {
       listen: false,
     );
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final hub = Provider.of<HubProvider>(context, listen: false);
 
-    await Future.wait([
+    final List<Future> refreshTasks = [
       shortages.fetchGlobalActiveShortages(),
       products.fetchProducts(),
       notifications.fetchNotifications(),
       auth.refreshProfile(),
-    ]);
+    ];
+
+    if (auth.currentUser?['pharmacy']?['isHub'] ?? false) {
+      refreshTasks.add(hub.fetchHubSummary());
+    }
+
+    await Future.wait(refreshTasks);
   }
 
   @override
@@ -151,6 +163,56 @@ class _HomeTabState extends State<HomeTab> {
         'color': Colors.amber[800]!,
       },
     ];
+
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isHub = authProvider.currentUser?['pharmacy']?['isHub'] ?? false;
+
+    if (isHub) {
+      menuItems.addAll([
+        {
+          'title': AppLocalizations.of(context)!.menuCashBalanceHistory,
+          'originalTitle': 'Cash Balance History',
+          'icon': Icons.account_balance_wallet_outlined,
+          'color': Colors.green[800],
+        },
+        {
+          'title': AppLocalizations.of(context)!.menuHubOwners,
+          'originalTitle': 'Hub Owners',
+          'icon': Icons.people_outline,
+          'color': Colors.indigo,
+        },
+        {
+          'title': AppLocalizations.of(context)!.menuHubPayments,
+          'originalTitle': 'Owner Payments',
+          'icon': Icons.payments_outlined,
+          'color': Colors.pink,
+        },
+        {
+          'title': AppLocalizations.of(context)!.menuHubPurchaseInvoice,
+          'originalTitle': 'Purchase Invoice',
+          'icon': Icons.add_business_outlined,
+          'color': Colors.cyan,
+        },
+        {
+          'title': AppLocalizations.of(context)!.menuHubSalesInvoice,
+          'originalTitle': 'Sales Invoice',
+          'icon': Icons.point_of_sale_outlined,
+          'color': Colors.lime[800],
+        },
+        {
+          'title': AppLocalizations.of(context)!.menuHubCalculations,
+          'originalTitle': 'Calculations Widget',
+          'icon': Icons.calculate_outlined,
+          'color': Colors.indigo,
+        },
+        {
+          'title': AppLocalizations.of(context)!.optimisticValue,
+          'originalTitle': 'System Summary',
+          'icon': Icons.analytics_outlined,
+          'color': Colors.deepOrange,
+        },
+      ]);
+    }
 
     return RefreshIndicator(
       onRefresh: _onRefresh,
@@ -298,6 +360,35 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  Widget _buildSummaryItem(
+    BuildContext context,
+    String label,
+    num value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.grey),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          NumberFormat("#,##0").format(value),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMenuCard(
     BuildContext context,
     String title,
@@ -365,6 +456,53 @@ class _HomeTabState extends State<HomeTab> {
               context,
               MaterialPageRoute(
                 builder: (context) => const BalanceHistoryScreen(),
+              ),
+            );
+          } else if (logicTitle == 'Hub Owners') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HubOwnersScreen()),
+            );
+          } else if (logicTitle == 'Owner Payments') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HubPaymentsScreen(),
+              ),
+            );
+          } else if (logicTitle == 'Purchase Invoice') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HubPurchaseInvoiceScreen(),
+              ),
+            );
+          } else if (logicTitle == 'Sales Invoice') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HubSalesInvoiceScreen(),
+              ),
+            );
+          } else if (logicTitle == 'Calculations Widget') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HubCalculationsWidget(),
+              ),
+            );
+          } else if (logicTitle == 'Cash Balance History') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CashBalanceHistoryScreen(),
+              ),
+            );
+          } else if (logicTitle == 'System Summary') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SystemSummaryScreen(),
               ),
             );
           }

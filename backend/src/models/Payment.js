@@ -6,6 +6,11 @@ const PaymentSchema = new mongoose.Schema({
         ref: 'Pharmacy',
         required: true
     },
+    hub: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pharmacy',
+        required: true
+    },
     amount: {
         type: Number,
         required: true

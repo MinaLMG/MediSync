@@ -1981,4 +1981,227 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get msgNoPendingExcesses => 'No pending excesses found.';
+
+  @override
+  String get hubOwnersTitle => 'Hub Owners';
+
+  @override
+  String get addOwner => 'Add Owner';
+
+  @override
+  String get editOwner => 'Edit Owner';
+
+  @override
+  String get ownerName => 'Owner Name';
+
+  @override
+  String get cashBalance => 'Cash Balance';
+
+  @override
+  String get optimisticValue => 'Optimistic Value';
+
+  @override
+  String get makePayment => 'Make Payment';
+
+  @override
+  String get paymentValue => 'Payment Value';
+
+  @override
+  String get purchaseInvoice => 'Purchase Invoice';
+
+  @override
+  String get salesInvoice => 'Sales Invoice';
+
+  @override
+  String get totalRevenue => 'Total Revenue';
+
+  @override
+  String get negativeCommissions => 'Negative Commissions';
+
+  @override
+  String get hubExcessRevenue => 'Hub Excess Revenue';
+
+  @override
+  String get salesInvoiceRevenue => 'Sales Invoice Revenue';
+
+  @override
+  String get menuHubOwners => 'Hub Owners';
+
+  @override
+  String get menuHubPayments => 'Hub Payments';
+
+  @override
+  String get menuHubPurchaseInvoice => 'Purchase Invoice';
+
+  @override
+  String get menuHubSalesInvoice => 'Hub Sales Invoice';
+
+  @override
+  String get menuAdminTransactionsSummary => 'Transactions Summary';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get noOwnersFound => 'No owners found';
+
+  @override
+  String get balance => 'Balance';
+
+  @override
+  String get menuHubCalculations => 'Calculations Widget';
+
+  @override
+  String get hubCalculationsTitle => 'Hub Calculations';
+
+  @override
+  String get selectPharmacy => 'Select Pharmacy';
+
+  @override
+  String get noExcessesFound => 'No excesses found for this pharmacy';
+
+  @override
+  String get calculate => 'Calculate';
+
+  @override
+  String get calculationType => 'Calculation Type';
+
+  @override
+  String get revenueRatio => 'Needed Revenue Percentage';
+
+  @override
+  String get lossRatio => 'Loss Percentage';
+
+  @override
+  String get seldinafilRatio => 'Sildenafil Ratio';
+
+  @override
+  String get alpha => 'Alpha (Sildenafil Purchase Sale)';
+
+  @override
+  String get beta => 'Beta (Min Sale)';
+
+  @override
+  String get supposedSale => 'Supposed Sale';
+
+  @override
+  String get totalRevenueRatio => 'Total Needed Revenue Percentage';
+
+  @override
+  String get totalSeldinafilRatio => 'Total Sildenafil Ratio';
+
+  @override
+  String get results => 'Results';
+
+  @override
+  String get confirmSelection => 'Confirm Selection';
+
+  @override
+  String get selectedItems => 'Selected Items';
+
+  @override
+  String get quantityPerItem => 'Qty';
+
+  @override
+  String get calculateR => 'Calculate Revenue';
+
+  @override
+  String get calculateZ => 'Calculate Sildenafil Ratio';
+
+  @override
+  String get calculateY => 'Calculate Loss Percentage';
+
+  @override
+  String get zValue => 'Sildenafil Ratio';
+
+  @override
+  String get rValue => 'Needed Revenue Percentage';
+
+  @override
+  String get quickMode => 'Quick Calculator';
+
+  @override
+  String get pharmacyMode => 'Pharmacy (Multi-item)';
+
+  @override
+  String get gammaValue => 'gamma (Sale %)';
+
+  @override
+  String get totalLossRatio => 'Total Loss Percentage';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get noDataAvailable => 'No data available';
+
+  @override
+  String get quantity => 'Quantity';
+
+  @override
+  String get price => 'Price';
+
+  @override
+  String get salePercentage => 'Sale %';
+
+  @override
+  String get viewAll => 'View All';
+
+  @override
+  String get menuCashBalanceHistory => 'Cash Balance History';
+
+  @override
+  String get labelSelectProduct => 'Select Product';
+
+  @override
+  String get labelSellingPrice => 'Selling Price';
+
+  @override
+  String get btnSave => 'Save';
+
+  @override
+  String get errorRequiredField => 'Required field';
+
+  @override
+  String get btnAdd => 'Add';
+
+  @override
+  String get deletePurchaseInvoice => 'Delete Purchase Invoice';
+
+  @override
+  String get deleteSalesInvoice => 'Delete Sales Invoice';
+
+  @override
+  String get deleteInvoiceConfirmation =>
+      'Are you sure you want to delete this invoice? This will reverse the stock and cash balance.';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get salesInvoiceProfit => 'Hub Sales Profit';
+
+  @override
+  String get punishmentRevenueLabel => 'Ticket Expenses';
+
+  @override
+  String get compensationRevenueLabel => 'Compensations Revenue';
+
+  @override
+  String get labelMaxQuantity => 'Max Qty';
+
+  @override
+  String get labelInvoiceSalePercentage => 'Invoice Sale %';
+
+  @override
+  String get labelLossPercentage => 'Y (Loss %)';
 }

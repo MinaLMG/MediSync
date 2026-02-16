@@ -25,6 +25,7 @@ router.put('/:id', authorize('admin'), strictLimiter, productController.updatePr
 // Price Management
 router.post('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.addPriceToVolume);
 router.delete('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.removePriceFromVolume);
+router.patch('/volume/:hasVolumeId/value', authorize('admin'), strictLimiter, productController.updateHasVolumeValue);
 
 router.patch('/:id/toggle-status', protect, authorize('admin'), strictLimiter, productController.toggleProductStatus);
 

@@ -61,6 +61,26 @@ exports.createCompensation = async (req, res) => {
             description_ar: `تم إضافة تعويض: ${description}`
         }], { session });
 
+        // [NEW] Update Hub Cash Balance if applicable
+        if (pharmacy.isHub) {
+            const prevCash = pharmacy.cashBalance || 0;
+            pharmacy.cashBalance = prevCash + amount;
+            await pharmacy.save({ session });
+
+            await mongoose.model('CashBalanceHistory').create([{
+                pharmacy: pharmacyId,
+                type: 'compensation',
+                amount,
+                previousBalance: prevCash,
+                newBalance: pharmacy.cashBalance,
+                relatedEntity: compensation[0]._id,
+                relatedEntityType: 'Compensation',
+                description: `Compensation added: ${description}`,
+                description_ar: `تم إضافة تعويض: ${description}`,
+                details: { compensationId: compensation[0]._id }
+            }], { session });
+        }
+
         // Notify Pharmacy Owner
         const owner = await User.findOne({ pharmacy: pharmacyId }).session(session);
         if (owner) {

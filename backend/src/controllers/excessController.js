@@ -1,4 +1,5 @@
 const excessService = require('../services/excessService');
+const hubSummaryService = require('../services/hubSummaryService');
 const { StockExcess, HasVolume, Settings, Reservation } = require('../models');
 const { default: mongoose } = require('mongoose');
 
@@ -194,6 +195,8 @@ exports.getMarketExcesses = async (req, res) => {
     try {
         const settings = await Settings.getSettings();
         const systemMinComm = settings.minimumCommission || 10;
+        const commissionService = require('../services/commissionService');
+        
         // 1. Get raw aggregated excesses (Grouped by Product -> Price -> Expiry/Sale)
         const marketItems = await StockExcess.aggregate([
             {
@@ -266,11 +269,8 @@ exports.getMarketExcesses = async (req, res) => {
 
             if (available > 0) {
                 const originalSale = group._id.salePercentage || 0;
-                // Logic: 
-                // 1. comm = max(systemMinComm, ceil(originalSale / 3))
-                // 2. agreedSale = max(0, originalSale - comm)
-                const comm = Math.max(systemMinComm, Math.ceil(originalSale / 3));
-                let agreedSale = Math.max(0, originalSale - comm);
+                // Use commission service for consistent calculation
+                const { agreedSale } = commissionService.calculateAgreedCommissionSync(originalSale, systemMinComm);
 
                 processedItems.push({
                     product: group._id.product,
@@ -391,6 +391,29 @@ exports.getMarketInsight = async (req, res) => {
         ]);
 
         res.status(200).json({ success: true, data: excesses });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getPharmacyExcesses = async (req, res) => {
+    try {
+        const { pharmacyId } = req.params;
+        const excesses = await StockExcess.find({ 
+            pharmacy: pharmacyId,
+            status: { $in: ['available', 'partially_fulfilled'] },
+            remainingQuantity: { $gt: 0 }
+        }).populate('product', 'name').populate('volume', 'name').sort({ expiryDate: 1 });
+        res.status(200).json({ success: true, data: excesses });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getHubSystemSummary = async (req, res) => {
+    try {
+        const summary = await hubSummaryService.getSystemSummary(req.user.pharmacy);
+        res.status(200).json({ success: true, data: summary });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -17,6 +17,7 @@ import 'admin_account_updates_screen.dart';
 import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
 import 'admin_order_list_screen.dart';
+import 'admin/admin_transactions_summary_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -214,6 +215,12 @@ class AdminHomeTab extends StatelessWidget {
         'icon': Icons.settings,
         'color': Colors.grey[700],
       },
+      {
+        'id': 'Transactions Summary',
+        'title': AppLocalizations.of(context)!.menuAdminTransactionsSummary,
+        'icon': Icons.summarize,
+        'color': Colors.blue[900],
+      },
     ];
 
     return RefreshIndicator(
@@ -382,6 +389,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminOrderListScreen(),
+              ),
+            );
+          } else if (id == 'Transactions Summary') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminTransactionsSummaryScreen(),
               ),
             );
           }

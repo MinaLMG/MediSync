@@ -378,3 +378,46 @@ exports.removePriceFromVolume = async (req, res) => {
         res.status(400).json({ success: false, message: error.message });
     }
 };
+// Update Volume Numeric Value (Admin) - With Integrity Guard
+exports.updateHasVolumeValue = async (req, res) => {
+    try {
+        const { newValue } = req.body;
+        const { hasVolumeId } = req.params;
+
+        if (!newValue || newValue < 1) {
+            throw new Error('New value must be a positive number');
+        }
+
+        const hv = await HasVolume.findById(hasVolumeId);
+        if (!hv) throw new Error('Product Volume connection not found');
+
+        // Check for linked stock (StockExcess or StockShortage)
+        const StockExcess = mongoose.model('StockExcess');
+        const StockShortage = mongoose.model('StockShortage');
+
+        const excessExists = await StockExcess.exists({
+            product: hv.product,
+            volume: hv.volume
+        });
+
+        if (excessExists) {
+            throw new Error('Cannot change volume numeric value: Stock Excesses are already linked to this volume relationship. Changing the value would corrupt existing stock data.');
+        }
+
+        const shortageExists = await StockShortage.exists({
+            product: hv.product,
+            volume: hv.volume
+        });
+
+        if (shortageExists) {
+            throw new Error('Cannot change volume numeric value: Stock Shortages are already linked to this volume relationship. Changing the value would corrupt existing stock data.');
+        }
+
+        hv.value = newValue;
+        await hv.save();
+
+        res.status(200).json({ success: true, data: hv });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};

@@ -20,5 +20,10 @@ module.exports = {
     Counter: require('./Counter'),
     Compensation: require('./Compensation'),
     Reservation: require('./Reservation'),
-    Payment: require('./Payment')
+    Payment: require('./Payment'),
+    Owner: require('./Owner'),
+    OwnerPayment: require('./OwnerPayment'),
+    PurchaseInvoice: require('./PurchaseInvoice'),
+    SalesInvoice: require('./SalesInvoice'),
+    CashBalanceHistory: require('./CashBalanceHistory')
 };

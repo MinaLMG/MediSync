@@ -3727,6 +3727,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No pending excesses found.'**
   String get msgNoPendingExcesses;
+
+  /// No description provided for @hubOwnersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Owners'**
+  String get hubOwnersTitle;
+
+  /// No description provided for @addOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Owner'**
+  String get addOwner;
+
+  /// No description provided for @editOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Owner'**
+  String get editOwner;
+
+  /// No description provided for @ownerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner Name'**
+  String get ownerName;
+
+  /// No description provided for @cashBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash Balance'**
+  String get cashBalance;
+
+  /// No description provided for @optimisticValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Optimistic Value'**
+  String get optimisticValue;
+
+  /// No description provided for @makePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Make Payment'**
+  String get makePayment;
+
+  /// No description provided for @paymentValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Value'**
+  String get paymentValue;
+
+  /// No description provided for @purchaseInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase Invoice'**
+  String get purchaseInvoice;
+
+  /// No description provided for @salesInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales Invoice'**
+  String get salesInvoice;
+
+  /// No description provided for @totalRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Revenue'**
+  String get totalRevenue;
+
+  /// No description provided for @negativeCommissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Negative Commissions'**
+  String get negativeCommissions;
+
+  /// No description provided for @hubExcessRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Excess Revenue'**
+  String get hubExcessRevenue;
+
+  /// No description provided for @salesInvoiceRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales Invoice Revenue'**
+  String get salesInvoiceRevenue;
+
+  /// No description provided for @menuHubOwners.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Owners'**
+  String get menuHubOwners;
+
+  /// No description provided for @menuHubPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Payments'**
+  String get menuHubPayments;
+
+  /// No description provided for @menuHubPurchaseInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase Invoice'**
+  String get menuHubPurchaseInvoice;
+
+  /// No description provided for @menuHubSalesInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Sales Invoice'**
+  String get menuHubSalesInvoice;
+
+  /// No description provided for @menuAdminTransactionsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions Summary'**
+  String get menuAdminTransactionsSummary;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @noOwnersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No owners found'**
+  String get noOwnersFound;
+
+  /// No description provided for @balance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get balance;
+
+  /// No description provided for @menuHubCalculations.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculations Widget'**
+  String get menuHubCalculations;
+
+  /// No description provided for @hubCalculationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Calculations'**
+  String get hubCalculationsTitle;
+
+  /// No description provided for @selectPharmacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Pharmacy'**
+  String get selectPharmacy;
+
+  /// No description provided for @noExcessesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No excesses found for this pharmacy'**
+  String get noExcessesFound;
+
+  /// No description provided for @calculate.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate'**
+  String get calculate;
+
+  /// No description provided for @calculationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculation Type'**
+  String get calculationType;
+
+  /// No description provided for @revenueRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed Revenue Percentage'**
+  String get revenueRatio;
+
+  /// No description provided for @lossRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Loss Percentage'**
+  String get lossRatio;
+
+  /// No description provided for @seldinafilRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Sildenafil Ratio'**
+  String get seldinafilRatio;
+
+  /// No description provided for @alpha.
+  ///
+  /// In en, this message translates to:
+  /// **'Alpha (Sildenafil Purchase Sale)'**
+  String get alpha;
+
+  /// No description provided for @beta.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta (Min Sale)'**
+  String get beta;
+
+  /// No description provided for @supposedSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Supposed Sale'**
+  String get supposedSale;
+
+  /// No description provided for @totalRevenueRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Needed Revenue Percentage'**
+  String get totalRevenueRatio;
+
+  /// No description provided for @totalSeldinafilRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Sildenafil Ratio'**
+  String get totalSeldinafilRatio;
+
+  /// No description provided for @results.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get results;
+
+  /// No description provided for @confirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Selection'**
+  String get confirmSelection;
+
+  /// No description provided for @selectedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Items'**
+  String get selectedItems;
+
+  /// No description provided for @quantityPerItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get quantityPerItem;
+
+  /// No description provided for @calculateR.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate Revenue'**
+  String get calculateR;
+
+  /// No description provided for @calculateZ.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate Sildenafil Ratio'**
+  String get calculateZ;
+
+  /// No description provided for @calculateY.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate Loss Percentage'**
+  String get calculateY;
+
+  /// No description provided for @zValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sildenafil Ratio'**
+  String get zValue;
+
+  /// No description provided for @rValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed Revenue Percentage'**
+  String get rValue;
+
+  /// No description provided for @quickMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Calculator'**
+  String get quickMode;
+
+  /// No description provided for @pharmacyMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Pharmacy (Multi-item)'**
+  String get pharmacyMode;
+
+  /// No description provided for @gammaValue.
+  ///
+  /// In en, this message translates to:
+  /// **'gamma (Sale %)'**
+  String get gammaValue;
+
+  /// No description provided for @totalLossRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Loss Percentage'**
+  String get totalLossRatio;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @noDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get noDataAvailable;
+
+  /// No description provided for @quantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get quantity;
+
+  /// No description provided for @price.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get price;
+
+  /// No description provided for @salePercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale %'**
+  String get salePercentage;
+
+  /// No description provided for @viewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View All'**
+  String get viewAll;
+
+  /// No description provided for @menuCashBalanceHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash Balance History'**
+  String get menuCashBalanceHistory;
+
+  /// No description provided for @labelSelectProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Product'**
+  String get labelSelectProduct;
+
+  /// No description provided for @labelSellingPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Selling Price'**
+  String get labelSellingPrice;
+
+  /// No description provided for @btnSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get btnSave;
+
+  /// No description provided for @errorRequiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'Required field'**
+  String get errorRequiredField;
+
+  /// No description provided for @btnAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get btnAdd;
+
+  /// No description provided for @deletePurchaseInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Purchase Invoice'**
+  String get deletePurchaseInvoice;
+
+  /// No description provided for @deleteSalesInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Sales Invoice'**
+  String get deleteSalesInvoice;
+
+  /// No description provided for @deleteInvoiceConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this invoice? This will reverse the stock and cash balance.'**
+  String get deleteInvoiceConfirmation;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @salesInvoiceProfit.
+  ///
+  /// In en, this message translates to:
+  /// **'Hub Sales Profit'**
+  String get salesInvoiceProfit;
+
+  /// No description provided for @punishmentRevenueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket Expenses'**
+  String get punishmentRevenueLabel;
+
+  /// No description provided for @compensationRevenueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Compensations Revenue'**
+  String get compensationRevenueLabel;
+
+  /// No description provided for @labelMaxQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Qty'**
+  String get labelMaxQuantity;
+
+  /// No description provided for @labelInvoiceSalePercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice Sale %'**
+  String get labelInvoiceSalePercentage;
+
+  /// No description provided for @labelLossPercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Y (Loss %)'**
+  String get labelLossPercentage;
 }
 
 class _AppLocalizationsDelegate

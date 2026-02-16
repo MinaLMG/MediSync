@@ -42,6 +42,11 @@ app.use('/api/balance-history', require('./src/routes/balanceHistoryRoutes'));
 app.use('/api/compensation', require('./src/routes/compensationRoutes'));
 app.use('/api/pusher', require('./src/routes/pusherRoutes'));
 app.use('/api/payment', require('./src/routes/paymentRoutes'));
+app.use('/api/owners', require('./src/routes/ownerRoutes'));
+app.use('/api/owner-payments', require('./src/routes/ownerPaymentRoutes'));
+app.use('/api/purchase-invoices', require('./src/routes/purchaseInvoiceRoutes'));
+app.use('/api/sales-invoices', require('./src/routes/salesInvoiceRoutes'));
+app.use('/api/summaries', require('./src/routes/summaryRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -259,8 +259,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
   final _noteController = TextEditingController();
 
   List<dynamic> _pharmacies = [];
+  List<dynamic> _hubs = [];
   bool _isLoadingPharmacies = true;
   bool _isSubmitting = false;
+
+  String? _selectedHubId;
 
   bool get isEdit => widget.payment != null;
 
@@ -272,6 +275,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     if (isEdit) {
       final p = widget.payment!;
       _selectedPharmacyId = p['pharmacy']['_id'];
+      _selectedHubId = p['hub']?['_id'];
       _type = p['type'];
       _method = p['method'] ?? 'cash';
       _amountController.text = p['amount'].toString();
@@ -283,10 +287,15 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Future<void> _fetchPharmacies() async {
     try {
       final response = await ApiService.getRequest('/admin/pharmacies');
-      setState(() {
-        _pharmacies = response['success'] ? response['data'] : [];
-        _isLoadingPharmacies = false;
-      });
+      if (response['success']) {
+        setState(() {
+          _pharmacies = response['data'];
+          _hubs = _pharmacies.where((p) => p['isHub'] == true).toList();
+          _isLoadingPharmacies = false;
+        });
+      } else {
+        setState(() => _isLoadingPharmacies = false);
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoadingPharmacies = false);
     }
@@ -322,6 +331,20 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       onChanged: isEdit
                           ? null
                           : (val) => setState(() => _selectedPharmacyId = val),
+                      validator: (val) =>
+                          val == null ? l10n.errorRequired : null,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(labelText: "Select Hub"),
+                      initialValue: _selectedHubId,
+                      items: _hubs.map<DropdownMenuItem<String>>((h) {
+                        return DropdownMenuItem(
+                          value: h['_id'],
+                          child: Text(h['name']),
+                        );
+                      }).toList(),
+                      onChanged: (val) => setState(() => _selectedHubId = val),
                       validator: (val) =>
                           val == null ? l10n.errorRequired : null,
                     ),
@@ -442,6 +465,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     try {
       final data = {
         'pharmacyId': _selectedPharmacyId,
+        'hubId': _selectedHubId,
         'amount': double.parse(_amountController.text),
         'type': _type,
         'method': _method,

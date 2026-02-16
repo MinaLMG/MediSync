@@ -91,6 +91,14 @@ class ExcessProvider with ChangeNotifier {
     );
   }
 
+  // Fetch My Excesses (Hub/Pharmacy)
+  List<dynamic> _myExcesses = [];
+  List<dynamic> get myExcesses => _myExcesses;
+
+  Future<void> fetchMyExcesses() async {
+    await _fetchExcesses('/excess/my', (data) => _myExcesses = data);
+  }
+
   Future<void> _fetchExcesses(
     String endpoint,
     Function(List<dynamic>) onSuccess,

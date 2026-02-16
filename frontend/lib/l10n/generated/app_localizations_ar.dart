@@ -1972,4 +1972,227 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get msgNoPendingExcesses => 'لم يتم العثور على بضائع زائدة معلقة.';
+
+  @override
+  String get hubOwnersTitle => 'ملاك المركز';
+
+  @override
+  String get addOwner => 'إضافة مالك';
+
+  @override
+  String get editOwner => 'تعديل مالك';
+
+  @override
+  String get ownerName => 'اسم المالك';
+
+  @override
+  String get cashBalance => 'الرصيد النقدي';
+
+  @override
+  String get optimisticValue => 'القيمة التفاؤلية';
+
+  @override
+  String get makePayment => 'إجراء دفع';
+
+  @override
+  String get paymentValue => 'قيمة الدفعة';
+
+  @override
+  String get purchaseInvoice => 'فاتورة شراء';
+
+  @override
+  String get salesInvoice => 'فاتورة مبيعات';
+
+  @override
+  String get totalRevenue => 'إجمالي الإيرادات';
+
+  @override
+  String get negativeCommissions => 'عمولات سلبية';
+
+  @override
+  String get hubExcessRevenue => 'أرباح المخزون الزائد';
+
+  @override
+  String get salesInvoiceRevenue => 'أرباح فواتير المبيعات';
+
+  @override
+  String get menuHubOwners => 'إدارة الملاك';
+
+  @override
+  String get menuHubPayments => 'مدفوعات الملاك';
+
+  @override
+  String get menuHubPurchaseInvoice => 'فاتورة شراء';
+
+  @override
+  String get menuHubSalesInvoice => 'فاتورة مبيعات المركز';
+
+  @override
+  String get menuAdminTransactionsSummary => 'ملخص المعاملات';
+
+  @override
+  String get cancel => 'إلغاء';
+
+  @override
+  String get save => 'حفظ';
+
+  @override
+  String get confirm => 'تأكيد';
+
+  @override
+  String get noOwnersFound => 'لم يتم العثور على ملاك';
+
+  @override
+  String get balance => 'الرصيد';
+
+  @override
+  String get menuHubCalculations => 'أداة الحسابات';
+
+  @override
+  String get hubCalculationsTitle => 'حسابات المركز';
+
+  @override
+  String get selectPharmacy => 'اختر الصيدلية';
+
+  @override
+  String get noExcessesFound => 'لم يتم العثور على مخزون زائد لهذه الصيدلية';
+
+  @override
+  String get calculate => 'احسب';
+
+  @override
+  String get calculationType => 'نوع الحساب';
+
+  @override
+  String get revenueRatio => 'نسبة العائد المطلوبة';
+
+  @override
+  String get lossRatio => 'نسبة الخسارة';
+
+  @override
+  String get seldinafilRatio => 'نسبة السيلدينافيل';
+
+  @override
+  String get alpha => 'ألفا (نسبة شراء السيلدينافيل)';
+
+  @override
+  String get beta => 'بيتا (أقل نسبة مبيعات)';
+
+  @override
+  String get supposedSale => 'البيع المفترض';
+
+  @override
+  String get totalRevenueRatio => 'إجمالي نسبة العائد المطلوبة';
+
+  @override
+  String get totalSeldinafilRatio => 'إجمالي نسبة السيلدينافيل';
+
+  @override
+  String get results => 'النتائج';
+
+  @override
+  String get confirmSelection => 'تأكيد الاختيار';
+
+  @override
+  String get selectedItems => 'العناصر المختارة';
+
+  @override
+  String get quantityPerItem => 'الكمية';
+
+  @override
+  String get calculateR => 'حساب نسبة العائد';
+
+  @override
+  String get calculateZ => 'حساب نسبة السيلدينافيل';
+
+  @override
+  String get calculateY => 'حساب نسبة الخسارة';
+
+  @override
+  String get zValue => 'نسبة السيلدينافيل';
+
+  @override
+  String get rValue => 'نسبة العائد المطلوبة';
+
+  @override
+  String get quickMode => 'الحساب السريع';
+
+  @override
+  String get pharmacyMode => 'الصيدلية (عناصر متعددة)';
+
+  @override
+  String get gammaValue => 'قيمة جاما (البيع %)';
+
+  @override
+  String get totalLossRatio => 'إجمالي نسبة الخسارة';
+
+  @override
+  String get notes => 'ملاحظات';
+
+  @override
+  String get noDataAvailable => 'لا توجد بيانات متاحة';
+
+  @override
+  String get quantity => 'الكمية';
+
+  @override
+  String get price => 'السعر';
+
+  @override
+  String get salePercentage => 'نسبة البيع %';
+
+  @override
+  String get viewAll => 'عرض الكل';
+
+  @override
+  String get menuCashBalanceHistory => 'سجل الرصيد النقدي';
+
+  @override
+  String get labelSelectProduct => 'اختر المنتج';
+
+  @override
+  String get labelSellingPrice => 'سعر البيع';
+
+  @override
+  String get btnSave => 'حفظ';
+
+  @override
+  String get errorRequiredField => 'حقل مطلوب';
+
+  @override
+  String get btnAdd => 'إضافة';
+
+  @override
+  String get deletePurchaseInvoice => 'حذف فاتورة شراء';
+
+  @override
+  String get deleteSalesInvoice => 'حذف فاتورة بيع';
+
+  @override
+  String get deleteInvoiceConfirmation =>
+      'هل أنت متأكد من حذف هذه الفاتورة؟ سيؤدي ذلك إلى عكس المخزون ورصيد الخزينة.';
+
+  @override
+  String get edit => 'تعديل';
+
+  @override
+  String get delete => 'حذف';
+
+  @override
+  String get salesInvoiceProfit => 'أرباح مبيعات المركز';
+
+  @override
+  String get punishmentRevenueLabel => 'مصاريف التذاكر';
+
+  @override
+  String get compensationRevenueLabel => 'إيراد التعويضات';
+
+  @override
+  String get labelMaxQuantity => 'أقصى كمية';
+
+  @override
+  String get labelInvoiceSalePercentage => 'نسبة البيع المفوترة';
+
+  @override
+  String get labelLossPercentage => 'Y (نسبة الخسارة)';
 }

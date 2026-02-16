@@ -270,7 +270,8 @@ exports.syncShortageStatus = async (shortage, session = null) => {
     }
     
     // Save the shortage state first so updateOrderTotals sees correct data
-    await shortage.save({ session });
+    if(session)
+        await shortage.save({ session });
 
     // Update parent order if exists
     if (shortage.order) {

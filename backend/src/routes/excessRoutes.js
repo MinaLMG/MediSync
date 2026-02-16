@@ -12,10 +12,12 @@ router.get('/market', protect, authorize('pharmacy_owner', 'manager'), getLimite
 router.get('/pending', protect, authorize('admin'), getLimiter, excessController.getPendingExcesses);
 router.get('/fulfilled', protect, authorize('admin'), getLimiter, excessController.getFulfilledExcesses);
 router.get('/available', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getAvailableExcesses);
+router.get('/pharmacy/:pharmacyId', protect, authorize('admin', 'pharmacy_owner', 'manager'), getLimiter, excessController.getPharmacyExcesses);
 router.get('/market-insight', protect, getLimiter, excessController.getMarketInsight);
 router.put('/:id/approve', protect, authorize('admin'), strictLimiter, excessController.approveExcess);
 router.put('/:id/reject', protect, authorize('admin'), strictLimiter, excessController.rejectExcess);
 router.post('/add-to-hub', protect, authorize('admin'), strictLimiter, excessController.addToHub);
+router.get('/hub-system', protect, excessController.getHubSystemSummary);
 router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, excessController.deleteExcess);
 
 module.exports = router;

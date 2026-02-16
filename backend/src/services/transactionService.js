@@ -41,11 +41,11 @@ exports.createTransaction = async (data, session, req = null) => {
     for (const source of excessSources) {
         const excess = await StockExcess.findById(source.stockExcessId).session(session);
         if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
-            throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
+            throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);    
         }
-if (excess.shortage_fulfillment) {
-    shortage_fulfillment = true;
-}
+        if (excess.shortage_fulfillment) {
+            shortage_fulfillment = true;
+        }
         // Deduct from excess
         excess.remainingQuantity -= source.quantity;
         await excess.save({ session });
@@ -76,20 +76,8 @@ if (excess.shortage_fulfillment) {
     const serial = await serialService.generateDateSerial('transaction');
 
     // 5. Create transaction
-    const settings = await Settings.getSettings();
-    
-    // CASE 1 (Fulfillment): Ratios can be paused (overridden) at creation
-    const finalBuyerCommission = buyerCommissionRatio !== undefined 
-        ? buyerCommissionRatio / 100 
-        : settings.shortageCommission / 100;
-
-    const finalSellerBonus = sellerBonusRatio !== undefined 
-        ? sellerBonusRatio / 100 
-        : settings.shortageSellerReward / 100;
-
-    // CASE 2 (Regular): System commission is FIXED and never paused
-    const baselineSystemCommission = settings.minimumCommission / 100;
-
+    // Ratios are left undefined if not explicitly provided as overrides.
+    // This allows settleTransaction to fetch the LATEST system rates at the moment of payment.
     const transaction = new Transaction({
         serial,
         stockShortage: {
@@ -101,9 +89,10 @@ if (excess.shortage_fulfillment) {
         totalAmount,
         status: 'pending',
         shortage_fulfillment: shortage_fulfillment,
-        commissionRatio: baselineSystemCommission,
-        buyerCommissionRatio: finalBuyerCommission,
-        sellerBonusRatio: finalSellerBonus
+        // Only store if explicitly provided as overrides (in percentage, so / 100)
+        commissionRatio: commissionRatio !== undefined ? commissionRatio / 100 : undefined,
+        buyerCommissionRatio: buyerCommissionRatio !== undefined ? buyerCommissionRatio / 100 : undefined,
+        sellerBonusRatio: sellerBonusRatio !== undefined ? sellerBonusRatio / 100 : undefined
     });
 
     await transaction.save({ session });
@@ -113,7 +102,6 @@ if (excess.shortage_fulfillment) {
     for (const source of refinedSources) {
         const excess = await StockExcess.findById(source.stockExcess).session(session);
         await syncExcessStatus(excess, session);
-        await excess.save({ session });
     }
 
     // 7. Cleanup reservations (BLOCKING - critical for data consistency)
@@ -164,8 +152,7 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
             const excess = await StockExcess.findById(source.stockExcess).session(session);
             if (excess) {
                 excess.remainingQuantity += source.quantity;
-                await syncExcessStatus(excess, session);
-                await excess.save({ session });
+                await syncExcessStatus(excess, session); 
             }
         }
 
@@ -233,13 +220,16 @@ exports.settleTransaction = async (transaction, session) => {
 
             if (excess.shortage_fulfillment) {
                 // CASE 1: Shortage Fulfillment
-                let bonusRatio = transaction.sellerBonusRatio !== undefined
-                    ? transaction.sellerBonusRatio
-                    : (settings.shortageSellerReward / 100);
-                
-                let commRatio = transaction.buyerCommissionRatio !== undefined
-                    ? transaction.buyerCommissionRatio
-                    : (settings.shortageCommission / 100);
+                // If not provided at creation, use latest system settings
+                if (transaction.sellerBonusRatio === undefined) {
+                    transaction.sellerBonusRatio = settings.shortageSellerReward / 100;
+                }
+                if (transaction.buyerCommissionRatio === undefined) {
+                    transaction.buyerCommissionRatio = settings.shortageCommission / 100;
+                }
+
+                let bonusRatio = transaction.sellerBonusRatio;
+                let commRatio = transaction.buyerCommissionRatio;
 
                 // Override for Hub
                 if (sellerPh.isHub) bonusRatio = 0;
@@ -268,9 +258,14 @@ exports.settleTransaction = async (transaction, session) => {
                 }
 
                 // 2. Calculate Commission Ratio (Seller Pays)
-                // Commission = max(system default commission, excess sale value)
+                // If not provided at creation, use latest system settings
+                if (transaction.commissionRatio === undefined) {
+                    transaction.commissionRatio = settings.minimumCommission / 100;
+                }
+
+                // Commission = max(transaction override or baseline system commission, excess sale value)
                 let sellerCommissionRatio = Math.max(
-                    settings.minimumCommission / 100,
+                    transaction.commissionRatio,
                     (excess.salePercentage || 0) / 100
                 );
 
@@ -384,8 +379,7 @@ exports.settleTransaction = async (transaction, session) => {
         const excess = await StockExcess.findById(source.stockExcess).session(session);
         if (excess) {
             const { syncExcessStatus } = require('./excessService');
-            await syncExcessStatus(excess, session);
-            await excess.save({ session });
+            await syncExcessStatus(excess, session); 
         }
     }
     
@@ -546,8 +540,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
         const excess = await StockExcess.findById(excessId).session(session);
         if (excess) {
             excess.remainingQuantity += source.quantity;
-            await syncExcessStatus(excess, session);
-            await excess.save({ session });
+            await syncExcessStatus(excess, session);    
         }
     }
 
