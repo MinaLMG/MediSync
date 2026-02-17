@@ -33,8 +33,8 @@ exports.deleteExcess = async (req, res) => {
         if ((excess.originalQuantity - excess.remainingQuantity) > 0) {
             return res.status(400).json({ success: false, message: 'Cannot delete fulfilled excess' });
         }
-        if (excess.isHubGenerated) {
-            return res.status(400).json({ success: false, message: 'Hub-generated excesses cannot be deleted as they represent a termed transfer. If you need to stop this listing, please use the Cancellation option to reduce the remaining quantity to 0.' });
+        if (excess.isHubGenerated || excess.isHubPurchase) {
+            return res.status(400).json({ success: false, message: 'Hub stock (transfers or purchases) cannot be deleted directly. Please use the source document (purchase invoice or transfer record) to manage this stock.' });
         }
         await excess.deleteOne();
         res.status(200).json({ success: true, message: 'Deleted' });

@@ -84,21 +84,20 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         isNewPrice = true;
     }
 
-    // Check if Pharmacy is Hub to determine purchasePrice logic
-    const pharmacyObj = await Pharmacy.findById(pharmacyId).session(session);
-    const isHub = pharmacyObj && pharmacyObj.isHub;
+    // Use flags exactly as provided by caller (no auto-detection)
+    const finalIsHubGenerated = isHubGenerated || false;
+    const finalIsHubPurchase = isHubPurchase || false;
 
-    // Calculate Purchase Price for Hub (if not already provided by Purchase Invoice)
+    // Calculate purchase price based on which flag is set
     let finalPurchasePrice = purchasePrice;
-    let finalIsHubGenerated = isHubGenerated || false;
 
-    if (isHub && !isHubPurchase) {
-        finalIsHubGenerated = true;
-        // Logic: Cost = Price * (1 - SalePercentage/100)
-        // SalePercentage is the discount to consumer (e.g. 20%)
-        // So Cost is the remaining value (e.g. 80%)
+    if (finalIsHubGenerated && !finalPurchasePrice) {
+        // Add to Hub: Cost = Price * (1 - Sale%)
         const saleRatio = finalSalePercentage ? (finalSalePercentage / 100) : 0;
         finalPurchasePrice = selectedPrice * (1.0 - saleRatio);
+    } else if (finalIsHubPurchase && !finalPurchasePrice) {
+        // Purchase Invoice: Must provide explicit purchase price
+        throw new Error('Purchase price is required for hub purchase invoices');
     }
 
     const excessData = {
@@ -112,11 +111,17 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         salePercentage: finalSalePercentage,
          shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
-        isHubGenerated: finalIsHubGenerated,
-        isHubPurchase:  isHubPurchase || false,
-        purchasePrice: finalPurchasePrice,
         status: 'pending' 
     };
+    if(isHubPurchase){  
+        excessData.isHubPurchase = true;
+    }
+    if(isHubGenerated){ 
+        excessData.isHubGenerated = true;
+    }
+    if (finalPurchasePrice) {
+        excessData.purchasePrice = finalPurchasePrice;
+    }  
 
     const excess = session
         ? (await StockExcess.create([excessData], { session }))[0]
@@ -203,8 +208,8 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
 
     // Validate quantity decrease only
     if (quantity !== undefined) {
-        if (excess.isHubGenerated) {
-            throw new Error('Quantity for hub-generated excesses cannot be updated manually. Please update via the source invoice or "Add to Hub" record.');
+        if (excess.isHubGenerated || excess.isHubPurchase) {
+            throw new Error('Quantity for hub stock cannot be updated manually. Please update via the source document (purchase invoice or transfer record).');
         }
         if (quantity > excess.originalQuantity) {
              throw new Error('Excesses can only be decreased in quantity, not increased.');
@@ -340,8 +345,8 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             selectedPrice: excess.selectedPrice,
             salePercentage: excess.salePercentage,
             shortage_fulfillment: excess.shortage_fulfillment,
-            isHubGenerated: true,
-            isHubPurchase: true,
+            isHubGenerated: true,  // Transfer from pharmacy to hub
+            isHubPurchase: false,   // NOT a direct purchase from supplier
             purchasePrice: purchasePrice,
         }, hubId, req, session);
 

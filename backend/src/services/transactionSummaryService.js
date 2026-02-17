@@ -44,8 +44,12 @@ exports.getTransactionsSummary = async (query) => {
         if (!buyerIsHub) {
             const buyerEffect = tx.stockShortage.balanceEffect || 0;
             const sellersEffect = tx.stockExcessSources.reduce((sum, s) => sum + (s.balanceEffect || 0), 0);
+            console.log("buyerEffect",buyerEffect)
+            console.log("sellersEffect",sellersEffect)
             const netGain = -(buyerEffect + sellersEffect);
+            console.log("netGain",netGain)
             totalNegativeCommissions += netGain;
+            continue
         }
 
         // Part 2: Hub Excess Revenue

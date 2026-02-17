@@ -43,11 +43,11 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
             shortage_fulfillment: false
         }, pharmacyId, req, session);
 
-        // Approve and mark as hub specific
+        // Approve and mark as hub purchase
         await excessService.approveExcess(excess._id, session);
         
-        excess.isHubGenerated = true; // Mark as hub specific
-        excess.isHubPurchase = true;
+        excess.isHubGenerated = false; // NOT a transfer
+        excess.isHubPurchase = true;   // Direct purchase from supplier
         excess.purchasePrice = buyingPrice;
         await excess.save({ session });
         
