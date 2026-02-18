@@ -67,7 +67,8 @@ void main() {
           create: (context) => HubProvider(
             Provider.of<AuthProvider>(context, listen: false).token,
           ),
-          update: (context, auth, previous) => HubProvider(auth.token),
+          update: (context, auth, previous) =>
+              (previous ?? HubProvider(auth.token))..update(auth.token),
         ),
       ],
       child: const MyApp(),

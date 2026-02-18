@@ -30,10 +30,10 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final hubProvider = Provider.of<HubProvider>(context);
+        builder: (dialogContext, setDialogState) {
+          final hubProvider = Provider.of<HubProvider>(dialogContext);
           return AlertDialog(
-            title: Text(AppLocalizations.of(context)!.makePayment),
+            title: Text(AppLocalizations.of(dialogContext)!.makePayment),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -48,7 +48,9 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
                   onChanged: (val) =>
                       setDialogState(() => selectedOwnerId = val),
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.hubOwnersTitle,
+                    labelText: AppLocalizations.of(
+                      dialogContext,
+                    )!.hubOwnersTitle,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -58,7 +60,7 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
                     signed: true,
                   ),
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.paymentValue,
+                    labelText: AppLocalizations.of(dialogContext)!.paymentValue,
                     helperText: "Positive: To Hub, Negative: From Hub",
                   ),
                 ),
@@ -67,7 +69,7 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
                   controller: notesController,
                   maxLines: 2,
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.notes,
+                    labelText: AppLocalizations.of(dialogContext)!.notes,
                     hintText: "Optional notes",
                   ),
                 ),
@@ -75,8 +77,8 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context)!.cancel),
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(AppLocalizations.of(dialogContext)!.cancel),
               ),
               ElevatedButton(
                 onPressed: isProcessing
@@ -92,7 +94,7 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
 
                         final success =
                             await Provider.of<HubProvider>(
-                              context,
+                              dialogContext,
                               listen: false,
                             ).createOwnerPayment(
                               selectedOwnerId!,
@@ -103,7 +105,7 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
                             );
 
                         if (success && mounted) {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                         } else {
                           setDialogState(() => isProcessing = false);
                         }
@@ -114,7 +116,7 @@ class _HubPaymentsScreenState extends State<HubPaymentsScreen> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(AppLocalizations.of(context)!.confirm),
+                    : Text(AppLocalizations.of(dialogContext)!.confirm),
               ),
             ],
           );

@@ -271,7 +271,6 @@ exports.getMarketExcesses = async (req, res) => {
                 const originalSale = group._id.salePercentage || 0;
                 // Use commission service for consistent calculation
                 const { agreedSale } = commissionService.calculateAgreedCommissionSync(originalSale, systemMinComm);
-
                 processedItems.push({
                     product: group._id.product,
                     volume: group._id.volume,

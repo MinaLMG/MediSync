@@ -184,6 +184,7 @@ class _AdminTransactionsSummaryScreenState
           }
 
           final breakdown = summary['breakdown'] ?? {};
+          final entries = summary['entries'] ?? {};
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -203,41 +204,49 @@ class _AdminTransactionsSummaryScreenState
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildSummaryTile(
-                  title: AppLocalizations.of(context)!.negativeCommissions,
-                  value: breakdown['negativeCommissions'] ?? 0,
-                  icon: Icons.percent,
-                  color: Colors.orange,
+                _buildExpandableSummaryTile(
+                  title: AppLocalizations.of(context)!.transactionRevenue,
+                  value: breakdown['transactionRevenue'] ?? 0,
+                  icon: Icons.swap_horiz,
+                  color: Colors.purple,
+                  entries:
+                      (entries['transactions'] as List?)
+                          ?.cast<Map<String, dynamic>>() ??
+                      [],
+                  entryBuilder: _buildTransactionEntry,
                 ),
-                _buildSummaryTile(
-                  title: AppLocalizations.of(context)!.hubExcessRevenue,
-                  value: breakdown['hubExcessRevenue'] ?? 0,
-                  icon: Icons.inventory,
-                  color: Colors.green,
-                ),
-                _buildSummaryTile(
-                  title: AppLocalizations.of(context)!.salesInvoiceRevenue,
-                  value: breakdown['salesInvoiceRevenue'] ?? 0,
-                  icon: Icons.receipt,
-                  color: Colors.teal,
-                ),
-                _buildSummaryTile(
+                _buildExpandableSummaryTile(
                   title: AppLocalizations.of(context)!.salesInvoiceProfit,
                   value: breakdown['salesInvoiceProfit'] ?? 0,
                   icon: Icons.trending_up,
                   color: Colors.blueGrey,
+                  entries:
+                      (entries['salesInvoices'] as List?)
+                          ?.cast<Map<String, dynamic>>() ??
+                      [],
+                  entryBuilder: _buildSalesInvoiceEntry,
                 ),
-                _buildSummaryTile(
+                _buildExpandableSummaryTile(
                   title: AppLocalizations.of(context)!.punishmentRevenueLabel,
                   value: breakdown['punishmentRevenue'] ?? 0,
                   icon: Icons.money_off,
                   color: Colors.redAccent,
+                  entries:
+                      (entries['reversalTickets'] as List?)
+                          ?.cast<Map<String, dynamic>>() ??
+                      [],
+                  entryBuilder: _buildReversalEntry,
                 ),
-                _buildSummaryTile(
+                _buildExpandableSummaryTile(
                   title: AppLocalizations.of(context)!.compensationRevenueLabel,
                   value: -(breakdown['compensationLoss'] ?? 0),
                   icon: Icons.remove_circle_outline,
                   color: Colors.red,
+                  entries:
+                      (entries['compensations'] as List?)
+                          ?.cast<Map<String, dynamic>>() ??
+                      [],
+                  entryBuilder: _buildCompensationEntry,
                 ),
                 if (startDate != null) ...[
                   const SizedBox(height: 24),
@@ -299,30 +308,199 @@ class _AdminTransactionsSummaryScreenState
     );
   }
 
-  Widget _buildSummaryTile({
+  Widget _buildExpandableSummaryTile({
     required String title,
     required num value,
     required IconData icon,
     required Color color,
+    required List<Map<String, dynamic>> entries,
+    required Widget Function(Map<String, dynamic>) entryBuilder,
   }) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        trailing: Text(
-          NumberFormat("#,##0").format(value),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: value >= 0 ? Colors.green[700] : Colors.red,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color),
           ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                NumberFormat("#,##0").format(value),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.expand_more),
+            ],
+          ),
+          children: [
+            if (entries.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "No entries found",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) => entryBuilder(entries[index]),
+                ),
+              ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionEntry(Map<String, dynamic> entry) {
+    final revenue = entry['revenue'] ?? 0;
+    final date = DateTime.tryParse(entry['createdAt'] ?? '') ?? DateTime.now();
+    final id = (entry['_id'] ?? '').toString();
+    final shortId = id.length > 6
+        ? id.substring(id.length - 6).toUpperCase()
+        : id;
+    final productName = entry['productName'] ?? 'Unknown Product';
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        productName,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        "Transaction #$shortId • ${DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal())}",
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            (revenue >= 0 ? "+" : "") + NumberFormat("#,##0").format(revenue),
+            style: TextStyle(
+              color: revenue >= 0 ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            "Buyer: ${NumberFormat("#,##0").format(entry['buyerEffect'] ?? 0)} | Seller: ${NumberFormat("#,##0").format(entry['sellersEffect'] ?? 0)}",
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSalesInvoiceEntry(Map<String, dynamic> entry) {
+    final profit = entry['totalRevenuePrice'] ?? 0;
+    final selling = entry['totalSellingPrice'] ?? 0;
+    final buying = entry['totalBuyingPrice'] ?? 0;
+    final date = DateTime.tryParse(entry['date'] ?? '') ?? DateTime.now();
+    final id = (entry['_id'] ?? '').toString();
+    final shortId = id.length > 6
+        ? id.substring(id.length - 6).toUpperCase()
+        : id;
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        "Invoice #$shortId",
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal())),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            (profit >= 0 ? "+" : "") + NumberFormat("#,##0").format(profit),
+            style: TextStyle(
+              color: profit >= 0 ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            "Sell: ${NumberFormat("#,##0").format(selling)} | Buy: ${NumberFormat("#,##0").format(buying)}",
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReversalEntry(Map<String, dynamic> entry) {
+    final expenses = entry['totalExpenses'] ?? 0;
+    final date = DateTime.tryParse(entry['createdAt'] ?? '') ?? DateTime.now();
+    final id = (entry['_id'] ?? '').toString();
+    final shortId = id.length > 6
+        ? id.substring(id.length - 6).toUpperCase()
+        : id;
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        "Reversal #$shortId",
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal())),
+      trailing: Text(
+        "+${NumberFormat("#,##0").format(expenses)}",
+        style: const TextStyle(
+          color: Colors.green,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompensationEntry(Map<String, dynamic> entry) {
+    final amount = entry['amount'] ?? 0;
+    final date = DateTime.tryParse(entry['createdAt'] ?? '') ?? DateTime.now();
+    final id = (entry['_id'] ?? '').toString();
+    final shortId = id.length > 6
+        ? id.substring(id.length - 6).toUpperCase()
+        : id;
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        "Compensation #$shortId",
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(date.toLocal())),
+      trailing: Text(
+        "-${NumberFormat("#,##0").format(amount)}",
+        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
       ),
     );
   }

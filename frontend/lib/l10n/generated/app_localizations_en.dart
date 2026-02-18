@@ -2055,6 +2055,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get balance => 'Balance';
 
   @override
+  String get transactionRevenue => 'Transaction Revenue';
+
+  @override
   String get menuHubCalculations => 'Calculations Widget';
 
   @override

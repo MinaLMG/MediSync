@@ -1008,6 +1008,7 @@
   "makePayment": "إجراء دفع",
   "paymentValue": "قيمة الدفعة",
   "totalRevenue": "إجمالي الإيرادات",
+  "transactionRevenue": "إيرادات المعاملات",
   "negativeCommissions": "عمولات سلبية",
   "hubExcessRevenue": "أرباح المخزون الزائد",
   "salesInvoiceRevenue": "أرباح فواتير المبيعات",

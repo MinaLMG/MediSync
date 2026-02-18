@@ -3872,6 +3872,12 @@ abstract class AppLocalizations {
   /// **'Balance'**
   String get balance;
 
+  /// No description provided for @transactionRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Revenue'**
+  String get transactionRevenue;
+
   /// No description provided for @menuHubCalculations.
   ///
   /// In en, this message translates to:

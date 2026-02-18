@@ -1,5 +1,7 @@
-const { SalesInvoice, Pharmacy, CashBalanceHistory, StockExcess } = require('../models');
+const { SalesInvoice, Pharmacy, CashBalanceHistory, BalanceHistory, StockExcess, User } = require('../models');
 const { syncExcessStatus } = require('./excessService');
+const { sendToUser } = require('../utils/pusherManager');
+
 
 /**
  * Creates a sales invoice record for tracking hub revenue.
@@ -67,12 +69,18 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
 
     await invoice.save({ session });
 
-    // Update Hub Cash Balance (Sale increases cash)
+    // Update Hub Cash Balance (Sale increases cash by total selling price)
     const previousCashBalance = hub.cashBalance;
+    const previousBalance = hub.balance;
+    
     hub.cashBalance += totalSellingPrice;
+    hub.balance += totalBuyingPrice; // Add back purchase price to cancel inventory cost
+    
     await hub.save({ session });
+    
+   
 
-    // Record History in CashBalanceHistory
+    // Record History in CashBalanceHistory (total selling price)
     await CashBalanceHistory.create([{
         pharmacy: pharmacyId,
         type: 'deposit',
@@ -85,6 +93,33 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
         description_ar: `فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
         details: { invoiceId: invoice._id }
     }], { session });
+
+    // Record History in BalanceHistory (purchase price recovery)
+    await BalanceHistory.create([{
+        pharmacy: pharmacyId,
+        type: 'sales_invoice',
+        amount: totalBuyingPrice,
+        previousBalance: previousBalance,
+        newBalance: hub.balance,
+        relatedEntity: invoice._id,
+        relatedEntityType: 'SalesInvoice',
+        description: `Sales Invoice Cost Recovery #${invoice._id.toString().slice(-6).toUpperCase()}`,
+        description_ar: `استرداد تكلفة فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
+        details: { 
+            invoiceId: invoice._id,
+            totalSellingPrice,
+            totalBuyingPrice,
+            profit: totalRevenuePrice
+        }
+    }], { session });
+
+     // Trigger Real-time Balance Update
+    const users = await User.find({ pharmacy: pharmacyId });
+    for (const u of users) {
+        await sendToUser(u._id.toString(), 'balanceUpdate', {
+            balance: hub.balance
+        });
+    }
 
     return invoice;
 };
@@ -198,27 +233,60 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
     if (date) invoice.date = new Date(date);
     await invoice.save({ session });
 
-    // 5. Correct Hub Cash Balance
+    // 5. Correct Hub Cash Balance AND Regular Balance
+    const oldBuyingPrice = invoice.items.reduce((sum, item) => sum + (item.buyingPrice * item.quantity), 0);
     const balanceDiff = totalSellingPrice - oldSellingTotal;
-    if (balanceDiff !== 0) {
-        // balanceDiff > 0 means more money received (Deposit)
-        // balanceDiff < 0 means money refunded to someone? (Withdrawal)
-        const prevBalance = hub.cashBalance;
+    const buyingPriceDiff = totalBuyingPrice - oldBuyingPrice;
+    
+    if (balanceDiff !== 0 || buyingPriceDiff !== 0) {
+        const prevCashBalance = hub.cashBalance;
+        const prevBalance = hub.balance;
+        
         hub.cashBalance += balanceDiff; 
+        hub.balance += buyingPriceDiff; // Adjust inventory cost recovery
         await hub.save({ session });
+        
+        
 
-        await CashBalanceHistory.create([{
-            pharmacy: hub._id,
-            type: balanceDiff > 0 ? 'deposit' : 'withdrawal',
-            amount: Math.abs(balanceDiff),
-            previousBalance: prevBalance,
-            newBalance: hub.cashBalance,
-            relatedEntity: invoice._id,
-            relatedEntityType: 'SalesInvoice',
-            description: `Correction: Sales Invoice Updated #${invoice._id.toString().slice(-6).toUpperCase()}`,
-            description_ar: `تصحيح: تم تحديث فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
-            details: { invoiceId: invoice._id, diff: balanceDiff }
-        }], { session });
+        // CashBalanceHistory for cash changes
+        if (balanceDiff !== 0) {
+            await CashBalanceHistory.create([{
+                pharmacy: hub._id,
+                type: balanceDiff > 0 ? 'deposit' : 'withdrawal',
+                amount: Math.abs(balanceDiff),
+                previousBalance: prevCashBalance,
+                newBalance: hub.cashBalance,
+                relatedEntity: invoice._id,
+                relatedEntityType: 'SalesInvoice',
+                description: `Correction: Sales Invoice Updated #${invoice._id.toString().slice(-6).toUpperCase()}`,
+                description_ar: `تصحيح: تم تحديث فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
+                details: { invoiceId: invoice._id, diff: balanceDiff }
+            }], { session });
+        }
+        
+        // BalanceHistory for buying price changes
+        if (buyingPriceDiff !== 0) {
+            await BalanceHistory.create([{
+                pharmacy: hub._id,
+                type: 'sales_invoice',
+                amount: buyingPriceDiff,
+                previousBalance: prevBalance,
+                newBalance: hub.balance,
+                relatedEntity: invoice._id,
+                relatedEntityType: 'SalesInvoice',
+                description: `Correction: Sales Invoice Cost Updated #${invoice._id.toString().slice(-6).toUpperCase()}`,
+                description_ar: `تصحيح: تم تحديث تكلفة فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
+                details: { invoiceId: invoice._id, buyingPriceDiff }
+            }], { session });
+        }
+
+        // Trigger Real-time Balance Update
+        const users = await User.find({ pharmacy: hub._id });
+        for (const u of users) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: hub.balance
+            });
+        }
     }
 
     return invoice;
@@ -246,15 +314,21 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
         }
     }
 
-    // 2. Update Hub Cash Balance (Reverse selling price - sale increase cash, so deletion reduces it)
+    // 2. Update Hub Cash Balance AND Regular Balance
     const previousCashBalance = hub.cashBalance;
+    const previousBalance = hub.balance;
+    
     hub.cashBalance -= invoice.totalSellingPrice;
+    hub.balance -= invoice.totalBuyingPrice; // Reverse purchase price recovery
+    
     await hub.save({ session });
+    
+    
 
     // 3. Record History in CashBalanceHistory
     await CashBalanceHistory.create([{
         pharmacy: hub._id,
-        type: 'withdrawal', // Deleting a sale is a withdrawal from revenue
+        type: 'withdrawal',
         amount: invoice.totalSellingPrice,
         previousBalance: previousCashBalance,
         newBalance: hub.cashBalance,
@@ -264,8 +338,28 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
         description_ar: `عكس: تم حذف فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
         details: { invoiceId: invoice._id }
     }], { session });
-
-    // 4. Delete Invoice
+    
+    // 4. Record History in BalanceHistory (purchase price reversal)
+    await BalanceHistory.create([{
+        pharmacy: hub._id,
+        type: 'sales_invoice',
+        amount: -invoice.totalBuyingPrice,
+        previousBalance: previousBalance,
+        newBalance: hub.balance,
+        relatedEntity: invoice._id,
+        relatedEntityType: 'SalesInvoice',
+        description: `Reversal: Sales Invoice Cost Deleted #${invoice._id.toString().slice(-6).toUpperCase()}`,
+        description_ar: `عكس: تم حذف تكلفة فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
+        details: { invoiceId: invoice._id, buyingPrice: invoice.totalBuyingPrice }
+    }], { session });   
+    // Trigger Real-time Balance Update
+    const users = await User.find({ pharmacy: hub._id });
+    for (const u of users) {
+        await sendToUser(u._id.toString(), 'balanceUpdate', {
+            balance: hub.balance
+        });
+    }
+    // 5. Delete Invoice
     await SalesInvoice.findByIdAndDelete(invoiceId).session(session);
     return true;
 };

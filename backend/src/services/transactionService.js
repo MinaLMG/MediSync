@@ -264,33 +264,44 @@ exports.settleTransaction = async (transaction, session) => {
                 }
 
                 // Commission = max(transaction override or baseline system commission, excess sale value)
-                let sellerCommissionRatio = Math.max(
-                    transaction.commissionRatio,
+                let sellerCommissionRatio = 
                     (excess.salePercentage || 0) / 100
-                );
+                        ;
 
                 // 3. Calculate Sale Ratio (Buyer Receives)
                 // The sale the buyer explicitly selected and agreed on (from shortage)
                 let buyerSaleRatio = (shortage.salePercentage || 0) / 100;
 
-                // Hub Rule: If either party is a hub, commission must be set to 0%
-                if (sellerPh.isHub) {
-                    sellerCommissionRatio = 0;
-                }
-                if (buyerPh.isHub) { 
-                    buyerSaleRatio = 0;
+                // Hub Seller Rule: Use purchase price directly for hub-owned stock
+                if (sellerPh.isHub && (excess.isHubGenerated || excess.isHubPurchase)) {
+                    // Hub selling transferred or purchased items
+                    // Use purchase price directly as positive effect
+                    sellerEffect = excess.purchasePrice * source.quantity;
+                    
+                    sellerDetails = {
+                        type: excess.isHubPurchase ? 'hub_purchase_sale' : 'hub_transfer_sale',
+                        baseAmount: source.totalAmount,
+                        purchasePrice: excess.purchasePrice,
+                        quantity: source.quantity,
+                        sellingPrice: source.agreedPrice
+                    };
+                } else {
+                    // Regular seller (not hub) - calculate commission normally
+                    sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
+                    
+                    sellerDetails = {
+                        type: 'excess_rebalance',
+                        baseAmount: source.totalAmount,
+                        commissionRatio: sellerCommissionRatio,
+                        originalSale: excess.salePercentage
+                    };
                 }
 
-                // Financials
-                // Seller Receives: Price * (1 - sellerCommissionRatio)
-                sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
-                
-                sellerDetails = {
-                    type: 'excess_rebalance',
-                    baseAmount: source.totalAmount,
-                    commissionRatio: sellerCommissionRatio,
-                    originalSale: excess.salePercentage
-                };
+                // Hub Buyer Rule: Match seller's sale ratio (creates zero net effect)
+                if (buyerPh.isHub) { 
+                    // Hub as buyer: pay same amount as seller receives (zero net effect)
+                    buyerSaleRatio = (excess.salePercentage || 0) / 100;
+                }
 
                 // Buyer Pays: Price * (1 - buyerSaleRatio)
                 sourceBuyerEffect = -(1 - buyerSaleRatio) * source.totalAmount;

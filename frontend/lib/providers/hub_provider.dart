@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../utils/config.dart';
 
 class HubProvider with ChangeNotifier {
-  final String? token;
+  String? _token;
   bool _isLoading = false;
 
   List<dynamic> _owners = [];
@@ -17,7 +17,14 @@ class HubProvider with ChangeNotifier {
   Map<String, dynamic>? _hubSystemSummary;
   Map<String, dynamic>? _adminSummary;
 
-  HubProvider(this.token);
+  HubProvider(this._token);
+
+  String? get token => _token;
+
+  void update(String? newToken) {
+    _token = newToken;
+    // notifyListeners(); // Optional: depend on if token change needs UI update immediately
+  }
 
   bool get isLoading => _isLoading;
   List<dynamic> get owners => _owners;

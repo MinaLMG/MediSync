@@ -1,4 +1,4 @@
-const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy, SalesInvoice } = require('../models');
+const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy, SalesInvoice, User } = require('../models');
 const auditService = require('./auditService');
 const serialService = require('./serialService');
 const mongoose = require('mongoose');
@@ -148,7 +148,6 @@ exports.approveExcess = async (excessId, session = null) => {
         { status: 'available' }, 
         { new: true, session }
     );
-    
     if (!excess) throw new Error('Excess not found');
 
     if (excess.isNewPrice) {
@@ -349,6 +348,8 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             isHubPurchase: false,   // NOT a direct purchase from supplier
             purchasePrice: purchasePrice,
         }, hubId, req, session);
+        //approve the excess
+        await exports.approveExcess(hubExcess._id, session);
 
         // Update transaction with added_to_hub reference
         transaction.added_to_hub = { excessId: hubExcess._id };

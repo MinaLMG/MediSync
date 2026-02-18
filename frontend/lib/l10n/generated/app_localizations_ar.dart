@@ -2046,6 +2046,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get balance => 'الرصيد';
 
   @override
+  String get transactionRevenue => 'إيرادات المعاملات';
+
+  @override
   String get menuHubCalculations => 'أداة الحسابات';
 
   @override

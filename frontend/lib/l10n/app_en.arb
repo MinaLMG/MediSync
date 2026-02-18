@@ -1006,6 +1006,7 @@
   "makePayment": "Make Payment",
   "paymentValue": "Payment Value",
   "totalRevenue": "Total Revenue",
+  "transactionRevenue": "Transaction Revenue",
   "negativeCommissions": "Negative Commissions",
   "hubExcessRevenue": "Hub Excess Revenue",
   "salesInvoiceRevenue": "Sales Invoice Revenue",
