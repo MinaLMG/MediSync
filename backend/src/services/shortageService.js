@@ -26,7 +26,6 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
         if (!pharmacy || !pharmacy.isHub) {
             throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
         }
-        throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
     }
 
     const shortage = session 
