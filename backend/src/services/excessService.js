@@ -330,8 +330,8 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         }, session, req);
 
         // 3. Complete the transaction (Accepted -> Completed)
-        await transactionService.updateTransactionStatus(transaction._id, 'accepted', session, req);
-        await transactionService.updateTransactionStatus(transaction._id, 'completed', session, req);
+        await transactionService.updateTransactionStatus(transaction._id, 'accepted', session);
+        await transactionService.updateTransactionStatus(transaction._id, 'completed', session);
 
         // 4. Create new excess at the hub (instantly available)
         const purchasePrice = (1 - (excess.salePercentage / 100)) * excess.selectedPrice;

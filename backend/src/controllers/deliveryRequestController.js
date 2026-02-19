@@ -17,21 +17,26 @@ exports.createRequest = async (req, res) => {
         if (!transaction) {
             return res.status(404).json({ success: false, message: 'Transaction not found' });
         }
-
-        // Check for assignment - if already assigned to someone else
-        if (transaction.delivery && transaction.delivery.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: 'This transaction is assigned to another delivery user' });
-        }
-
-        // Check for existing pending request for this delivery user and transaction
+        // Check for ANY existing pending request for this transaction
         const existingRequest = await DeliveryRequest.findOne({
-            delivery: req.user._id,
             transaction: transactionId,
             status: 'pending'
         });
-
         if (existingRequest) {
-            return res.status(400).json({ success: false, message: 'You already have a pending request for this transaction' });
+            return res.status(400).json({ success: false, message: 'This transaction already has a pending delivery request' });
+        }
+
+        // [New Requirement] Only the assigned delivery user can make requests
+        if (!transaction.delivery || transaction.delivery.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'You must be assigned to this transaction before making a request' });
+        }
+
+        // Check appropriate transaction status for request type
+        if (requestType === 'accept' && transaction.status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Acceptance requests can only be made for pending transactions' });
+        }
+        if (requestType === 'complete' && transaction.status !== 'accepted') {
+            return res.status(400).json({ success: false, message: 'Completion requests can only be made for accepted transactions' });
         }
 
         const deliveryRequest = await DeliveryRequest.create({
@@ -97,23 +102,18 @@ exports.reviewRequest = async (req, res) => {
         const transaction = await Transaction.findById(request.transaction).session(session);
 
         if (status === 'approved') {
-            if (transaction) {
-                if (request.requestType === 'accept') {
-                    transaction.status = 'accepted';
-                    transaction.delivery = request.delivery; // FIX: Assign the delivery user
-                } else if (request.requestType === 'complete') {
-                    transaction.status = 'completed';
-                    // FIX: Trigger full financial settlement
-                    await transactionService.settleTransaction(transaction, session);
-                }
-                await transaction.save({ session });
-
-                // To remove conflicts, remove any other related delivery_requests for this transaction
-                await DeliveryRequest.deleteMany({
-                    transaction: transaction._id,
-                    _id: { $ne: request._id }
-                }, { session });
+            const transactionStatus = request.requestType === 'accept' ? 'accepted' : 'completed';
+            
+            // SECURITY CHECK: If already assigned, only that person can change status
+            if (transaction.delivery && transaction.delivery.toString() !== request.delivery.toString()) {
+                throw new Error('Only the assigned delivery person can process this transaction');
             }
+
+            await transactionService.updateTransactionStatus(
+                request.transaction,
+                transactionStatus,
+                session
+            );
         }
 
         await session.commitTransaction();

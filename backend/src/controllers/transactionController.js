@@ -305,7 +305,7 @@ exports.updateTransactionStatus = async (req, res) => {
     session.startTransaction();
     try {
         const { status } = req.body;
-        const transaction = await transactionService.updateTransactionStatus(req.params.id, status, session, req);
+        const transaction = await transactionService.updateTransactionStatus(req.params.id, status, session);
         
         await session.commitTransaction();
 
@@ -368,36 +368,23 @@ exports.assignTransaction = async (req, res) => {
 // @route   PUT /api/transaction/:id/unassign
 // @access  Admin
 exports.unassignTransaction = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const transaction = await Transaction.findById(req.params.id);
-        if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Transaction not found' });
-        }
+        const transaction = await transactionService.unassignTransaction(req.params.id, session, req);
+        await session.commitTransaction();
 
-        const deliveryUserId = transaction.delivery;
-        transaction.delivery = undefined;
-        await transaction.save();
-
-        if (deliveryUserId) {
-            try {
-                await addNotificationJob(
-                    deliveryUserId.toString(),
-                    'transaction',
-                    `You have been detached from Transaction #${transaction._id.toString().slice(-6)}.`,
-                    {
-                        relatedEntity: transaction._id,
-                        relatedEntityType: 'Transaction'
-                    },
-                    `تم فصلك عن المعاملة #${transaction._id.toString().slice(-6)}.`
-                );
-            } catch (notifErr) {
-                console.error('Notification error in unassignTransaction:', notifErr);
-            }
-        }
+        // Centralized Notifications (called after commit)
+        await transactionService.notifyParties(transaction);
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 

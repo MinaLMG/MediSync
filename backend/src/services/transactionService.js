@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, BalanceHistory, User, Reservation } = require('../models');
+const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, BalanceHistory, User, Reservation, DeliveryRequest } = require('../models');
 const { sendToUser } = require('../utils/pusherManager');
 const serialService = require('./serialService');
 
@@ -128,8 +128,11 @@ exports.createTransaction = async (data, session, req = null) => {
 /**
  * Updates transaction status (Accepted, Rejected, Completed, Cancelled).
  * MUST be called within a session.
+ * @param {string} transactionId - The ID of the transaction to update.
+ * @param {string} status - The new status.
+ * @param {Object} session - Mongoose session for atomicity.
  */
-exports.updateTransactionStatus = async (transactionId, status, session, req = null, options = {}) => {
+exports.updateTransactionStatus = async (transactionId, status, session) => {
     const transaction = await Transaction.findById(transactionId).session(session);
 
     if (!transaction) {
@@ -139,9 +142,12 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
     if (transaction.status === 'completed' || transaction.status === 'cancelled') {
         throw new Error('Cannot change status of a finished transaction');
     }
-
     const oldStatus = transaction.status;
-    transaction.status = status;
+    if (status !== 'completed') {
+        transaction.status = status;
+    }
+
+    
 
     if (status === 'cancelled' || status === 'rejected') {
         const { syncExcessStatus } = require('./excessService');
@@ -181,11 +187,76 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
                 );
             }
         }
-    } else if (status === 'completed') {
+
+        // 4. Reject all pending delivery requests for this transaction
+        await DeliveryRequest.updateMany(
+            { transaction: transaction._id, status: 'pending' },
+            { status: 'rejected' },
+            { session }
+        );
+    }
+    // [New] Autonomous approval of DeliveryRequest for the assigned delivery user
+    else if ((status === 'accepted' || status === 'completed') && transaction.delivery) {
+        // Approve the active request for this transaction/user
+        await DeliveryRequest.updateMany(
+            { transaction: transaction._id, delivery: transaction.delivery, status: 'pending' },
+            { status: 'approved' },
+            { session }
+        );
+        
+        if (status === 'completed') {
             await exports.settleTransaction(transaction, session);
+        }
+    } 
+
+
+    await transaction.save({ session });
+    return transaction;
+};
+
+/**
+ * Unassigns a delivery person from a transaction and resets its status if needed.
+ * Also rejects all pending delivery requests for this transaction.
+ */
+exports.unassignTransaction = async (transactionId, session, req = null) => {
+    const transaction = await Transaction.findById(transactionId).session(session);
+    if (!transaction) {
+        throw new Error('Transaction not found');
+    }
+
+    const oldDeliveryId = transaction.delivery;
+    transaction.delivery = undefined;
+
+    // [UPDATED] Only reject pending requests for the user being unassigned
+    if (oldDeliveryId) {
+        await DeliveryRequest.updateMany(
+            { transaction: transaction._id, delivery: oldDeliveryId, status: 'pending' },
+            { status: 'rejected' },
+            { session }
+        );
     }
 
     await transaction.save({ session });
+
+    // Notify the unassigned user
+    if (oldDeliveryId) {
+        try {
+            const { addNotificationJob } = require('../utils/queueManager');
+            await addNotificationJob(
+                oldDeliveryId.toString(),
+                'transaction',
+                `You have been detached from Transaction #${transaction.serial || transaction._id.toString().slice(-6)}.`,
+                {
+                    relatedEntity: transaction._id,
+                    relatedEntityType: 'Transaction'
+                },
+                `تم فصلك عن المعاملة #${transaction.serial || transaction._id.toString().slice(-6)}.`
+            );
+        } catch (notifErr) {
+            console.error('Notification error in unassignTransaction service:', notifErr);
+        }
+    }
+
     return transaction;
 };
 
@@ -195,7 +266,9 @@ exports.updateTransactionStatus = async (transactionId, status, session, req = n
  * MUST be called within a session.
  */
 exports.settleTransaction = async (transaction, session) => {
-
+    if (transaction.status === 'completed') {
+        return; // Already settled
+    }
     
     const settings = await Settings.getSettings();
     const systemMinCommRatio = settings.minimumCommission / 100;
@@ -394,7 +467,8 @@ exports.settleTransaction = async (transaction, session) => {
         }
     }
     
-
+    transaction.status = 'completed';
+    await transaction.save({ session });
 };
 
 /**

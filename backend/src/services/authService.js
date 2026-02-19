@@ -153,6 +153,7 @@ exports.linkPharmacy = async (userId, pharmacyData, session, req = null) => {
         entityId: pharmacy._id
     }, req);
 
+    await user.populate('pharmacy');
     return { user, pharmacy };
 };
 
@@ -202,5 +203,6 @@ exports.updateUserDetail = async (userId, updateData, req = null) => {
         changes: updateData
     }, req);
 
+    await user.populate('pharmacy');
     return user;
 };

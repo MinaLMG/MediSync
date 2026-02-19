@@ -149,6 +149,10 @@ exports.updatePreferences = async (req, res) => {
         if (language) user.language = language;
         
         await user.save();
+        
+        // Populate pharmacy before returning to avoid frontend crashes
+        await user.populate('pharmacy');
+        
         res.status(200).json({ success: true, data: user });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
