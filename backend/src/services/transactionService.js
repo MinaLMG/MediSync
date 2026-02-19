@@ -146,7 +146,6 @@ exports.updateTransactionStatus = async (transactionId, status, session) => {
     if (status !== 'completed') {
         transaction.status = status;
     }
-
     
 
     if (status === 'cancelled' || status === 'rejected') {
@@ -196,20 +195,21 @@ exports.updateTransactionStatus = async (transactionId, status, session) => {
         );
     }
     // [New] Autonomous approval of DeliveryRequest for the assigned delivery user
-    else if ((status === 'accepted' || status === 'completed') && transaction.delivery) {
-        // Approve the active request for this transaction/user
-        await DeliveryRequest.updateMany(
-            { transaction: transaction._id, delivery: transaction.delivery, status: 'pending' },
-            { status: 'approved' },
-            { session }
-        );
-        
+    else if ((status === 'accepted' || status === 'completed') ) {
+        if(transaction.delivery){
+    // Approve the active request for this transaction/user
+            await DeliveryRequest.updateMany(
+                { transaction: transaction._id, delivery: transaction.delivery, status: 'pending' },
+                { status: 'approved' },
+                { session }
+            );
+        }  
         if (status === 'completed') {
             await exports.settleTransaction(transaction, session);
         }
     } 
 
-
+    
     await transaction.save({ session });
     return transaction;
 };
@@ -266,16 +266,16 @@ exports.unassignTransaction = async (transactionId, session, req = null) => {
  * MUST be called within a session.
  */
 exports.settleTransaction = async (transaction, session) => {
-    if (transaction.status === 'completed') {
+    if (transaction.status === 'completed') {   
         return; // Already settled
     }
-    
+
     const settings = await Settings.getSettings();
     const systemMinCommRatio = settings.minimumCommission / 100;
 
     const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
     const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
-
+    
     let totalBuyerEffect = 0;
     let buyerDetailsList = [];
 

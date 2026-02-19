@@ -328,7 +328,7 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             quantityTaken: quantity,
             excessSources: [{ stockExcessId: excess._id, quantity: quantity }],
         }, session, req);
-
+        
         // 3. Complete the transaction (Accepted -> Completed)
         await transactionService.updateTransactionStatus(transaction._id, 'accepted', session);
         await transactionService.updateTransactionStatus(transaction._id, 'completed', session);
@@ -350,7 +350,7 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         }, hubId, req, session);
         //approve the excess
         await exports.approveExcess(hubExcess._id, session);
-
+        
         // Update transaction with added_to_hub reference
         transaction.added_to_hub = { excessId: hubExcess._id };
         await transaction.save({ session });
