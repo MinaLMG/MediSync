@@ -244,10 +244,13 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
 
         // 2. Sale Percentage Change
         if (!excess.shortage_fulfillment) {
+            const settings = await Settings.getSettings();
             if (salePercentage !== undefined && salePercentage !== excess.salePercentage) {
-                const settings = await Settings.getSettings();
                 excess.salePercentage = Math.max(salePercentage, settings.minimumCommission);
                 needsReapproval = true;
+            }else{
+                excess.salePercentage = settings.minimumCommission;
+                excess.saleAmount = excess.selectedPrice * (settings.minimumCommission / 100);
             }
         } else {
             excess.salePercentage = 0;

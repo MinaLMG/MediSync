@@ -69,8 +69,7 @@ const stockShortageSchema = new mongoose.Schema({
     expiryDate: {
         type: String,
         required: false
-    },
-
+    }
   
 }, {
     timestamps: true

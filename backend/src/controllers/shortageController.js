@@ -40,7 +40,7 @@ exports.updateShortage = async (req, res) => {
     session.startTransaction();
     try {
         const updates = {};
-        const allowedFields = ['quantity', 'notes'];
+        const allowedFields = ['quantity'];
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) updates[field] = req.body[field];
         }

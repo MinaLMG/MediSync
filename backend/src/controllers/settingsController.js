@@ -1,4 +1,5 @@
 const Settings = require('../models/Settings');
+const auditService = require('../services/auditService');
 
 // @desc    Get system settings
 // @route   GET /api/settings

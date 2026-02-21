@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
  * Creates a single stock shortage.
  */
 exports.createShortage = async (data, pharmacyId, req = null, session = null) => {
-    const { product: productId, volume, quantity, notes, targetPrice, isSystemGenerated } = data;
+    const { product: productId, volume, quantity, targetPrice, isSystemGenerated, salePercentage } = data;
 
     const product = await Product.findById(productId).session(session);
     if (!product || product.status !== 'active') {
@@ -34,8 +34,8 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
         volume,
         quantity,
         remainingQuantity: quantity,
-        notes,
         targetPrice,
+        salePercentage,
         type: 'request',
         status: 'active',
         isSystemGenerated: isSystemGenerated || false
@@ -59,7 +59,7 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
  */
 exports.createOrder = async (orderData, pharmacyId, req = null, session = null) => {
     try {
-        const { items, notes } = orderData;
+        const { items } = orderData;
         
         // Validate items array
         if (!items || items.length === 0) {
@@ -73,8 +73,7 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
             serial,
             status: 'pending',
             totalItems: items.length,
-            fulfilledItems: 0,
-            notes
+            fulfilledItems: 0
         });
         await order.save({ session });
 
@@ -105,7 +104,6 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
                 type: 'market_order',
                 status: 'active',
                 order: order._id,
-                notes: item.notes,
                 originalSalePercentage: item.originalSalePercentage || 0,
                 salePercentage: item.salePercentage || 0,
                 expiryDate: item.expiryDate // Store selected expiry
@@ -173,7 +171,7 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
             throw { message: 'Cannot update non-active shortage', code: 409 };
         }
 
-        const { quantity, notes } = updateData;
+        const { quantity } = updateData;
         const fulfilled = shortage.quantity - shortage.remainingQuantity;
 
         if (quantity !== undefined) {
@@ -205,8 +203,6 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
             }
         }
 
-        if (notes !== undefined && notes !== shortage.notes) shortage.notes = notes;
-
         await exports.syncShortageStatus(shortage, session);
         // shortage.save() and order sync handled inside sync
         
@@ -220,10 +216,7 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
 
         return shortage;
     } catch (error) {
-        await session.abortTransaction();
         throw error;
-    } finally {
-        session.endSession();
     }
 };
 

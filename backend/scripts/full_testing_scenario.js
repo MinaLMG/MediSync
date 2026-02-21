@@ -44,7 +44,7 @@ function logSection(name) {
 function logStep(msg) { console.log(`\x1b[32m✓\x1b[0m ${msg}`); }
 
 /** AUTOMATED ASSERTION WITH SCORING */
-function assert(condition, testName, phase, details = '') {
+function assert(condition, testName, phase, details = '', responseData = null) {
     testResults.totalTests++;
     if (testResults.phases[phase]) testResults.phases[phase].tests++;
     
@@ -56,9 +56,18 @@ function assert(condition, testName, phase, details = '') {
     } else {
         testResults.failed++;
         if (testResults.phases[phase]) testResults.phases[phase].failed++;
-        const error = `${testName}${details ? ': ' + details : ''}`;
-        testResults.errors.push({ phase, test: testName, details });
-        console.log(`  \x1b[31m✗ FAIL\x1b[0m ${testName}${details ? ' - ' + details : ''}`);
+        
+        let errorMsg = details;
+        if (responseData) {
+            if (responseData.message) {
+                errorMsg = `${details ? details + ' | ' : ''}Msg: ${responseData.message}`;
+            } else {
+                errorMsg = `${details ? details + ' | ' : ''}Data: ${JSON.stringify(responseData)}`;
+            }
+        }
+
+        testResults.errors.push({ phase, test: testName, details: errorMsg });
+        console.log(`  \x1b[31m✗ FAIL\x1b[0m ${testName}${errorMsg ? ' - ' + errorMsg : ''}`);
         return false;
     }
 }
@@ -106,7 +115,7 @@ async function getPharmacyBalance(token) {
 async function cleanup() {
     logSection('Cleanup');
     try {
-        const models = [User, Pharmacy, Product, Volume, StockExcess, StockShortage, Transaction, DeliveryRequest, BalanceHistory, ReversalTicket, AuditLog, Notification, Order, HasVolume];
+        const models = [User, Pharmacy, Product, Volume, StockExcess, StockShortage, Transaction, DeliveryRequest, ReversalTicket, AuditLog, Notification, Order, HasVolume];
         for (const M of models) {
             await M.deleteMany({ createdAt: { $gte: TEST_START_TIME } });
         }
@@ -198,7 +207,7 @@ async function run() {
         
         for (const u of users) {
             const r = await apiCall('/auth/register', 'POST', { name: u.name, phone: u.phone, email: u.email, password: 'password', role: u.role });
-            assert(r.status === 201, `Register ${u.name}`, PHASE1, `Got ${r.status}`);
+            assert(r.status === 201, `Register ${u.name}`, PHASE1, `Got ${r.status}`, r.data);
             tokens[u.key] = r.data.data?.token;
             ids[`${u.key}_user`] = r.data.data?._id;
             
@@ -207,7 +216,7 @@ async function run() {
                     name: prefix(u.name), address: 'Test St', phone: u.phone, ownerName: u.name, nationalId: '12345678901234' 
                 }, tokens[u.key], { pharmacistCard: dummy, commercialRegistry: dummy, taxCard: dummy, pharmacyLicense: dummy });
                 
-                assert(link.status === 200, `Link pharmacy ${u.name}`, PHASE1, `Got ${link.status}`);
+                assert(link.status === 200, `Link pharmacy ${u.name}`, PHASE1, `Got ${link.status}`, link.data);
                 ids[u.key] = link.data.data?.pharmacy?._id;
                 
                 const adminLogin = await apiCall('/auth/login', 'POST', { email: 'a@test.com', password: 'A' });
@@ -227,12 +236,12 @@ async function run() {
         
         // Create shortage first
         const sh1 = await apiCall('/shortage', 'POST', { product: ids.prod.toString(), volume: ids.vol.toString(), quantity: 50 }, tokens.buyer);
-        assert(sh1.status === 201, 'Create shortage', PHASE2);
+        assert(sh1.status === 201, 'Create shortage', PHASE2, `Got ${sh1.status}`, sh1.data);
         ids.shortage1 = sh1.data.data?._id;
         
         // Try to create excess for same product (should fail)
         const exConflict = await apiCall('/excess', 'POST', { product: ids.prod.toString(), volume: ids.vol.toString(), quantity: 30, expiryDate: '12/26', selectedPrice: 100 }, tokens.buyer);
-        assert(exConflict.status === 400, 'Reject excess when shortage exists', PHASE2, `Got ${exConflict.status}`);
+        assert(exConflict.status === 400, 'Reject excess when shortage exists', PHASE2, `Got ${exConflict.status}`, exConflict.data);
         
         // Create excess for seller
         const ex1 = await apiCall('/excess', 'POST', { product: ids.prod.toString(), volume: ids.vol.toString(), quantity: 40, expiryDate: '12/26', selectedPrice: 100, shortage_fulfillment: true }, tokens.s1);
@@ -344,8 +353,11 @@ async function run() {
         assert(thisTx?.status === 'pending', 'Transaction: pending (initial)', PHASE6, `Got ${thisTx?.status}`);
         
         // pending → accepted
+        await apiCall(`/transaction/${ids.txFlow}/assign`, 'PUT', {}, tokens.d1);
         const dAcc = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txFlow, requestType: 'accept' }, tokens.d1);
-        await apiCall(`/delivery-requests/${dAcc.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        assert(dAcc.status === 201, 'Phase 6: dAcc created', PHASE6, `Got ${dAcc.status}`, dAcc.data);
+        const dAccRev = await apiCall(`/delivery-requests/${dAcc.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        assert(dAccRev.status === 200, 'Phase 6: dAcc reviewed', PHASE6, `Got ${dAccRev.status}`, dAccRev.data);
         
         txData = await apiCall(`/transaction`, 'GET', null, tokens.admin);
         thisTx = txData.data.data?.find(t => t._id === ids.txFlow);
@@ -353,14 +365,17 @@ async function run() {
         
         // accepted → completed
         const dComp = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txFlow, requestType: 'complete' }, tokens.d1);
-        await apiCall(`/delivery-requests/${dComp.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        assert(dComp.status === 201, 'Phase 6: dComp created', PHASE6, `Got ${dComp.status}`, dComp.data);
+        const dCompRev = await apiCall(`/delivery-requests/${dComp.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
+        assert(dCompRev.status === 200, 'Phase 6: dComp reviewed', PHASE6, `Got ${dCompRev.status}`, dCompRev.data);
         
         txData = await apiCall(`/transaction`, 'GET', null, tokens.admin);
         thisTx = txData.data.data?.find(t => t._id === ids.txFlow);
         assert(thisTx?.status === 'completed', 'Transaction: accepted → completed', PHASE6, `Got ${thisTx?.status}`);
         
         // completed → cancelled (via reversal)
-        await apiCall(`/transaction/${ids.txFlow}/revert`, 'POST', { description: 'Test', expenses: [] }, tokens.admin);
+        const dRev = await apiCall(`/transaction/${ids.txFlow}/revert`, 'POST', { description: 'Test', expenses: [] }, tokens.admin);
+        assert(dRev.status === 200, 'Phase 6: dRev reverted', PHASE6, `Got ${dRev.status}`, dRev.data);
         
         txData = await apiCall(`/transaction`, 'GET', null, tokens.admin);
         thisTx = txData.data.data?.find(t => t._id === ids.txFlow);
@@ -417,12 +432,11 @@ async function run() {
         logSection(PHASE8);
         
         // Update shortage (decrease quantity)
-        const shUpdate = await apiCall(`/shortage/${ids.shortage2}`, 'PUT', { quantity: 150, notes: 'Updated' }, tokens.s3);
+        const shUpdate = await apiCall(`/shortage/${ids.shortage2}`, 'PUT', { quantity: 150 }, tokens.s3);
         assert(shUpdate.status === 200, 'Update shortage', PHASE8, `Got ${shUpdate.status}`);
         
         const shUpdated = await getShortageState(ids.shortage2, tokens.s3);
         assert(shUpdated?.quantity === 150, 'Shortage quantity updated', PHASE8, `Got ${shUpdated?.quantity}`);
-        assert(shUpdated?.notes === 'Updated', 'Shortage notes updated', PHASE8);
         
         // Try to increase quantity (should fail)
         const shBadUpdate = await apiCall(`/shortage/${ids.shortage2}`, 'PUT', { quantity: 300 }, tokens.s3);
@@ -443,23 +457,24 @@ async function run() {
             shortageId: ids.shortage2, quantityTaken: 10,
             excessSources: [{ stockExcessId: ids.ex3, quantity: 10 }]
         }, tokens.admin);
+        assert(txConflict.status === 201, 'txConflict created', PHASE9, `Got ${txConflict.status}`, txConflict.data);
         ids.txConflict = txConflict.data.data?._id;
         
-        // Both deliveries request acceptance
+        // Delivery 1 assigns themselves
+        await apiCall(`/transaction/${ids.txConflict}/assign`, 'PUT', {}, tokens.d1);
         const d1Req = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txConflict, requestType: 'accept' }, tokens.d1);
-        const d2Req = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txConflict, requestType: 'accept' }, tokens.d2);
-        
         assert(d1Req.status === 201, 'D1 accept request created', PHASE9);
-        assert(d2Req.status === 201, 'D2 accept request created', PHASE9);
+        
+        // Delivery 2 tries to assign but it's already occupied
+        const d2Assign = await apiCall(`/transaction/${ids.txConflict}/assign`, 'PUT', {}, tokens.d2);
+        assert(d2Assign.status === 409, 'D2 assignment rejected', PHASE9);
+        
+        // Delivery 2 tries to request acceptance without assignment
+        const d2Req = await apiCall('/delivery-requests', 'POST', { transactionId: ids.txConflict, requestType: 'accept' }, tokens.d2);
+        assert(d2Req.status === 400, 'D2 accept request rejected', PHASE9);
         
         // Admin approves D1
         await apiCall(`/delivery-requests/${d1Req.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
-        
-        // Check if D2's request was cleaned up
-        const pendingReqs = await apiCall('/delivery-requests/pending', 'GET', null, tokens.admin);
-        const d2StillPending = pendingReqs.data.data?.find(r => r._id === d2Req.data.data?._id);
-        
-        assert(!d2StillPending, 'D2 request auto-cleaned after D1 approved', PHASE9, d2StillPending ? 'Still exists' : '');
         
         // ═══════════════════════════════════════════════════════════════
         // PHASE 10: TRANSACTION RATIO UPDATES
@@ -472,6 +487,7 @@ async function run() {
             shortageId: ids.shortage2, quantityTaken: 5,
             excessSources: [{ stockExcessId: ids.ex3, quantity: 5 }]
         }, tokens.admin);
+        assert(txRatio.status === 201, 'txRatio created', PHASE10, `Got ${txRatio.status}`, txRatio.data);
         ids.txRatio = txRatio.data.data?._id;
         
         // Update ratios
@@ -481,7 +497,7 @@ async function run() {
             sellerBonusRatio: 8
         }, tokens.admin);
         
-        assert(updateRatios.status === 200, 'Update transaction ratios', PHASE10, `Got ${updateRatios.status}`);
+        assert(updateRatios.status === 200, 'Update transaction ratios', PHASE10, `Got ${updateRatios.status}`, updateRatios.data);
         
         // ═══════════════════════════════════════════════════════════════
         // PHASE 11: TRANSACTION UNASSIGNMENT
@@ -491,7 +507,7 @@ async function run() {
         
         // Unassign D1 from txConflict
         const unassign = await apiCall(`/transaction/${ids.txConflict}/unassign`, 'PUT', {}, tokens.admin);
-        assert(unassign.status === 200, 'Unassign delivery from transaction', PHASE11, `Got ${unassign.status}`);
+        assert(unassign.status === 200, 'Unassign delivery from transaction', PHASE11, `Got ${unassign.status}`, unassign.data);
         
         // Check transaction status (may or may not revert to pending - depends on implementation)
         const txDataUnassign = await apiCall(`/transaction`, 'GET', null, tokens.admin);
@@ -526,12 +542,13 @@ async function run() {
         }, tokens.admin);
         
         // D1 creates accept request
+        await apiCall(`/transaction/${txDup.data.data?._id}/assign`, 'PUT', {}, tokens.d1);
         const dupReq1 = await apiCall('/delivery-requests', 'POST', { transactionId: txDup.data.data?._id, requestType: 'accept' }, tokens.d1);
-        assert(dupReq1.status === 201, 'First accept request created', PHASE13);
+        assert(dupReq1.status === 201, 'First accept request created', PHASE13, `Got ${dupReq1.status}`, dupReq1.data);
         
         // D1 tries to create another accept request (duplicate)
         const dupReq2 = await apiCall('/delivery-requests', 'POST', { transactionId: txDup.data.data?._id, requestType: 'accept' }, tokens.d1);
-        assert(dupReq2.status === 400, 'Duplicate accept request rejected', PHASE13, `Got ${dupReq2.status}`);
+        assert(dupReq2.status === 400 || dupReq2.status === 409, 'Duplicate accept request rejected', PHASE13, `Got ${dupReq2.status}`, dupReq2.data);
         
         // ═══════════════════════════════════════════════════════════════
         // PHASE 15: NOTIFICATION VALIDATION
@@ -572,7 +589,7 @@ async function run() {
             minimumCommission: 12,
             shortageCommission: 10
         }, tokens.admin);
-        assert(updateSettings.status === 200, 'Update settings', PHASE16);
+        assert(updateSettings.status === 200, 'Update settings', PHASE16, `Got ${updateSettings.status}`, updateSettings.data);
         
         // ═══════════════════════════════════════════════════════════════
         // PHASE 17: PRODUCT STATUS VALIDATION
@@ -629,6 +646,10 @@ async function run() {
         
         assert(txComplete.status === 201, 'Create transaction for completion', PHASE18);
         
+        // Assign delivery BEFORE accepting
+        const assign18 = await apiCall(`/transaction/${txComplete.data.data?._id}/assign`, 'PUT', {}, tokens.d1);
+        assert(assign18.status === 200, 'Assign delivery to Phase 18 transaction', PHASE18, `Got ${assign18.status}`);
+
         // Accept
         const acceptReq = await apiCall('/delivery-requests', 'POST', {
             transactionId: txComplete.data.data?._id,
@@ -739,12 +760,9 @@ async function run() {
             quantity: 10,
             expiryDate: '01/27',
             selectedPrice: 100,
-            shortage_fulfillment: true, // Auto-approved or need manual approval?
+            shortage_fulfillment: false, // Ensure market logic applies
             salePercentage: 20
-        }, tokens.s1); 
-        // Note: 'shortage_fulfillment: true' usually bypasses approval if matches, 
-        // but here we might not have a matching shortage yet. 
-        // If it returns pending, we approve.
+        }, tokens.s1);
         
         let exSaleId = exSale.data.data?._id;
         if (exSale.data.data?.status === 'pending') {
@@ -755,7 +773,8 @@ async function run() {
         const shSale = await apiCall('/shortage', 'POST', {
             product: ids.prod.toString(),
             volume: ids.vol.toString(),
-            quantity: 10
+            quantity: 10,
+            salePercentage: 20 // Ensure buyer accepts 20% sale
         }, tokens.buyer);
         let shSaleId = shSale.data.data?._id;
 
@@ -773,6 +792,10 @@ async function run() {
         assert(txSale.status === 201, 'Create transaction with sale', PHASE20);
         const txSaleId = txSale.data.data?._id;
 
+        // Assign delivery before accepting
+        const assign20 = await apiCall(`/transaction/${txSaleId}/assign`, 'PUT', {}, tokens.d1);
+        assert(assign20.status === 200, 'Assign delivery to Phase 20 transaction', PHASE20, `Got ${assign20.status}`);
+
         // 4. Complete Transaction
         const dSaleReq = await apiCall('/delivery-requests', 'POST', { transactionId: txSaleId, requestType: 'accept' }, tokens.d1);
         await apiCall(`/delivery-requests/${dSaleReq.data.data?._id}/review`, 'PUT', { status: 'approved' }, tokens.admin);
@@ -789,18 +812,18 @@ async function run() {
         const s1BalEnd = await getPharmacyBalance(tokens.s1);
 
         // Check verification
-        // Buyer Cost: 10 items * 100 price * 0.9 (10% discount) = 900
-        // Seller Gain: 10 items * 100 price * 0.8 (20% fee) = 800
+        // Buyer Cost: 10 items * 100 price * 0.8 (20% discount based on sale) = 800
+        // Seller Gain: 10 items * 100 price * 0.8 (20% minimum app commission) = 800
         
-        const buyerDiff = buyerBalStart - buyerBalEnd; // Should be positive 900 (cost)
+        const buyerDiff = buyerBalStart - buyerBalEnd; // Should be positive 800 (cost)
         const sellerDiff = s1BalEnd - s1BalStart;      // Should be positive 800 (gain)
 
         // Allow small float margin
-        const isBuyerCorrect = Math.abs(buyerDiff - 900) < 1;
+        const isBuyerCorrect = Math.abs(buyerDiff - 800) < 1;
         const isSellerCorrect = Math.abs(sellerDiff - 800) < 1;
 
-        assert(isBuyerCorrect, 'Buyer pays discounted price (90%)', PHASE20, `Paid ${buyerDiff}, Expected 900`);
-        assert(isSellerCorrect, 'Seller receives post-commission amount (80%)', PHASE20, `Recv ${sellerDiff}, Expected 800`);
+        assert(isBuyerCorrect, 'Buyer pays discounted price', PHASE20, `Paid ${buyerDiff}, Expected 800`);
+        assert(isSellerCorrect, 'Seller receives post-commission amount', PHASE20, `Recv ${sellerDiff}, Expected 800`);
 
         console.log('\n\x1b[32m✓ All test phases completed (20 comprehensive phases)!\x1b[0m');
         

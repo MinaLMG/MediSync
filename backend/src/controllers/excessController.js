@@ -85,21 +85,33 @@ exports.rejectExcess = async (req, res) => {
              return res.status(200).json({ success: true, data: excess });
         }
 
+        if (excess.isHubGenerated || excess.isHubPurchase) {
+            throw { message: 'Hub stock (transfers or purchases) cannot be rejected. Please use the source document to manage this stock.', code: 409 };
+        }
+
         excess.status = 'rejected';
         excess.rejectionReason = rejectionReason;
         await excess.save({ session });
 
         // Notify User
-        setImmediate(() => addNotificationJob(
-            owner._id.toString(),
-            'system',
-            `Your stock excess listing for "${productName}" was rejected. Reason: ${rejectionReason}`,
-            {
-                relatedEntity: excess._id,
-                relatedEntityType: 'StockExcess'
-            },
-            `تم رفض عرض المخزون الزائد الخاص بك لـ "${productName}". السبب: ${rejectionReason}`
-        ));
+        const { addNotificationJob } = require('../utils/queueManager');
+        const { Product, User } = require('../models');
+        const product = await Product.findById(excess.product).session(session);
+        const productName = product ? product.name : 'Unknown Product';
+        const owner = await User.findOne({ pharmacy: excess.pharmacy }).session(session);
+
+        if (owner) {
+            setImmediate(() => addNotificationJob(
+                owner._id.toString(),
+                'system',
+                `Your stock excess listing for "${productName}" was rejected. Reason: ${rejectionReason}`,
+                {
+                    relatedEntity: excess._id,
+                    relatedEntityType: 'StockExcess'
+                },
+                `تم رفض عرض المخزون الزائد الخاص بك لـ "${productName}". السبب: ${rejectionReason}`
+            ));
+        }
 
         await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });

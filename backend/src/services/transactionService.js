@@ -160,11 +160,11 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
     }
     
     const oldStatus = transaction.status;
-    if (status !== 'completed') {
+    if (status !== 'completed') {// the settle transaction is the only function can set transaction status to accepted
         transaction.status = status;
     }
+    console.log(`[DEBUG] transaction ${transaction._id} status set to ${transaction.status} (target: ${status})`);
     
-
     if (status === 'cancelled' || status === 'rejected') {
         const { syncExcessStatus } = require('./excessService');
         const { syncShortageStatus } = require('./shortageService');

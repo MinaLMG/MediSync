@@ -31,7 +31,7 @@ exports.createRequest = async (req, res) => {
 
         // [New Requirement] Only the assigned delivery user can make requests
         if (!transaction.delivery || transaction.delivery.toString() !== req.user._id.toString()) {
-            throw {message:'You must be assigned to this transaction before making a request',code:400}
+            throw {message:'You must be assigned to this transaction before making  request',code:400}
         }
 
         // Check appropriate transaction status for request type
@@ -95,7 +95,7 @@ exports.reviewRequest = async (req, res) => {
     session.startTransaction();
     try {
         const { status } = req.body; // 'approved' or 'rejected'
-        if (!['approved', 'rejecte'].includes(status)) {
+        if (!['approved', 'rejected'].includes(status)) {
             throw { message: 'Invalid status', code: 400 };
         }
 
@@ -106,7 +106,7 @@ exports.reviewRequest = async (req, res) => {
         request.status = status;
         await request.save({ session });
 
-        const transaction = await Transaction.findById(request.transaction).session(session);
+        let transaction = await Transaction.findById(request.transaction).session(session);
 
         if (status === 'approved') {
             const transactionStatus = request.requestType === 'accept' ? 'accepted' : 'completed';
@@ -116,7 +116,7 @@ exports.reviewRequest = async (req, res) => {
                 throw { message: 'Only the assigned delivery person can process this transaction', code: 403 };
             }
 
-            await transactionService.updateTransactionStatus(
+            transaction = await transactionService.updateTransactionStatus(
                 request.transaction,
                 transactionStatus,
                 req,
@@ -134,24 +134,28 @@ exports.reviewRequest = async (req, res) => {
         // Notify Delivery User specifically about their REQUEST review outcome
         try {
             const { addNotificationJob } = require('../utils/queueManager');
-            const action = request.requestType === 'accept' ? 'Acceptance' : 'Completion';
+            const isAccept = request.requestType === 'accept';
+            const action = isAccept ? 'Acceptance' : 'Completion';
+            const actionAr = isAccept ? 'قبول' : 'إتمام';
+            const statusAr = status === 'approved' ? 'قبوله' : 'رفضه';
             
-        setImmediate(() => addNotificationJob(
-            request.delivery.toString(),
-            'transaction',
-            `Your request for ${action} has been ${status}.`,
-            {
-                relatedEntity: request.transaction,
-                relatedEntityType: 'Transaction'
-            },
-            `طلبك لل  ${action=="accept"?'قبول' : 'الإتمام'} تم ${status=="approved"? 'قبوله' : 'رفضه'}.`
-        ));
+            setImmediate(() => addNotificationJob(
+                request.delivery.toString(),
+                'transaction',
+                `Your request for ${action} has been ${status}.`,
+                {
+                    relatedEntity: request.transaction,
+                    relatedEntityType: 'Transaction'
+                },
+                `طلبك لـ ${actionAr} تم ${statusAr}.`
+            ));
         } catch (notifErr) {
             console.error('Notification error in reviewRequest:', notifErr);
         }
 
         res.status(200).json({ success: true, data: request });
     } catch (error) {
+        console.error('[Error] reviewRequest failed:', error);
         if (session && session.inTransaction()) await session.abortTransaction();
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {

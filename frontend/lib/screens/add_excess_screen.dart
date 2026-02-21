@@ -38,6 +38,11 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
   bool _isSubmitting = false;
 
   bool get isEditMode => widget.initialData != null;
+  int get taken => isEditMode
+      ? (widget.initialData?['originalQuantity'] ?? 0) -
+            (widget.initialData?['remainingQuantity'] ?? 0)
+      : 0;
+  bool get isStockTaken => taken > 0;
 
   @override
   void initState() {
@@ -81,7 +86,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
 
   Future<void> _selectExpiryDate() async {
     final l10n = AppLocalizations.of(context)!;
-    if (isEditMode) return;
+
+    if (isStockTaken) return;
     int selectedYear = _expiryDate != null
         ? 2000 + int.parse(_expiryDate!.split('/')[1])
         : DateTime.now().year;
@@ -241,10 +247,13 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
           'shortage_fulfillment': _shortageFulfillment,
         };
 
+        if (!isStockTaken) {
+          excessData['expiryDate'] = _expiryDate!;
+        }
+
         if (!isEditMode) {
           excessData['product'] = _selectedProductId!;
           excessData['volume'] = _selectedVolumeId!;
-          excessData['expiryDate'] = _expiryDate!;
         }
 
         final success = isEditMode
@@ -299,11 +308,6 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
             ?.map((e) => e.toString())
             .toList() ??
         [];
-
-    final int originalQuantity = widget.initialData?['originalQuantity'] ?? 0;
-    final int remainingQuantity = widget.initialData?['remainingQuantity'] ?? 0;
-    final int taken = isEditMode ? (originalQuantity - remainingQuantity) : 0;
-    final bool isStockTaken = taken > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -526,13 +530,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                         final qty = int.tryParse(v);
                         if (qty == null || qty <= 0) return 'Invalid quantity';
                         if (isEditMode) {
-                          final int originalQuantity =
-                              widget.initialData?['originalQuantity'] ?? 0;
-                          final int remainingQuantity =
-                              widget.initialData?['remainingQuantity'] ?? 0;
-                          final int taken =
-                              (originalQuantity - remainingQuantity);
-                          if (qty > originalQuantity) return 'Too high';
+                          if (qty >
+                              (widget.initialData?['originalQuantity'] ?? 0))
+                            return 'Too high';
                           if (qty < taken) return 'Too low';
                         }
                         return null;
@@ -540,7 +540,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    if (!isEditMode) ...[
+                    if (!isStockTaken) ...[
                       TextFormField(
                         controller: _expiryController,
                         readOnly: true,

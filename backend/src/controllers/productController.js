@@ -228,6 +228,7 @@ exports.updateSuggestionStatus = async (req, res) => {
         suggestion.status = status;
         suggestion.adminNotes = adminNotes;
 
+        let product = null;
         if (status === 'approved') {
             // Find or Create Base Volume ('unit')
             let unitVolume = await Volume.findOne({ name: 'unit' }).session(session);
@@ -237,7 +238,7 @@ exports.updateSuggestionStatus = async (req, res) => {
             }
 
             // Create Product linked only to 'unit'
-            const product = await Product.create([{
+            product = await Product.create([{
                 name: suggestion.name,
                 status: 'active',
                 conversions: [{

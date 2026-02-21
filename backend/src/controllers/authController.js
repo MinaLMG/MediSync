@@ -79,13 +79,13 @@ exports.linkPharmacy = async (req, res) => {
              }
         };
 
-        if (!req.files || !req.files['nationalIdCardImage'] || !req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
+        if (!req.files ||!req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
             cleanup();
-            throw { message: 'All 5 documents are required', code: 400 };
+            throw { message: 'All 4 documents are required', code: 400 };
         }
 
         const useCloudinary = process.env.USE_CLOUDINARY === 'true';
-        const fileKeys = ['nationalIdCardImage', 'pharmacistCard', 'commercialRegistry', 'taxCard', 'pharmacyLicense'];
+        const fileKeys = [ 'pharmacistCard', 'commercialRegistry', 'taxCard', 'pharmacyLicense'];
         const uploadResults = {};
 
         if (useCloudinary) {
@@ -112,7 +112,6 @@ exports.linkPharmacy = async (req, res) => {
             name, ownerName, nationalId, 
             phone: phone || req.user.phone,
             email: email || req.user.email,
-            nationalIdCardImage: uploadResults.nationalIdCardImage,
             pharmacistCard: uploadResults.pharmacistCard,
             commercialRegistry: uploadResults.commercialRegistry,
             taxCard: uploadResults.taxCard,

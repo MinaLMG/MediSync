@@ -543,6 +543,8 @@ exports.revertTransaction = async (req, res) => {
                 relatedEntityType: 'Transaction',
                 description: `Reversal of payment for transaction #${transaction.serial}`,
                 description_ar: `عكس عملية الدفع للمعاملة #${transaction.serial}`,
+                product: transaction.stockShortage.shortage.product,
+                quantity: transaction.stockShortage.quantityTaken,
                 details: { type: 'reversal' }
             }], { session });
 
@@ -574,6 +576,8 @@ exports.revertTransaction = async (req, res) => {
                     relatedEntityType: 'Transaction',
                     description: `Reversal of revenue for transaction #${transaction.serial}`,
                     description_ar: `عكس عملية التحصيل للمعاملة #${transaction.serial}`,
+                    product: source.stockExcess.product,
+                    quantity: source.quantity,
                     details: { type: 'reversal' }
                 }], { session });
 
@@ -873,6 +877,7 @@ exports.updateTransactionRatios = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
+        console.error('[Error] updateTransactionRatios failed:', error);
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
