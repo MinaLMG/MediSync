@@ -1,41 +1,74 @@
 const AppSuggestion = require('../models/AppSuggestion');
+const mongoose = require('mongoose');
+const auditService = require('../services/auditService');
 
 exports.createSuggestion = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { content } = req.body;
         
         if (!content) {
-            return res.status(400).json({ success: false, message: 'Content is required' });
+            throw { message: 'Content is required', code: 400 };
         }
 
-        const suggestion = new AppSuggestion({
+        const suggestion = await AppSuggestion.create([{
             pharmacy: req.user.pharmacy,
             user: req.user._id,
             content
-        });
+        }], { session });
 
-        await suggestion.save();
-        res.status(201).json({ success: true, data: suggestion });
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'AppSuggestion',
+            entityId: suggestion[0]._id,
+            changes: { content }
+        }, req);
+
+        await session.commitTransaction();
+        res.status(201).json({ success: true, data: suggestion[0] });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        await session.abortTransaction();
+        res.status(err.code || 500).json({ success: false, message: err.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 exports.markAsSeen = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const suggestion = await AppSuggestion.findByIdAndUpdate(
-            req.params.id,
-            { seen: true },
-            { new: true }
-        );
+        const suggestion = await AppSuggestion.findById(req.params.id).session(session);
 
         if (!suggestion) {
-            return res.status(404).json({ success: false, message: 'Suggestion not found' });
+            throw { message: 'Suggestion not found', code: 404 };
         }
 
+        if (suggestion.seen) {
+            await session.abortTransaction();
+            return res.status(200).json({ success: true, data: suggestion });
+        }
+
+        suggestion.seen = true;
+        await suggestion.save({ session });
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'AppSuggestion',
+            entityId: suggestion._id,
+            changes: { seen: true }
+        }, req);
+
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: suggestion });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        await session.abortTransaction();
+        res.status(err.code || 500).json({ success: false, message: err.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -48,6 +81,6 @@ exports.getAllSuggestions = async (req, res) => {
             
         res.status(200).json({ success: true, count: suggestions.length, data: suggestions });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        res.status(err.code || 500).json({ success: false, message: err.message || 'An unexpected error occurred' });
     }
 };

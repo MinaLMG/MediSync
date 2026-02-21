@@ -18,7 +18,7 @@ exports.register = async (req, res) => {
         const result = await authService.registerUser(req.body, req);
         res.status(201).json({ success: true, data: result });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -29,7 +29,7 @@ exports.login = async (req, res) => {
         const result = await authService.loginUser(email, password, req);
         res.json({ success: true, data: result });
     } catch (error) {
-        res.status(401).json({ success: false, message: error.message });
+        res.status(error.code || 401).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -40,10 +40,10 @@ exports.getProfile = async (req, res) => {
         if (user) {
             res.json({ success: true, data: user });
         } else {
-            res.status(404).json({ success: false, message: 'User not found' });
+            throw { message: 'User not found', code: 404 };
         }
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -53,7 +53,7 @@ exports.socialLogin = async (req, res) => {
         const result = await authService.socialLogin(req.body, req);
         res.json({ success: true, data: result });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -79,13 +79,13 @@ exports.linkPharmacy = async (req, res) => {
              }
         };
 
-        if (!req.files || !req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
+        if (!req.files || !req.files['nationalIdCardImage'] || !req.files['pharmacistCard'] || !req.files['commercialRegistry'] || !req.files['taxCard'] || !req.files['pharmacyLicense']) {
             cleanup();
-            throw new Error('All 4 documents are required');
+            throw { message: 'All 5 documents are required', code: 400 };
         }
 
         const useCloudinary = process.env.USE_CLOUDINARY === 'true';
-        const fileKeys = ['pharmacistCard', 'commercialRegistry', 'taxCard', 'pharmacyLicense'];
+        const fileKeys = ['nationalIdCardImage', 'pharmacistCard', 'commercialRegistry', 'taxCard', 'pharmacyLicense'];
         const uploadResults = {};
 
         if (useCloudinary) {
@@ -112,6 +112,7 @@ exports.linkPharmacy = async (req, res) => {
             name, ownerName, nationalId, 
             phone: phone || req.user.phone,
             email: email || req.user.email,
+            nationalIdCardImage: uploadResults.nationalIdCardImage,
             pharmacistCard: uploadResults.pharmacistCard,
             commercialRegistry: uploadResults.commercialRegistry,
             taxCard: uploadResults.taxCard,
@@ -123,8 +124,8 @@ exports.linkPharmacy = async (req, res) => {
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Linked successfully', data: result });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -132,40 +133,59 @@ exports.linkPharmacy = async (req, res) => {
 
 // @desc    Request a profile update
 exports.requestProfileUpdate = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const result = await authService.updateUserDetail(req.user._id, req.body, req);
+        const result = await authService.updateUserDetail(req.user._id, req.body, req, session);
+        await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Update request sent', data: result });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 // @desc    Update user preferences (language, etc.)
 exports.updatePreferences = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { language } = req.body;
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).session(session);
         
-        if (language) user.language = language;
-        
-        await user.save();
+        if (language && user.language !== language) {
+            user.language = language;
+            await user.save({ session });
+        }
         
         // Populate pharmacy before returning to avoid frontend crashes
         await user.populate('pharmacy');
         
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: user });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 // @desc    Change user password
 exports.changePassword = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { oldPassword, newPassword } = req.body;
-        await authService.changePassword(req.user._id, oldPassword, newPassword, req);
+        await authService.changePassword(req.user._id, oldPassword, newPassword, req, session);
+        await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Password changed successfully' });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };

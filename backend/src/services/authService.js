@@ -25,7 +25,7 @@ exports.registerUser = async (userData, req = null) => {
     });
 
     if (userExists) {
-        throw new Error('User already exists with this email or phone');
+        throw { message: 'User already exists with this email or phone', code: 409 };
     }
 
     const userRole = role || 'pharmacy_owner';
@@ -58,7 +58,7 @@ exports.registerUser = async (userData, req = null) => {
             token: generateToken(user._id)
         };
     } else {
-        throw new Error('Invalid user data');
+        throw { message: 'Invalid user data', code: 400 };
     }
 };
 
@@ -89,7 +89,7 @@ exports.loginUser = async (email, password, req = null) => {
             token: generateToken(user._id)
         };
     } else {
-        throw new Error('Invalid email or password');
+        throw { message: 'Invalid email or password', code: 401 };
     }
 };
 
@@ -134,7 +134,7 @@ exports.socialLogin = async (userData, req = null) => {
  */
 exports.linkPharmacy = async (userId, pharmacyData, session, req = null) => {
     const user = await User.findById(userId).session(session);
-    if (!user) throw new Error('User not found');
+    if (!user) throw { message: 'User not found', code: 404 };
 
     const pharmacy = new Pharmacy({
         ...pharmacyData,
@@ -160,15 +160,15 @@ exports.linkPharmacy = async (userId, pharmacyData, session, req = null) => {
 /**
  * Changes user password.
  */
-exports.changePassword = async (userId, oldPassword, newPassword, req = null) => {
-    const user = await User.findById(userId);
-    if (!user) throw new Error('User not found');
+exports.changePassword = async (userId, oldPassword, newPassword, req = null, session = null) => {
+    const user = await User.findById(userId).session(session);
+    if (!user) throw { message: 'User not found', code: 404 };
 
     const isMatch = await user.comparePassword(oldPassword);
-    if (!isMatch) throw new Error('Incorrect old password');
+    if (!isMatch) throw { message: 'Incorrect old password', code: 401 };
 
     user.hashedPassword = newPassword;
-    await user.save();
+    await user.save({ session });
 
     await auditService.logAction({
         user: userId,
@@ -183,17 +183,25 @@ exports.changePassword = async (userId, oldPassword, newPassword, req = null) =>
 /**
  * Updates a user's profile or pending data.
  */
-exports.updateUserDetail = async (userId, updateData, req = null) => {
-    const user = await User.findById(userId);
-    if (!user) throw new Error('User not found');
+exports.updateUserDetail = async (userId, updateData, req = null, session = null) => {
+    const user = await User.findById(userId).session(session);
+    if (!user) throw { message: 'User not found', code: 404 };
 
     if (updateData.email && updateData.email.toLowerCase() !== user.email) {
         const emailExists = await User.findOne({ email: updateData.email.toLowerCase() });
-        if (emailExists) throw new Error('Email already in use');
+        if (emailExists) throw { message: 'Email already in use', code: 409 };
+    }
+
+    // Intelligent Change Detection: Only update if changed
+    const currentPending = JSON.stringify(user.pendingUpdate || {});
+    const newPending = JSON.stringify(updateData);
+    
+    if (currentPending === newPending) {
+         return user; // No changes detected
     }
 
     user.pendingUpdate = updateData;
-    await user.save();
+    await user.save({ session });
 
     await auditService.logAction({
         user: userId,

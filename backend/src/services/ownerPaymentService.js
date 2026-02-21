@@ -1,18 +1,19 @@
 const { OwnerPayment, Owner, Pharmacy, CashBalanceHistory } = require('../models');
 const mongoose = require('mongoose');
+const auditService = require('./auditService');
 
 /**
  * Executes a payment between a hub and an owner.
  * MUST be called within a session.
  */
-exports.processOwnerPayment = async (data, pharmacyId, session) => {
+exports.processOwnerPayment = async (data, pharmacyId, session, req = null) => {
     const { ownerId, value, notes } = data;
 
     const owner = await Owner.findOne({ _id: ownerId, pharmacy: pharmacyId }).session(session);
-    if (!owner) throw new Error('Owner not found');
+    if (!owner) throw { message: 'Owner not found', code: 404 };
 
     const hub = await Pharmacy.findById(pharmacyId).session(session);
-    if (!hub || !hub.isHub) throw new Error('Pharmacy is not a hub');
+    if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
     // Update balances
     const previousCashBalance = hub.cashBalance;
@@ -45,6 +46,16 @@ exports.processOwnerPayment = async (data, pharmacyId, session) => {
         details: { ownerId, value }
     }], { session });
 
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'OwnerPayment',
+            entityId: payment._id,
+            changes: { value, ownerId, ownerName: owner.name }
+        }, req);
+    }
+
     return payment;
 };
 
@@ -52,10 +63,10 @@ exports.processOwnerPayment = async (data, pharmacyId, session) => {
  * Updates an owner payment and adjusts balances.
  * Records the difference in CashBalanceHistory.
  */
-exports.updateOwnerPayment = async (paymentId, data, pharmacyId, session) => {
+exports.updateOwnerPayment = async (paymentId, data, pharmacyId, session, req = null) => {
     const { value: newValue, notes } = data;
     const payment = await OwnerPayment.findOne({ _id: paymentId, pharmacy: pharmacyId }).session(session);
-    if (!payment) throw new Error('Payment not found');
+    if (!payment) throw { message: 'Payment not found', code: 404 };
 
     const owner = await Owner.findById(payment.owner).session(session);
     const hub = await Pharmacy.findById(pharmacyId).session(session);
@@ -90,15 +101,25 @@ exports.updateOwnerPayment = async (paymentId, data, pharmacyId, session) => {
         details: { ownerId: owner._id, oldVal: payment.value - diff, newVal: newValue, diff }
     }], { session });
 
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'OwnerPayment',
+            entityId: payment._id,
+            changes: { value: newValue, oldTotal: payment.value - diff, diff }
+        }, req);
+    }
+
     return payment;
 };
 
 /**
  * Deletes an owner payment and reverses balances.
  */
-exports.deleteOwnerPayment = async (paymentId, pharmacyId, session) => {
+exports.deleteOwnerPayment = async (paymentId, pharmacyId, session, req = null) => {
     const payment = await OwnerPayment.findOne({ _id: paymentId, pharmacy: pharmacyId }).session(session);
-    if (!payment) throw new Error('Payment not found');
+    if (!payment) throw { message: 'Payment not found', code: 404 };
 
     const owner = await Owner.findById(payment.owner).session(session);
     const hub = await Pharmacy.findById(pharmacyId).session(session);
@@ -124,6 +145,16 @@ exports.deleteOwnerPayment = async (paymentId, pharmacyId, session) => {
         description_ar: `تم حذف/عكس دفعة للمالك: ${owner.name}`,
         details: { ownerId: owner._id, value: payment.value, action: 'delete' }
     }], { session });
+
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'OwnerPayment',
+            entityId: payment._id,
+            changes: { value: payment.value, ownerId: owner._id, ownerName: owner.name }
+        }, req);
+    }
 
     await payment.deleteOne({ session });
     return { success: true };

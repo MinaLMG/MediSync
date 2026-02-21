@@ -40,7 +40,7 @@ exports.getMyOrders = async (req, res) => {
 
         res.status(200).json({ success: true, data: allOrders });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 // Get pharmacy orders history for admin
@@ -77,6 +77,6 @@ exports.getPharmacyOrders = async (req, res) => {
 
         res.status(200).json({ success: true, data: allOrders });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

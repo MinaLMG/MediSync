@@ -71,7 +71,7 @@ exports.getMatchableProducts = async (req, res) => {
 
         res.status(200).json({ success: true, count: matchable.length, data: matchable });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -127,7 +127,7 @@ exports.getMatchesForProduct = async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -147,9 +147,8 @@ exports.createTransaction = async (req, res) => {
 
         res.status(201).json({ success: true, data: transaction });
     } catch (error) {
-        console.error('❌ [Transaction] Transaction creation failed:', error);
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -159,20 +158,22 @@ exports.createTransaction = async (req, res) => {
 // @route   POST /api/transaction/buy
 // @access  Pharmacy Owner / Manager
 exports.buyFromMarket = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { excessId, quantity } = req.body;
         
         if (!quantity || quantity < 1) {
-            throw new Error('Quantity must be at least 1');
+            throw { message: 'Quantity must be at least 1', code: 400 };
         }
 
         const excess = await StockExcess.findById(excessId).populate('product').populate('pharmacy').session(session);
         if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < quantity) {
-            throw new Error('This item is no longer available in the requested quantity.');
+            throw { message: 'This item is no longer available in the requested quantity.', code: 409 };
         }
 
         if (req.user.pharmacy && excess.pharmacy._id.toString() === req.user.pharmacy.toString()) {
-            throw new Error('You cannot buy your own excess stock.');
+            throw { message: 'You cannot buy your own excess stock.', code: 403 };
         }
 
         // 1. Create a "Market Order" Shortage
@@ -238,42 +239,35 @@ exports.buyFromMarket = async (req, res) => {
         });
 
         await transaction.save({ session });
+        
         await session.commitTransaction();
 
-        // 3. Notifications
-        try {
-            const buyerIds = [req.user._id]; // The current user
-            // Notify Seller
-            const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
+        // 3. Notifications (Fire-and-Forget after commit)
+        setImmediate(() => addNotificationJob(
+            req.user._id.toString(),
+            'transaction',
+            `Market Order #${serial}: Purchase of ${quantity} x ${excess.product.name} initiated.`,
+            { relatedEntity: transaction._id, relatedEntityType: 'Transaction' },
+            `طلب سوق #${serial}: بدء عملية شراء ${quantity} × ${excess.product.name}.`
+        ));
 
-            // Notify Buyer (Confirmation)
-            await addNotificationJob(
-                req.user._id.toString(),
+        // Notify Seller
+        const sellerUsers = await User.find({ pharmacy: excess.pharmacy._id });
+        for (const seller of sellerUsers) {
+            setImmediate(() => addNotificationJob(
+                seller._id.toString(),
                 'transaction',
-                `Market Order #${serial}: Purchase of ${quantity} x ${excess.product.name} initiated.`,
+                `Market Order #${serial}: New purchase request for ${excess.product.name} from market.`,
                 { relatedEntity: transaction._id, relatedEntityType: 'Transaction' },
-                `طلب سوق #${serial}: بدء عملية شراء ${quantity} × ${excess.product.name}.`
-            );
-
-            // Notify Seller
-            for (const seller of sellerUsers) {
-                await addNotificationJob(
-                    seller._id.toString(),
-                    'transaction',
-                    `Market Order #${serial}: New purchase request for ${excess.product.name} from market.`,
-                    { relatedEntity: transaction._id, relatedEntityType: 'Transaction' },
-                    `طلب سوق #${serial}: طلب شراء جديد لـ ${excess.product.name} من السوق.`
-                );
-            }
-        } catch (notifErr) {
-            console.error('Notification error in buyFromMarket:', notifErr);
+                `طلب سوق #${serial}: طلب شراء جديد لـ ${excess.product.name} من السوق.`
+            ));
         }
 
         res.status(201).json({ success: true, data: transaction });
 
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -305,7 +299,7 @@ exports.updateTransactionStatus = async (req, res) => {
     session.startTransaction();
     try {
         const { status } = req.body;
-        const transaction = await transactionService.updateTransactionStatus(req.params.id, status, session);
+        const transaction = await transactionService.updateTransactionStatus(req.params.id, status, req, session);
         
         await session.commitTransaction();
 
@@ -314,10 +308,10 @@ exports.updateTransactionStatus = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        if (session.inTransaction()) {
+        if (session && session.inTransaction()) {
             await session.abortTransaction();
         }
-        res.status(400).json({ success: false, message: error.message });
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -327,18 +321,16 @@ exports.updateTransactionStatus = async (req, res) => {
 // @route   PUT /api/transaction/:id/assign
 // @access  Delivery
 exports.assignTransaction = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const transaction = await Transaction.findById(req.params.id);
-        if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Transaction not found' });
-        }
-
-        if (transaction.delivery) {
-            return res.status(400).json({ success: false, message: 'Transaction already assigned' });
-        }
+        const transaction = await Transaction.findById(req.params.id).session(session);
+        if (!transaction) throw { message: 'Transaction not found', code: 404 };
+        if (transaction.delivery) throw { message: 'Transaction already assigned', code: 409 };
 
         transaction.delivery = req.user._id;
-        await transaction.save();
+        await transaction.save({ session });
+        await session.commitTransaction();
 
         const updatedTransaction = await Transaction.findById(transaction._id)
             .populate({
@@ -360,7 +352,10 @@ exports.assignTransaction = async (req, res) => {
 
         res.status(200).json({ success: true, data: updatedTransaction });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -379,10 +374,10 @@ exports.unassignTransaction = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        if (session.inTransaction()) {
+        if (session && session.inTransaction()) {
             await session.abortTransaction();
         }
-        res.status(400).json({ success: false, message: error.message });
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -440,7 +435,7 @@ exports.getTransactions = async (req, res) => {
 
         res.status(200).json({ success: true, count: transactions.length, data: transactions });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -464,15 +459,15 @@ exports.revertTransaction = async (req, res) => {
             populate: { path: 'pharmacy product volume' }
         }).session(session);
 
-        if (!transaction) throw new Error('Transaction not found');
-        if (transaction.status !== 'completed') throw new Error('Only completed transactions can be reverted');
-        if (transaction.reversalTicket) throw new Error('Transaction already reverted');
+        if (!transaction) throw { message: 'Transaction not found', code: 404 };
+        if (transaction.status !== 'completed') throw { message: 'Only completed transactions can be reverted', code: 409 };
+        if (transaction.reversalTicket) throw { message: 'Transaction already reverted', code: 409 };
 
         // Validate expenses
         if (expenses && expenses.length > 0) {
             for (const p of expenses) {
                 if (p.amount < 0) {
-                    throw new Error('Expense amount cannot be negative');
+                    throw { message: 'Expense amount cannot be negative', code: 400 };
                 }
             }
         }
@@ -687,8 +682,8 @@ exports.revertTransaction = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        if (session.inTransaction()) await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -705,7 +700,7 @@ exports.updateReversalTicket = async (req, res) => {
         const { expenses, description } = req.body; // New expense list
 
         const ticket = await ReversalTicket.findById(ticketId).session(session);
-        if (!ticket) throw new Error('Reversal ticket not found');
+        if (!ticket) throw { message: 'Reversal ticket not found', code: 404 };
 
         // 1. Revert Old Expenses (Refund the amounts taken)
         for (const oldE of ticket.expenses) {
@@ -848,8 +843,8 @@ exports.updateReversalTicket = async (req, res) => {
         await session.commitTransaction();
         res.status(200).json({ success: true, data: ticket });
     } catch (error) {
-        if (session.inTransaction()) await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -864,11 +859,11 @@ exports.updateTransactionRatios = async (req, res) => {
         const transaction = await Transaction.findById(req.params.id);
 
         if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Transaction not found' });
+            throw { message: 'Transaction not found', code: 404 };
         }
 
         if (['completed', 'cancelled'].includes(transaction.status)) {
-            return res.status(400).json({ success: false, message: 'Cannot update ratios of a finished transaction' });
+            throw { message: 'Cannot update ratios of a finished transaction', code: 409 };
         }
 
         if (buyerCommissionRatio !== undefined) transaction.buyerCommissionRatio = buyerCommissionRatio / 100;
@@ -878,7 +873,7 @@ exports.updateTransactionRatios = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -895,23 +890,18 @@ exports.updateTransaction = async (req, res) => {
 
         // 1. Find transaction
         const transaction = await Transaction.findById(id).session(session);
-        if (!transaction) {
-            throw new Error('Transaction not found');
-        }
+        if (!transaction) throw { message: 'Transaction not found', code: 404 };
 
         if (!['pending', 'accepted'].includes(transaction.status)) {
-            throw new Error('Cannot modify a completed or cancelled transaction');
+            throw { message: 'Cannot modify a completed or cancelled transaction', code: 409 };
         }
 
         // 2. Revert old stock changes
         // Restore shortage
         const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
-        if (shortage) {
-            shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-            // Note: We'll sync status after applying new changes
-        } else {
-            throw new Error('Related shortage not found');
-        }
+        if (!shortage) throw { message: 'Related shortage not found', code: 404 };
+        
+        shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
 
         // Restore excesses
         for (const source of transaction.stockExcessSources) {
@@ -936,12 +926,7 @@ exports.updateTransaction = async (req, res) => {
 
         // 3. Apply new changes
         if (quantityTaken > shortage.remainingQuantity) {
-             // This check is slightly different now because we restored the quantity
-             // We need to check against the actual needs. 
-             // Actually, shortage.quantity is the ORIGINAL target. 
-             // remainingQuantity (after revert) is what's left if we hadn't made THIS transaction.
-             // If they try to take more than remains, it's an error.
-             throw new Error(`Requested quantity (${quantityTaken}) exceeds remaining available needed (${shortage.remainingQuantity})`);
+             throw { message: `Requested quantity (${quantityTaken}) exceeds remaining available needed (${shortage.remainingQuantity})`, code: 409 };
         }
 
         let newTotalAmount = 0;
@@ -951,7 +936,7 @@ exports.updateTransaction = async (req, res) => {
         for (const source of excessSources) {
             const excess = await StockExcess.findById(source.stockExcessId).session(session);
             if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
-                 throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);
+                 throw { message: `Excess ${source.stockExcessId} is no longer available in requested quantity`, code: 409 };
             }
 
             // Deduct from excess
@@ -984,7 +969,7 @@ exports.updateTransaction = async (req, res) => {
         }
 
         if (newTotalQuantity !== quantityTaken) {
-            throw new Error('Total quantity from sources does not match quantity taken from shortage');
+            throw { message: 'Total quantity from sources does not match quantity taken from shortage', code: 400 };
         }
 
         // 4. Update shortage
@@ -1004,8 +989,8 @@ exports.updateTransaction = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }

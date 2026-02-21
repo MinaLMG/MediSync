@@ -5,12 +5,12 @@ exports.createPayment = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const payment = await ownerPaymentService.processOwnerPayment(req.body, req.user.pharmacy, session);
+        const payment = await ownerPaymentService.processOwnerPayment(req.body, req.user.pharmacy, session, req);
         await session.commitTransaction();
         res.status(201).json({ success: true, data: payment });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -24,13 +24,14 @@ exports.updatePayment = async (req, res) => {
             req.params.id,
             req.body,
             req.user.pharmacy,
-            session
+            session,
+            req
         );
         await session.commitTransaction();
         res.status(200).json({ success: true, data: payment });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -43,13 +44,14 @@ exports.deletePayment = async (req, res) => {
         await ownerPaymentService.deleteOwnerPayment(
             req.params.id,
             req.user.pharmacy,
-            session
+            session,
+            req
         );
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Payment deleted successfully' });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -60,6 +62,6 @@ exports.getPayments = async (req, res) => {
         const payments = await ownerPaymentService.getPaymentsByPharmacy(req.user.pharmacy);
         res.status(200).json({ success: true, data: payments });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

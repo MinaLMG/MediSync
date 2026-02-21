@@ -13,10 +13,10 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
     console.log("totalAmount",totalAmount)
     console.log("date",date)
     const hub = await Pharmacy.findById(pharmacyId).session(session);
-    if (!hub || !hub.isHub) throw new Error('Pharmacy is not a hub');
+    if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
     if (hub.cashBalance < totalAmount) {
-        throw new Error(`Insufficient cash balance. Required: ${totalAmount}, Current: ${hub.cashBalance}`);
+        throw { message: `Insufficient cash balance. Required: ${totalAmount}, Current: ${hub.cashBalance}`, code: 400 };
     }
 
     // 1. Create Purchase Invoice (to get ID for references)
@@ -149,13 +149,19 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
     console.log("items",items) 
     // 1. Fetch Invoice and Hub
     const invoice = await PurchaseInvoice.findById(invoiceId).session(session);
-    if (!invoice) throw new Error('Purchase Invoice not found');
+    if (!invoice) throw { message: 'Purchase Invoice not found', code: 404 };
     
     const hub = await Pharmacy.findById(invoice.pharmacy).session(session);
-    if (!hub) throw new Error('Hub not found');
+    if (!hub) throw { message: 'Hub not found', code: 404 };
 
     const oldTotal = invoice.totalAmount;
     let newTotal = 0;
+    let hasChanged = false;
+
+    if (date && new Date(date).getTime() !== new Date(invoice.date).getTime()) {
+        invoice.date = new Date(date);
+        hasChanged = true;
+    }
 
     // Map existing items for lookup (either by item _id or excess _id)
     const existingItemMap = new Map();
@@ -172,7 +178,7 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
             if (excess) {
                 const taken = excess.originalQuantity - excess.remainingQuantity;
                 if (taken > 0) {
-                    throw new Error(`Cannot delete item "${existingItem.product_name || 'Stock'}" because ${taken} units have already been sold/taken.`);
+                    throw { message: `Cannot delete item "${existingItem.product_name || 'Stock'}" because ${taken} units have already been sold/taken.`, code: 409 };
                 }
                 // Safe to remove the excess
                 await mongoose.model('StockExcess').findByIdAndDelete(existingItem.excess).session(session);
@@ -185,52 +191,54 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
     // 3. Process Input Items (Modifications & Existence Check)
     for (const inputItem of items) {
         if (!inputItem.excess) 
-            throw new Error('Adding new items to an existing invoice is not allowed. Please create a new invoice.'); // Skip items without identifier
+            throw { message: 'Adding new items to an existing invoice is not allowed. Please create a new invoice.', code: 400 }; // Skip items without identifier
         
         const identifier = inputItem.excess.toString();
         const existingItem = existingItemMap.get(identifier);
 
         if (!existingItem) {
-            throw new Error('Adding new items to an existing invoice is not allowed. Please create a new invoice.');
+            throw { message: 'Adding new items to an existing invoice is not allowed. Please create a new invoice.', code: 400 };
         }
 
         const excess = await mongoose.model('StockExcess').findById(existingItem.excess.toString()).session(session);
-        if (!excess) throw new Error(`Stock record for item ${identifier} not found.`);
+        if (!excess) throw { message: `Stock record for item ${identifier} not found.`, code: 404 };
 
         const taken = excess.originalQuantity - excess.remainingQuantity;
 
         // Validation: Product/Volume cannot change
         if (inputItem.product && inputItem.product.toString() !== existingItem.product.toString()) {
-            throw new Error('Changing product is not allowed in an invoice update.');
+            throw { message: 'Changing product is not allowed in an invoice update.', code: 400 };
         }
         if (inputItem.volume && inputItem.volume.toString() !== existingItem.volume.toString()) {
-            throw new Error('Changing volume is not allowed in an invoice update.');
+            throw { message: 'Changing volume is not allowed in an invoice update.', code: 400 };
         }
 
         // Modification: Expiry, SellingPrice, SalePercentage (Only if not taken)
         if (taken > 0) {
             if (inputItem.sellingPrice !== undefined && inputItem.sellingPrice !== existingItem.sellingPrice) {
-                throw new Error(`Cannot change selling price of item because stock usage has already started (${taken} units taken).`);
+                throw { message: `Cannot change selling price of item because stock usage has already started (${taken} units taken).`, code: 400 };
             }
             if (inputItem.salePercentage !== undefined && inputItem.salePercentage !== existingItem.salePercentage) {
-                throw new Error(`Cannot change sale percentage of item because stock usage has already started.`);
+                throw { message: `Cannot change sale percentage of item because stock usage has already started.`, code: 400 };
             }
             if (inputItem.expiryDate && inputItem.expiryDate !== existingItem.expiryDate) {
-                 throw new Error(`Cannot change expiry date because stock usage has already started.`);
+                 throw { message: `Cannot change expiry date because stock usage has already started.`, code: 400 };
             }
         } else {
-            // Apply updates if allowed
-            if (inputItem.sellingPrice !== undefined) {
+            if (inputItem.sellingPrice !== undefined && inputItem.sellingPrice !== existingItem.sellingPrice) {
                 excess.selectedPrice = inputItem.sellingPrice;
                 existingItem.sellingPrice = inputItem.sellingPrice;
+                hasChanged = true;
             }
-            if (inputItem.salePercentage !== undefined) {
+            if (inputItem.salePercentage !== undefined && inputItem.salePercentage !== existingItem.salePercentage) {
                 excess.salePercentage = inputItem.salePercentage;
                 existingItem.salePercentage = inputItem.salePercentage;
+                hasChanged = true;
             }
-            if (inputItem.expiryDate) {
+            if (inputItem.expiryDate && inputItem.expiryDate !== existingItem.expiryDate) {
                 excess.expiryDate = inputItem.expiryDate;
                 existingItem.expiryDate = inputItem.expiryDate;
+                hasChanged = true;
             }
         }
 
@@ -238,6 +246,7 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
         if (inputItem.buyingPrice !== undefined && inputItem.buyingPrice !== existingItem.buyingPrice) {
             existingItem.buyingPrice = inputItem.buyingPrice;
             excess.purchasePrice = inputItem.buyingPrice;
+            hasChanged = true;
             // Propagate only if it actually changed
             await excessService.propagateBuyingPriceUpdate(excess._id, inputItem.buyingPrice, session);
         }
@@ -245,15 +254,16 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
         // Modification: Quantity
         if (inputItem.quantity !== undefined && inputItem.quantity !== existingItem.quantity) {
             if (inputItem.quantity < taken) {
-                throw new Error(`New quantity (${inputItem.quantity}) cannot be less than units already taken/sold (${taken}).`);
+                throw { message: `New quantity (${inputItem.quantity}) cannot be less than units already taken/sold (${taken}).`, code: 400 };
             }
             const qDiff = inputItem.quantity - existingItem.quantity;
             excess.originalQuantity = inputItem.quantity;
             excess.remainingQuantity += qDiff;
             existingItem.quantity = inputItem.quantity;
+            hasChanged = true;
         }
 
-        await excessService.syncExcessStatus(excess, session);
+        if (hasChanged) await excessService.syncExcessStatus(excess, session);
         // Finalize item for the invoice
         existingItem.total = existingItem.quantity * existingItem.buyingPrice;
         newTotal += existingItem.total;
@@ -261,16 +271,26 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
     }
 
     // 4. Update Invoice Record
-    invoice.items = finalItems;
-    invoice.totalAmount = newTotal;
-    if (date) invoice.date = new Date(date);
-    await invoice.save({ session });
+    if (hasChanged || invoice.items.length !== finalItems.length) {
+        invoice.items = finalItems;
+        invoice.totalAmount = newTotal;
+        await invoice.save({ session });
+        
+        const auditService = require('./auditService');
+        await auditService.logAction({
+            user: req.user._id,
+                action: 'UPDATE',
+                entityType: 'PurchaseInvoice',
+                entityId: invoice._id,
+                changes: req.body
+            }, req);
+    }
 
     // 5. Correct Hub Cash Balance AND Regular Balance
     const balanceDiff = newTotal - oldTotal;
     if (balanceDiff !== 0) {
         if (balanceDiff > 0 && hub.cashBalance < balanceDiff) {
-            throw new Error(`Insufficient cash balance for increase. Need ${balanceDiff}, have ${hub.cashBalance}.`);
+            throw { message: `Insufficient cash balance for increase. Need ${balanceDiff}, have ${hub.cashBalance}.`, code: 400 };
         }
 
         const prevCashBalance = hub.cashBalance;
@@ -327,10 +347,10 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
  */
 exports.deletePurchaseInvoice = async (invoiceId, session) => {
     const invoice = await PurchaseInvoice.findById(invoiceId).session(session);
-    if (!invoice) throw new Error('Invoice not found');
+    if (!invoice) throw { message: 'Invoice not found', code: 404 };
 
     const hub = await Pharmacy.findById(invoice.pharmacy).session(session);
-    if (!hub) throw new Error('Hub not found');
+    if (!hub) throw { message: 'Hub not found', code: 404 };
 
     // 1. Handle related items/excesses
     for (const item of invoice.items) {
@@ -338,7 +358,7 @@ exports.deletePurchaseInvoice = async (invoiceId, session) => {
         if (excess) {
             const taken = excess.originalQuantity - excess.remainingQuantity;
             if (taken > 0) {
-                throw new Error(`Cannot delete invoice. Stock from item ${item.product} has already been sold.`);
+                throw { message: `Cannot delete invoice. Stock from item ${item.product} has already been sold.`, code: 409 };
             }
             // Cancel or delete the excess
             excess.status = 'cancelled';

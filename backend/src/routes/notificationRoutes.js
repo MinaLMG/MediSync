@@ -13,8 +13,8 @@ router.put('/:id/seen', strictLimiter, notificationController.markAsSeen);
 
 // Test endpoint
 const { addNotificationJob } = require('../utils/queueManager');
-router.post('/test', strictLimiter, async (req, res) => {
-    await addNotificationJob(req.user._id.toString(), 'system', 'Test notification received! 🚀', { priority: 'high' });
+router.post('/test', strictLimiter, (req, res) => {
+    setImmediate(() => addNotificationJob(req.user._id.toString(), 'system', 'Test notification received! 🚀', { priority: 'high' }));
     res.json({ success: true, message: 'Test notification queued' });
 });
 

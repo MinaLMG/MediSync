@@ -20,7 +20,7 @@ exports.getMyBalanceHistory = async (req, res) => {
             data: history
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -40,6 +40,6 @@ exports.getPharmacyBalanceHistory = async (req, res) => {
             data: history
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

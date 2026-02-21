@@ -1,42 +1,66 @@
 const { Owner, Pharmacy } = require('../models');
+const auditService = require('./auditService');
 
 /**
  * Creates a new owner for a hub pharmacy.
  */
-exports.createOwner = async (data, pharmacyId) => {
+exports.createOwner = async (data, pharmacyId, session = null, req = null) => {
     const { name } = data;
     
-    const pharmacy = await Pharmacy.findById(pharmacyId);
+    const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
     if (!pharmacy || !pharmacy.isHub) {
-        throw new Error('Only hub pharmacies can have owners');
+        throw { message: 'Only hub pharmacies can have owners', code: 400 };
     }
 
-    const owner = await Owner.create({
+    const owner = await Owner.create([{
         name,
         pharmacy: pharmacyId,
         balance: 0
-    });
+    }], { session });
 
     // Link to pharmacy
-    pharmacy.linkedOwners.push(owner._id);
-    await pharmacy.save();
+    pharmacy.linkedOwners.push(owner[0]._id);
+    await pharmacy.save({ session });
 
-    return owner;
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Owner',
+            entityId: owner[0]._id,
+            changes: { name }
+        }, req);
+    }
+
+    return owner[0];
 };
 
 /**
  * Updates an owner's name.
  */
-exports.updateOwner = async (ownerId, data, pharmacyId) => {
+exports.updateOwner = async (ownerId, data, pharmacyId, session = null, req = null) => {
     const { name } = data;
-    const owner = await Owner.findOne({ _id: ownerId, pharmacy: pharmacyId });
+    const owner = await Owner.findOne({ _id: ownerId, pharmacy: pharmacyId }).session(session);
     
     if (!owner) {
-        throw new Error('Owner not found for this pharmacy');
+        throw { message: 'Owner not found for this pharmacy', code: 404 };
     }
 
-    if (name) owner.name = name;
-    await owner.save();
+    if (name && owner.name !== name) {
+        const oldName = owner.name;
+        owner.name = name;
+        await owner.save({ session });
+
+        if (req) {
+            await auditService.logAction({
+                user: req.user._id,
+                action: 'UPDATE',
+                entityType: 'Owner',
+                entityId: owner._id,
+                changes: { name, oldName }
+            }, req);
+        }
+    }
 
     return owner;
 };

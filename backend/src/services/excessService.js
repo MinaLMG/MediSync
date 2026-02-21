@@ -23,7 +23,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     // Check product status
     const productObj = await Product.findById(product).session(session);
     if (!productObj || productObj.status !== 'active') {
-        throw new Error('This product is currently inactive and cannot be added as an excess.');
+        throw { message: 'This product is currently inactive and cannot be added as an excess.', code: 400 };
     }
 
     // Check if a Shortage exists for this product (Constraint)
@@ -36,8 +36,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     if (existingShortage) { // Only check for regular user adds
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);   
         if (!pharmacy ||!pharmacy.isHub) {
-            throw new Error('You cannot add an excess for this product because you already have an active shortage for it.');
-            
+            throw { message: 'You cannot add an excess for this product because you already have an active shortage for it.', code: 409 };
         }
     }
     const isShortageFulfillment = shortage_fulfillment === true;
@@ -97,7 +96,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         finalPurchasePrice = selectedPrice * (1.0 - saleRatio);
     } else if (finalIsHubPurchase && !finalPurchasePrice) {
         // Purchase Invoice: Must provide explicit purchase price
-        throw new Error('Purchase price is required for hub purchase invoices');
+        throw { message: 'Purchase price is required for hub purchase invoices', code: 400 };
     }
 
     const excessData = {
@@ -148,7 +147,7 @@ exports.approveExcess = async (excessId, session = null) => {
         { status: 'available' }, 
         { new: true, session }
     );
-    if (!excess) throw new Error('Excess not found');
+    if (!excess) throw { message: 'Excess not found', code: 404 };
 
     if (excess.isNewPrice) {
         const hasVol = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
@@ -166,7 +165,7 @@ exports.approveExcess = async (excessId, session = null) => {
         const productName = product ? product.name : 'Unknown Product';
         const owner = await User.findOne({ pharmacy: excess.pharmacy }).session(session);
         if (owner) {
-            await addNotificationJob(
+            setImmediate(() => addNotificationJob(
                 owner._id.toString(),
                 'system',
                 `Your stock excess listing for "${productName}" has been approved.`,
@@ -175,7 +174,7 @@ exports.approveExcess = async (excessId, session = null) => {
                     relatedEntityType: 'StockExcess'
                 },
                 `تم الموافقة على قائمة العرض الخاصة بك لـ "${productName}".`
-            );
+            ));
         }
     } catch (err) {
         console.error('Error in approveExcess notification:', err);
@@ -187,33 +186,33 @@ exports.approveExcess = async (excessId, session = null) => {
 /**
  * Updates an existing excess.
  */
-exports.updateExcess = async (excessId, updateData, user, req = null) => {
+exports.updateExcess = async (excessId, updateData, user, req = null, session = null) => {
     const { quantity, selectedPrice, salePercentage, shortage_fulfillment } = updateData;
     
-    const excess = await StockExcess.findById(excessId);
-    if (!excess) throw new Error('Excess not found');
+    const excess = await StockExcess.findById(excessId).session(session);
+    if (!excess) throw { message: 'Excess not found', code: 404 };
 
     // Ownership Check
     if (user.role !== 'admin' && excess.pharmacy.toString() !== user.pharmacy.toString()) {
-        throw new Error('Not authorized to update this excess');
+        throw { message: 'Not authorized to update this excess', code: 403 };
     }
 
     if (['fulfilled', 'expired', 'rejected'].includes(excess.status)) {
-        throw new Error(`Cannot update excess with status ${excess.status}. It is locked.`);
+        throw { message: `Cannot update excess with status ${excess.status}. It is locked.`, code: 409 };
     }
 
     const taken = excess.originalQuantity - excess.remainingQuantity;
     const hasBeenSold = taken > 0;
 
     // Validate quantity decrease only
-    if (quantity !== undefined) {
+    if (quantity !== undefined && quantity !== excess.originalQuantity) {
         if (excess.isHubGenerated || excess.isHubPurchase) {
-            throw new Error('Quantity for hub stock cannot be updated manually. Please update via the source document (purchase invoice or transfer record).');
+            throw { message: 'Quantity for hub stock cannot be updated manually. Please update via the source document.', code: 409 };
         }
         if (quantity > excess.originalQuantity) {
-             throw new Error('Excesses can only be decreased in quantity, not increased.');
+             throw { message: 'Excesses can only be decreased in quantity, not increased.', code: 400 };
         }
-        if (quantity < taken) throw new Error(`Quantity cannot be less than taken (${taken}).`);
+        if (quantity < taken) throw { message: `Quantity cannot be less than taken (${taken}).`, code: 400 };
         excess.originalQuantity = quantity;
         excess.remainingQuantity = quantity - taken;
     }
@@ -221,41 +220,77 @@ exports.updateExcess = async (excessId, updateData, user, req = null) => {
     // Enforce restrictions based on sold quantity
     if (hasBeenSold) {
         // Stock has been sold/committed - cannot change terms
-        if (selectedPrice !== undefined) {
-            throw new Error('Cannot change price for excess with committed stock. Stock has already been sold at specific terms.');
+        if (selectedPrice !== undefined && selectedPrice !== excess.selectedPrice) {
+            throw { message: 'Cannot change price for excess with committed stock.', code: 409 };
         }
-        if (salePercentage !== undefined) {
-            throw new Error('Cannot change sale percentage for excess with committed stock. Stock has already been sold at specific terms.');
+        if (salePercentage !== undefined && salePercentage !== excess.salePercentage) {
+            throw { message: 'Cannot change sale percentage for excess with committed stock.', code: 409 };
         }
-        if (shortage_fulfillment !== undefined) {
-            throw new Error('Cannot change fulfillment type for excess with committed stock.');
+        if (shortage_fulfillment !== undefined && shortage_fulfillment !== excess.shortage_fulfillment) {
+            throw { message: 'Cannot change fulfillment type for excess with committed stock.', code: 409 };
         }
-    } else {
+        if (updateData.expiryDate !== undefined && updateData.expiryDate !== excess.expiryDate) {
+            throw { message: 'Cannot change expiry date for excess with committed stock.', code: 409 };
+        }
+    }  else {
         // No stock sold yet - allow updates
-        
-        // Update sale info
-        if (shortage_fulfillment !== undefined) excess.shortage_fulfillment = shortage_fulfillment;
-        
-        if (excess.shortage_fulfillment) {
-            excess.salePercentage = 0;
-            excess.saleAmount = 0;
-        } else if (salePercentage !== undefined) {
-            excess.salePercentage = salePercentage;
-            excess.saleAmount = (selectedPrice || excess.selectedPrice) * salePercentage / 100;
+        let needsReapproval = false;
+
+        // 1. Shortage Fulfillment Change
+        if (shortage_fulfillment !== undefined && shortage_fulfillment !== excess.shortage_fulfillment) {
+            excess.shortage_fulfillment = shortage_fulfillment;
+            needsReapproval = true;
         }
 
-        // Allow price updates only for pending status OR available with no sales
-        if (selectedPrice !== undefined && (excess.status === 'pending' || !hasBeenSold)) {
-            excess.selectedPrice = selectedPrice;
-            // Recalculate sale amount if we have a sale percentage
-            if (excess.salePercentage > 0) {
-                excess.saleAmount = selectedPrice * excess.salePercentage / 100;
+        // 2. Sale Percentage Change
+        if (!excess.shortage_fulfillment) {
+            if (salePercentage !== undefined && salePercentage !== excess.salePercentage) {
+                const settings = await Settings.getSettings();
+                excess.salePercentage = Math.max(salePercentage, settings.minimumCommission);
+                needsReapproval = true;
             }
+        } else {
+            excess.salePercentage = 0;
+            excess.saleAmount = 0;
+        }
+
+        // 3. Price Change
+        if (selectedPrice !== undefined && selectedPrice !== excess.selectedPrice) {
+            if (excess.isHubGenerated || excess.isHubPurchase) {
+                throw { message: 'Price for hub stock cannot be updated manually. Please update via the source document.', code: 409 };
+            }
+            excess.selectedPrice = selectedPrice;
+            needsReapproval = true;
+           // Re-calculate isNewPrice for the price list logic
+            const { HasVolume } = require('../models');
+            const hasVolume = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
+            excess.isNewPrice = hasVolume && !hasVolume.prices.includes(selectedPrice);
+        }
+
+        // 4. Expiry Date Change
+        if (updateData.expiryDate !== undefined && updateData.expiryDate !== excess.expiryDate) {
+            if (excess.isHubGenerated || excess.isHubPurchase) {
+                throw { message: 'Expiry date for hub stock cannot be updated manually. Please update via the source document.', code: 409 };
+            }
+            // Basic format validation
+            if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(updateData.expiryDate)) {
+                throw { message: 'Expiry date must be in MM/YY format', code: 400 };
+            }
+            excess.expiryDate = updateData.expiryDate;
+            needsReapproval = true;
+        }
+
+        // Centralized Sale Amount Calculation
+        excess.saleAmount = (excess.selectedPrice * (excess.salePercentage || 0)) / 100;
+
+        // If something critical changed, put back to pending
+        if (needsReapproval) {
+            excess.status = 'pending';
         }
     }
 
-    await exports.syncExcessStatus(excess);
-    await excess.save();
+    await exports.syncExcessStatus(excess, session);
+    await excess.save({ session });
 
     await auditService.logAction({
         user: user._id,
@@ -294,15 +329,15 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
     session.startTransaction();
     try {
         const excess = await StockExcess.findById(excessId).session(session);
-        if (!excess) throw new Error('Excess not found');
-        if (excess.remainingQuantity < quantity) throw new Error('Requested quantity exceeds available');
+        if (!excess) throw { message: 'Excess not found', code: 404 };
+        if (excess.remainingQuantity < quantity) throw { message: 'Requested quantity exceeds available', code: 409 };
 
         const hub = await Pharmacy.findById(hubId).session(session);
-        if (!hub || !hub.isHub) throw new Error('Target pharmacy is not a valid Hub');
+        if (!hub || !hub.isHub) throw { message: 'Target pharmacy is not a valid Hub', code: 400 };
 
         // Check for self-dealing (Hub cannot add to itself)
         if (excess.pharmacy.toString() === hub._id.toString()) {
-            throw new Error('Cannot add excess to the same hub account (Self-dealing detected).');
+            throw { message: 'Cannot add excess to the same hub account (Self-dealing detected).', code: 409 };
         }
 
         // Services imported here to avoid circular dependency
@@ -330,8 +365,8 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         }, session, req);
         
         // 3. Complete the transaction (Accepted -> Completed)
-        await transactionService.updateTransactionStatus(transaction._id, 'accepted', session);
-        await transactionService.updateTransactionStatus(transaction._id, 'completed', session);
+        await transactionService.updateTransactionStatus(transaction._id, 'accepted', req, session);
+        await transactionService.updateTransactionStatus(transaction._id, 'completed', req, session);
 
         // 4. Create new excess at the hub (instantly available)
         const purchasePrice = (1 - (excess.salePercentage / 100)) * excess.selectedPrice;

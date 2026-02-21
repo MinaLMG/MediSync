@@ -67,7 +67,7 @@ const sendToUser = (userId, event, data) => {
  */
 const getIO = () => {
     if (!io) {
-        throw new Error('Socket.io not initialized!');
+        throw { message: 'Socket.io not initialized!', code: 500 };
     }
     return io;
 };

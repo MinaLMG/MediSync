@@ -11,7 +11,7 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
 
     const product = await Product.findById(productId).session(session);
     if (!product || product.status !== 'active') {
-        throw new Error('This product is currently inactive and cannot be added as a shortage.');
+        throw { message: 'This product is currently inactive and cannot be added as a shortage.', code: 400 };
     }
 
     const existingExcess = await StockExcess.findOne({
@@ -24,59 +24,46 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
         // Allow ONLY hubs to have both shortage and excess for the same product
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
         if (!pharmacy || !pharmacy.isHub) {
-            throw new Error('You cannot add a shortage for this product because you already have an excess for it.');
+            throw { message: 'You cannot add a shortage for this product because you already have an excess for it.', code: 409 };
         }
     }
 
-    const shortage = session 
-        ? (await StockShortage.create([{
-            pharmacy: pharmacyId,
-            product: productId,
-            volume,
-            quantity,
-            remainingQuantity: quantity,
-            notes,
-            targetPrice,
-            type: 'request',
-            status: 'active',
-            isSystemGenerated: isSystemGenerated || false
-        }], { session }))[0]
-        : await StockShortage.create({
-            pharmacy: pharmacyId,
-            product: productId,
-            volume,
-            quantity,
-            remainingQuantity: quantity,
-            notes,
-            targetPrice,
-            type: 'request',
-            status: 'active',
-            isSystemGenerated: isSystemGenerated || false
-        });
+    const shortage = await StockShortage.create([{
+        pharmacy: pharmacyId,
+        product: productId,
+        volume,
+        quantity,
+        remainingQuantity: quantity,
+        notes,
+        targetPrice,
+        type: 'request',
+        status: 'active',
+        isSystemGenerated: isSystemGenerated || false
+    }], { session });
+
+    const shortageDoc = shortage[0];
 
     await auditService.logAction({
         user: req?.user?._id,
         action: 'CREATE',
         entityType: 'StockShortage',
-        entityId: shortage._id,
-        changes: shortage.toObject()
+        entityId: shortageDoc._id,
+        changes: shortageDoc.toObject()
     }, req);
 
-    return shortage;
+    return shortageDoc;
 };
 
 /**
  * Creates a bulk order containing multiple shortages.
  */
-exports.createOrder = async (orderData, pharmacyId, req = null) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+exports.createOrder = async (orderData, pharmacyId, req = null, session = null) => {
     try {
         const { items, notes } = orderData;
         
         // Validate items array
         if (!items || items.length === 0) {
-            throw new Error('Order must contain at least one item');
+            throw { message: 'Order must contain at least one item', code: 400 };
         }
         
         const serial = await serialService.generateOrderSerial();
@@ -95,18 +82,18 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
         for (const item of items) {
             // Validate quantity
             if (!item.quantity || item.quantity <= 0) {
-                throw new Error(`Invalid quantity for product ${item.product}. Quantity must be a positive number.`);
+                throw { message: `Invalid quantity for product ${item.product}. Quantity must be a positive number.`, code: 400 };
             }
             
             const product = await Product.findById(item.product).session(session);
-            if (!product || product.status !== 'active') throw new Error(`Product ${item.product} is inactive.`);
+            if (!product || product.status !== 'active') throw { message: `Product ${item.product} is inactive.`, code: 400 };
             const existingExcess = await StockExcess.findOne({
                 pharmacy: pharmacyId,
                 product: item.product,
                 status: { $in: ['pending', 'available', 'partially_fulfilled'] }
             }).session(session);
             if (existingExcess) {   
-                throw new Error(`You cannot add a shortage for ${product.name} because you already have an excess for it.`);
+                throw { message: `You cannot add a shortage for ${product.name} because you already have an excess for it.`, code: 409 };
             }
             const shortage = new StockShortage({
                 pharmacy: pharmacyId,
@@ -156,8 +143,6 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
             }
         }
 
-        await session.commitTransaction();
-
         await auditService.logAction({
             user: req?.user?._id,
             action: 'CREATE',
@@ -168,37 +153,32 @@ exports.createOrder = async (orderData, pharmacyId, req = null) => {
 
         return order;
     } catch (error) {
-        await session.abortTransaction();
         throw error;
-    } finally {
-        session.endSession();
     }
 };
 
 /**
  * Updates an existing shortage.
  */
-exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, session = null) => {
     try {
         const shortage = await StockShortage.findById(shortageId).session(session);
-        if (!shortage) throw new Error('Shortage not found');
+        if (!shortage) throw { message: 'Shortage not found', code: 404 };
 
         if (shortage.pharmacy.toString() !== pharmacyId.toString()) {
-            throw new Error('Not authorized to update this shortage');
+            throw { message: 'Not authorized to update this shortage', code: 403 };
         }
 
         if (shortage.status !== 'active' && shortage.status !== 'partially_fulfilled') {
-            throw new Error('Cannot update non-active shortage');
+            throw { message: 'Cannot update non-active shortage', code: 409 };
         }
 
         const { quantity, notes } = updateData;
         const fulfilled = shortage.quantity - shortage.remainingQuantity;
 
         if (quantity !== undefined) {
-            if (quantity > shortage.quantity) throw new Error('Quantity can only be decreased.');
-            if (quantity < fulfilled) throw new Error(`Cannot be less than fulfilled (${fulfilled}).`);
+            if (quantity > shortage.quantity) throw { message: 'Quantity can only be decreased.', code: 400 };
+            if (quantity < fulfilled) throw { message: `Cannot be less than fulfilled (${fulfilled}).`, code: 400 };
             
             const oldQuantity = shortage.quantity;
             shortage.quantity = quantity;
@@ -225,17 +205,11 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null) 
             }
         }
 
-        if (notes !== undefined) shortage.notes = notes;
+        if (notes !== undefined && notes !== shortage.notes) shortage.notes = notes;
 
         await exports.syncShortageStatus(shortage, session);
         // shortage.save() and order sync handled inside sync
         
-         // Sync order totals if linked
-        // (Handled by syncShortageStatus now)
-
-
-        await session.commitTransaction();
-
         await auditService.logAction({
             user: req?.user?._id,
             action: 'UPDATE',
@@ -320,12 +294,12 @@ exports.updateOrderTotals = async (orderId, session = null) => {
 exports.cancelShortage = async (shortageId, session, req = null) => {
 
     const shortage = await StockShortage.findById(shortageId).session(session);
-    if (!shortage) throw new Error('Shortage not found');
+    if (!shortage) throw { message: 'Shortage not found', code: 404 };
 
     // Check if fully available (no transactions/fulfillments yet)
     // The user requested: "same conditions for deleting the shortage, it should have the quantiy equal to remaining quantity"
     if (shortage.remainingQuantity !== shortage.quantity) {
-        throw new Error('Cannot cancel a shortage that has been partially or fully fulfilled.');
+        throw { message: 'Cannot cancel a shortage that has been partially or fully fulfilled.', code: 409 };
     }
 
     // 1. Cleanup Reservation (similar to delete)
@@ -383,20 +357,18 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
     return shortage;
 };
 
-exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = null) => {
     try {
         const shortage = await StockShortage.findById(shortageId).session(session);
-        if (!shortage) throw new Error('Shortage not found');
+        if (!shortage) throw { message: 'Shortage not found', code: 404 };
 
         // Check authorized (Manager/Owner or Admin)
         if (req?.user?.role !== 'admin' && shortage.pharmacy.toString() !== pharmacyId.toString()) {
-            throw new Error('Not authorized to delete this shortage');
+            throw { message: 'Not authorized to delete this shortage', code: 403 };
         }
 
         const fulfilled = shortage.quantity - shortage.remainingQuantity;
-        if (fulfilled > 0) throw new Error('Cannot delete a shortage that has been partially or fully fulfilled.');
+        if (fulfilled > 0) throw { message: 'Cannot delete a shortage that has been partially or fully fulfilled.', code: 409 };
 
         // 1. Cleanup Reservation
         if (shortage.order && shortage.targetPrice && shortage.remainingQuantity > 0) {
@@ -425,8 +397,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
             await exports.updateOrderTotals(orderId, session);
         }
 
-        await session.commitTransaction();
-
         await auditService.logAction({
             user: req?.user?._id,
             action: 'DELETE',
@@ -436,9 +406,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null) => {
         }, req);
 
     } catch (error) {
-        await session.abortTransaction();
         throw error;
-    } finally {
-        session.endSession();
     }
 };

@@ -7,7 +7,7 @@ exports.getHubCashSummary = async (req, res) => {
         const summary = await hubSummaryService.getCashBalanceSummary(req.user.pharmacy);
         res.status(200).json({ success: true, data: summary });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -16,7 +16,7 @@ exports.getAdminSummary = async (req, res) => {
         const summary = await transactionSummaryService.getTransactionsSummary(req.query);
         res.status(200).json({ success: true, data: summary });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -25,6 +25,6 @@ exports.getPharmaciesList = async (req, res) => {
         const pharmacies = await Pharmacy.find({ status: 'active' }).select('name address phone').sort({ name: 1 });
         res.status(200).json({ success: true, data: pharmacies });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

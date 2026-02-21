@@ -8,38 +8,49 @@ exports.createExcess = async (req, res) => {
         const excess = await excessService.createExcess(req.body, req.user.pharmacy, req);
         res.status(201).json({ success: true, data: excess });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
 exports.updateExcess = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const excess = await excessService.updateExcess(req.params.id, req.body, req.user, req);
+        const updates = {};
+        const allowedFields = ['quantity', 'selectedPrice', 'salePercentage', 'shortage_fulfillment', 'expiryDate'];
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) updates[field] = req.body[field];
+        }
+
+        const excess = await excessService.updateExcess(req.params.id, updates, req.user, req, session);
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
-        // Business rule violations (e.g., cannot change price, locked status)
-        const statusCode = error.message.includes('Cannot') || error.message.includes('authorized') ? 409 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 exports.deleteExcess = async (req, res) => {
     try {
         const excess = await StockExcess.findById(req.params.id);
-        if (!excess) return res.status(404).json({ success: false, message: 'Not found' });
+        if (!excess) throw { message: 'Excess not found', code: 404 };
+        
         if (req.user.role !== 'admin' && excess.pharmacy.toString() !== req.user.pharmacy.toString()) {
-             return res.status(403).json({ success: false, message: 'Unauthorized' });
+             throw { message: 'Unauthorized', code: 403 };
         }
         if ((excess.originalQuantity - excess.remainingQuantity) > 0) {
-            return res.status(400).json({ success: false, message: 'Cannot delete fulfilled excess' });
+            throw { message: 'Cannot delete fulfilled excess', code: 409 };
         }
         if (excess.isHubGenerated || excess.isHubPurchase) {
-            return res.status(400).json({ success: false, message: 'Hub stock (transfers or purchases) cannot be deleted directly. Please use the source document (purchase invoice or transfer record) to manage this stock.' });
+            throw { message: 'Hub stock (transfers or purchases) cannot be deleted directly. Please use the source document to manage this stock.', code: 409 };
         }
         await excess.deleteOne();
         res.status(200).json({ success: true, message: 'Deleted' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -52,67 +63,51 @@ exports.approveExcess = async (req, res) => {
         await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
-        await session.abortTransaction();
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
-        // Notify User
-        try {
-            const { addNotificationJob } = require('../utils/queueManager');
-            const { User } = require('../models');
-            const owner = await User.findOne({ pharmacy: excess.pharmacy });
-            if (owner) {
-                await addNotificationJob(
-                    owner._id.toString(),
-                    'system',
-                    `Your stock excess listing for "${productName}" was approved.`,
-                    {
-                        relatedEntity: excess._id,
-                        relatedEntityType: 'StockExcess'
-                    },
-                    `تمت الموافقة على عرض المخزون الزائد الخاص بك لـ "${productName}".`
-                );
-            }
-        } catch (err) {
-            console.error('Error in approveExcess notification:', err);
-        }
     }
 };
 
 exports.rejectExcess = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { rejectionReason } = req.body;
-        if (!rejectionReason) return res.status(400).json({ success: false, message: 'Reason required' });
-        const excess = await StockExcess.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason }, { new: true });
-        if (!excess) return res.status(404).json({ success: false, message: 'Not found' });
+        if (!rejectionReason) throw { message: 'Reason required', code: 400 };
+        
+        const excess = await StockExcess.findById(req.params.id).session(session);
+        if (!excess) throw { message: 'Excess not found', code: 404 };
 
-        // Notify User
-        try {
-            const { addNotificationJob } = require('../utils/queueManager');
-            const { Product, User } = require('../models');
-            const product = await Product.findById(excess.product);
-            const productName = product ? product.name : 'Unknown Product';
-            const owner = await User.findOne({ pharmacy: excess.pharmacy });
-            if (owner) {
-                await addNotificationJob(
-                    owner._id.toString(),
-                    'system',
-                    `Your stock excess listing for "${productName}" was rejected. Reason: ${rejectionReason}`,
-                    {
-                        relatedEntity: excess._id,
-                        relatedEntityType: 'StockExcess'
-                    },
-                    `تم رفض عرض المخزون الزائد الخاص بك لـ "${productName}". السبب: ${rejectionReason}`
-                );
-            }
-        } catch (err) {
-            console.error('Error in rejectExcess notification:', err);
+        if (excess.status === 'rejected') {
+             await session.commitTransaction();
+             return res.status(200).json({ success: true, data: excess });
         }
 
+        excess.status = 'rejected';
+        excess.rejectionReason = rejectionReason;
+        await excess.save({ session });
+
+        // Notify User
+        setImmediate(() => addNotificationJob(
+            owner._id.toString(),
+            'system',
+            `Your stock excess listing for "${productName}" was rejected. Reason: ${rejectionReason}`,
+            {
+                relatedEntity: excess._id,
+                relatedEntityType: 'StockExcess'
+            },
+            `تم رفض عرض المخزون الزائد الخاص بك لـ "${productName}". السبب: ${rejectionReason}`
+        ));
+
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -121,7 +116,7 @@ exports.getPendingExcesses = async (req, res) => {
         const excesses = await StockExcess.find({ status: 'pending' }).populate('pharmacy', 'name phone').populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -132,7 +127,7 @@ exports.getMyExcesses = async (req, res) => {
     }).populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -148,7 +143,7 @@ exports.getAvailableExcesses = async (req, res) => {
 
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -164,7 +159,7 @@ exports.getFulfilledExcesses = async (req, res) => {
 
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -176,15 +171,12 @@ exports.addToHub = async (req, res) => {
     try {
         const { excessId, hubId, quantity } = req.body;
         if (!excessId || !hubId || !quantity) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
+             throw { message: 'Missing required fields', code: 400 };
         }
         const result = await excessService.addToHub(excessId, hubId, quantity, req);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
-        // Business rule violations (e.g., insufficient quantity, self-dealing)
-        const statusCode = error.message.includes('not found') ? 404 : 
-                          error.message.includes('Cannot') || error.message.includes('exceeds') ? 409 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -345,7 +337,7 @@ exports.getMarketExcesses = async (req, res) => {
 
         res.status(200).json({ success: true, count: finalResult.length, data: finalResult });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -391,7 +383,7 @@ exports.getMarketInsight = async (req, res) => {
 
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -405,7 +397,7 @@ exports.getPharmacyExcesses = async (req, res) => {
         }).populate('product', 'name').populate('volume', 'name').sort({ expiryDate: 1 });
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -414,6 +406,6 @@ exports.getHubSystemSummary = async (req, res) => {
         const summary = await hubSummaryService.getSystemSummary(req.user.pharmacy);
         res.status(200).json({ success: true, data: summary });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

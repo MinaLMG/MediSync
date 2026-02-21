@@ -1,41 +1,63 @@
 const shortageService = require('../services/shortageService');
 const { StockShortage } = require('../models');
+const mongoose = require('mongoose');
 
 // Create new shortage (Single)
 exports.createShortage = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const shortage = await shortageService.createShortage(req.body, req.user.pharmacy, req);
+        const shortage = await shortageService.createShortage(req.body, req.user.pharmacy, req, session);
+        await session.commitTransaction();
         res.status(201).json({ success: true, data: shortage });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 // Create bulk order (Multiple Shortages)
 exports.createOrder = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const order = await shortageService.createOrder(req.body, req.user.pharmacy, req);
+        const order = await shortageService.createOrder(req.body, req.user.pharmacy, req, session);
+        await session.commitTransaction();
         res.status(201).json({ success: true, data: order });
     } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 // Update shortage (Manager/Owner)
 exports.updateShortage = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const shortage = await shortageService.updateShortage(req.params.id, req.body, req.user.pharmacy, req);
+        const updates = {};
+        const allowedFields = ['quantity', 'notes'];
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) updates[field] = req.body[field];
+        }
+
+        const shortage = await shortageService.updateShortage(req.params.id, updates, req.user.pharmacy, req, session);
+        await session.commitTransaction();
         res.status(200).json({ success: true, data: shortage });
     } catch (error) {
-        // Business rule violations (e.g., quantity constraints)
-        const statusCode = error.message.includes('cannot') || error.message.includes('must') ? 409 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
 // Cancel shortage (User/Admin)
 exports.cancelShortage = async (req, res) => {
-    const mongoose = require('mongoose');
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -48,20 +70,18 @@ exports.cancelShortage = async (req, res) => {
         // I should probably add ownership check in controller.
         
         const shortage = await StockShortage.findById(req.params.id);
-        if (!shortage) return res.status(404).json({ success: false, message: 'Not found' });
+        if (!shortage) throw { message: 'Shortage not found', code: 404 };
         
         if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
-             return res.status(403).json({ success: false, message: 'Not authorized' });
+             throw { message: 'Not authorized', code: 403 };
         }
 
         await shortageService.cancelShortage(req.params.id, session, req);
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Cancelled successfully' });
     } catch (error) {
-        await session.abortTransaction();
-        // Business rule violations (e.g., already fulfilled)
-        const statusCode = error.message.includes('Cannot') || error.message.includes('partially') ? 409 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -69,13 +89,17 @@ exports.cancelShortage = async (req, res) => {
 
 // Delete shortage (Admin/Owner/Manager)
 exports.deleteShortage = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        await shortageService.deleteShortage(req.params.id, req.user.pharmacy, req);
+        await shortageService.deleteShortage(req.params.id, req.user.pharmacy, req, session);
+        await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Deleted successfully' });
     } catch (error) {
-        // Business rule violations (e.g., already fulfilled, not authorized)
-        const statusCode = error.message.includes('Cannot') || error.message.includes('authorized') ? 409 : 500;
-        res.status(statusCode).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -89,7 +113,7 @@ exports.getActiveShortages = async (req, res) => {
             .sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: shortages });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -104,7 +128,7 @@ exports.getMyShortages = async (req, res) => {
             .sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: shortages });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -125,7 +149,7 @@ exports.getOrders = async (req, res) => {
         }));
         res.status(200).json({ success: true, count: ordersWithItems.length, data: ordersWithItems });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -136,7 +160,7 @@ exports.getGlobalActiveShortages = async (req, res) => {
         const productNames = [...new Set(shortages.map(s => s.product?.name).filter(Boolean))];
         res.status(200).json({ success: true, count: productNames.length, data: productNames });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -155,7 +179,7 @@ exports.getFulfilledShortages = async (req, res) => {
             .sort({ updatedAt: -1 });
         res.status(200).json({ success: true, data: shortages });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 

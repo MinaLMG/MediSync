@@ -1,6 +1,7 @@
 const { Payment, Pharmacy, BalanceHistory, User } = require('../models');
 const mongoose = require('mongoose');
 const hubSummaryService = require('../services/hubSummaryService');
+const auditService = require('../services/auditService');
 const { sendToUser } = require('../utils/pusherManager');
 
 // @desc    Create a payment (Admin manually records a deposit/withdrawal)
@@ -12,16 +13,16 @@ exports.createPayment = async (req, res) => {
     try {
         const { pharmacyId, hubId, amount, type, method, referenceNumber, adminNote } = req.body;
         
-        if (!pharmacyId) throw new Error('Pharmacy ID is required');
-        if (!hubId) throw new Error('Hub ID is required');
-        if (!amount || amount <= 0) throw new Error('Invalid amount');
-        if (!['deposit', 'withdrawal'].includes(type)) throw new Error('Invalid type');
+        if (!pharmacyId) throw { message: 'Pharmacy ID is required', code: 400 };
+        if (!hubId) throw { message: 'Hub ID is required', code: 400 };
+        if (!amount || amount <= 0) throw { message: 'Invalid amount', code: 400 };
+        if (!['deposit', 'withdrawal'].includes(type)) throw { message: 'Invalid type', code: 400 };
 
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
-        if (!pharmacy) throw new Error('Pharmacy not found');
+        if (!pharmacy) throw { message: 'Pharmacy not found', code: 404 };
 
         const hub = await Pharmacy.findById(hubId).session(session);
-        if (!hub || !hub.isHub) throw new Error('Selected pharmacy is not a valid Hub');
+        if (!hub || !hub.isHub) throw { message: 'Selected pharmacy is not a valid Hub', code: 400 };
 
         // Create Payment Record
         const payment = await Payment.create([{
@@ -90,6 +91,14 @@ exports.createPayment = async (req, res) => {
             }
         }], { session });
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Payment',
+            entityId: payment[0]._id,
+            changes: { amount, type, method, pharmacyId, hubId }
+        }, req);
+
         await session.commitTransaction();
 
         // Notify Users
@@ -101,8 +110,8 @@ exports.createPayment = async (req, res) => {
         res.status(201).json({ success: true, data: payment[0] });
 
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -135,7 +144,7 @@ exports.getPayments = async (req, res) => {
 
         res.status(200).json({ success: true, count: payments.length, data: payments });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -149,13 +158,13 @@ exports.updatePayment = async (req, res) => {
         const { amount, type, method, referenceNumber, adminNote, hubId } = req.body;
         
         const payment = await Payment.findById(req.params.id).session(session);
-        if (!payment) throw new Error('Payment not found');
+        if (!payment) throw { message: 'Payment not found', code: 404 };
 
         const pharmacy = await Pharmacy.findById(payment.pharmacy).session(session);
-        if (!pharmacy) throw new Error('Pharmacy not found');
+        if (!pharmacy) throw { message: 'Pharmacy not found', code: 404 };
 
         const oldHub = await Pharmacy.findById(payment.hub).session(session);
-        if (!oldHub) throw new Error('Original Hub not found');
+        if (!oldHub) throw { message: 'Original Hub not found', code: 404 };
 
         // 1. Revert old effects
         const oldPaymentEffect = payment.type === 'deposit' ? payment.amount : -payment.amount;
@@ -172,7 +181,7 @@ exports.updatePayment = async (req, res) => {
         let targetHub = oldHub;
         if (hubId && hubId.toString() !== payment.hub.toString()) {
             targetHub = await Pharmacy.findById(hubId).session(session);
-            if (!targetHub || !targetHub.isHub) throw new Error('Invalid new Hub selected');
+            if (!targetHub || !targetHub.isHub) throw { message: 'Invalid new Hub selected', code: 400 };
             payment.hub = hubId;
         }
 
@@ -222,6 +231,14 @@ exports.updatePayment = async (req, res) => {
             details: { paymentId: payment._id, pharmacyName: pharmacy.name }
         }], { session });
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Payment',
+            entityId: payment._id,
+            changes: { amount, type, method, hubId }
+        }, req);
+
         await session.commitTransaction();
 
         // Notify users
@@ -232,8 +249,8 @@ exports.updatePayment = async (req, res) => {
 
         res.status(200).json({ success: true, data: payment });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -247,13 +264,13 @@ exports.deletePayment = async (req, res) => {
     session.startTransaction();
     try {
         const payment = await Payment.findById(req.params.id).session(session);
-        if (!payment) throw new Error('Payment not found');
+        if (!payment) throw { message: 'Payment not found', code: 404 };
 
         const pharmacy = await Pharmacy.findById(payment.pharmacy).session(session);
-        if (!pharmacy) throw new Error('Pharmacy not found');
+        if (!pharmacy) throw { message: 'Pharmacy not found', code: 404 };
 
         const hub = await Pharmacy.findById(payment.hub).session(session);
-        if (!hub) throw new Error('Hub not found');
+        if (!hub) throw { message: 'Hub not found', code: 404 };
 
         // 1. Revert effects
         const prevBalance = pharmacy.balance;
@@ -293,6 +310,14 @@ exports.deletePayment = async (req, res) => {
             details: { paymentId: payment._id, pharmacyName: pharmacy.name }
         }], { session });
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'Payment',
+            entityId: payment._id,
+            changes: { amount: payment.amount, type: payment.type }
+        }, req);
+
         // 3. Delete the payment
         await Payment.findByIdAndDelete(req.params.id).session(session);
 
@@ -306,8 +331,8 @@ exports.deletePayment = async (req, res) => {
 
         res.status(200).json({ success: true, message: 'Payment deleted and balances reversed' });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -318,6 +343,6 @@ exports.getHubCashSummary = async (req, res) => {
         const summary = await hubSummaryService.getCashBalanceSummary(req.user.pharmacy);
         res.status(200).json({ success: true, data: summary });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

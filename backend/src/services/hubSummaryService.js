@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
  */
 exports.getCashBalanceSummary = async (pharmacyId) => {
     const hub = await Pharmacy.findById(pharmacyId);
-    if (!hub || !hub.isHub) throw new Error('Pharmacy is not a hub');
+    if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
     const history = await mongoose.model('CashBalanceHistory')
         .find({ pharmacy: pharmacyId })

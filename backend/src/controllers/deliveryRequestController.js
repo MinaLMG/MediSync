@@ -5,49 +5,56 @@ const transactionService = require('../services/transactionService');
 // @route   POST /api/delivery/requests
 // @access  Delivery
 exports.createRequest = async (req, res) => {
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { transactionId, requestType } = req.body;
 
         if (!['accept', 'complete'].includes(requestType)) {
-            return res.status(400).json({ success: false, message: 'Invalid request type' });
+            throw {message:'invalid reqest type',code:400} 
         }
 
         // Check if transaction exists
-        const transaction = await Transaction.findById(transactionId);
+        const transaction = await Transaction.findById(transactionId).session(session);
         if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Transaction not found' });
+            throw {message:'Transaction not found',code:404} 
         }
         // Check for ANY existing pending request for this transaction
         const existingRequest = await DeliveryRequest.findOne({
             transaction: transactionId,
             status: 'pending'
-        });
+        }).session(session);
         if (existingRequest) {
-            return res.status(400).json({ success: false, message: 'This transaction already has a pending delivery request' });
+            throw {message:'This transaction already has a pending delivery request',code:400} 
         }
 
         // [New Requirement] Only the assigned delivery user can make requests
         if (!transaction.delivery || transaction.delivery.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: 'You must be assigned to this transaction before making a request' });
+            throw {message:'You must be assigned to this transaction before making a request',code:400}
         }
 
         // Check appropriate transaction status for request type
         if (requestType === 'accept' && transaction.status !== 'pending') {
-            return res.status(400).json({ success: false, message: 'Acceptance requests can only be made for pending transactions' });
+            throw {message:'Acceptance requests can only be made for pending transactions',code:400} 
         }
         if (requestType === 'complete' && transaction.status !== 'accepted') {
-            return res.status(400).json({ success: false, message: 'Completion requests can only be made for accepted transactions' });
+            throw {message:'Completion requests can only be made for accepted transactions',code:400} 
         }
 
-        const deliveryRequest = await DeliveryRequest.create({
+        const deliveryRequest = await DeliveryRequest.create([{
             delivery: req.user._id,
             transaction: transactionId,
             requestType
-        });
+        }], { session });
 
-        res.status(201).json({ success: true, data: deliveryRequest });
+        await session.commitTransaction();
+        res.status(201).json({ success: true, data: deliveryRequest[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();  
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -75,7 +82,7 @@ exports.getPendingRequests = async (req, res) => {
 
         res.status(200).json({ success: true, count: requests.length, data: requests });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -88,13 +95,13 @@ exports.reviewRequest = async (req, res) => {
     session.startTransaction();
     try {
         const { status } = req.body; // 'approved' or 'rejected'
-        if (!['approved', 'rejected'].includes(status)) {
-            throw new Error('Invalid status');
+        if (!['approved', 'rejecte'].includes(status)) {
+            throw { message: 'Invalid status', code: 400 };
         }
 
         const request = await DeliveryRequest.findById(req.params.id).session(session);
         if (!request) {
-            throw new Error('Request not found');
+            throw { message: 'Request not found', code: 404 };
         }
         request.status = status;
         await request.save({ session });
@@ -106,12 +113,13 @@ exports.reviewRequest = async (req, res) => {
             
             // SECURITY CHECK: If already assigned, only that person can change status
             if (transaction.delivery && transaction.delivery.toString() !== request.delivery.toString()) {
-                throw new Error('Only the assigned delivery person can process this transaction');
+                throw { message: 'Only the assigned delivery person can process this transaction', code: 403 };
             }
 
             await transactionService.updateTransactionStatus(
                 request.transaction,
                 transactionStatus,
+                req,
                 session
             );
         }
@@ -128,24 +136,24 @@ exports.reviewRequest = async (req, res) => {
             const { addNotificationJob } = require('../utils/queueManager');
             const action = request.requestType === 'accept' ? 'Acceptance' : 'Completion';
             
-            await addNotificationJob(
-                request.delivery.toString(),
-                'transaction',
-                `Your request for ${action} has been ${status}.`,
-                {
-                    relatedEntity: request.transaction,
-                    relatedEntityType: 'Transaction'
-                },
-                `طلبك لل  ${action=="accept"?'قبول' : 'الإتمام'} تم ${status=="approved"? 'قبوله' : 'رفضه'}.`
-            );
+        setImmediate(() => addNotificationJob(
+            request.delivery.toString(),
+            'transaction',
+            `Your request for ${action} has been ${status}.`,
+            {
+                relatedEntity: request.transaction,
+                relatedEntityType: 'Transaction'
+            },
+            `طلبك لل  ${action=="accept"?'قبول' : 'الإتمام'} تم ${status=="approved"? 'قبوله' : 'رفضه'}.`
+        ));
         } catch (notifErr) {
             console.error('Notification error in reviewRequest:', notifErr);
         }
 
         res.status(200).json({ success: true, data: request });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(500).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -166,7 +174,7 @@ exports.cleanupRequests = async (req, res) => {
 
         res.status(200).json({ success: true, message: `Deleted ${result.deletedCount} old requests` });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -178,6 +186,6 @@ exports.getMyRequests = async (req, res) => {
         const requests = await DeliveryRequest.find({ delivery: req.user._id }).sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: requests });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };

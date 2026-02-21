@@ -11,7 +11,7 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
     const { items, date } = data; // items: [{ excessId, quantity, sellingPrice }]
     
     const hub = await Pharmacy.findById(pharmacyId).session(session);
-    if (!hub || !hub.isHub) throw new Error('Pharmacy is not a hub');
+    if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
     let totalBuyingPrice = 0;
     let totalSellingPrice = 0;
@@ -20,10 +20,10 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
     // Process each item
     for (const item of items) {
         const excess = await StockExcess.findById(item.excess).session(session);
-        if (!excess) throw new Error(`Stock Excess not found for item`);
+        if (!excess) throw { message: `Stock Excess not found for item`, code: 404 };
         
         if (excess.remainingQuantity < item.quantity) {
-             throw new Error(`Insufficient quantity for ${excess.product}. Available: ${excess.remainingQuantity}, Requested: ${item.quantity}`);
+             throw { message: `Insufficient quantity for ${excess.product}. Available: ${excess.remainingQuantity}, Requested: ${item.quantity}`, code: 400 };
         }
 
         // Deduct Quantity
@@ -36,7 +36,7 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
         // Calculate Buying/Cost Price
         let costPrice = excess.purchasePrice;
         if (costPrice === undefined || costPrice === null) {
-            throw new Error(`Cost price not found for ${excess.product}`);
+            throw { message: `Cost price not found for ${excess.product}`, code: 400 };
         }
         
         // Ensure accurate unit cost for this transaction
@@ -145,20 +145,27 @@ exports.getInvoicesByPharmacy = async (pharmacyId) => {
  * 
  * @param {string} invoiceId - ID of the invoice to update.
  * @param {Object} data - Update data containing { items, date }. Items should have _id or excess.
+ * @param {Object} req - Request object for audit logging.
  * @param {Object} session - Mongoose session for transaction.
  * @returns {Promise<Object>} Updated invoice.
  */
-exports.updateSalesInvoice = async (invoiceId, data, session) => {
+exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
     const { items, date } = data;
     console.log("items",items)
     // 1. Fetch Invoice and Hub
     const invoice = await SalesInvoice.findById(invoiceId).session(session);
-    if (!invoice) throw new Error('Sales Invoice not found');
+    if (!invoice) throw { message: 'Sales Invoice not found', code: 404 };
 
     const hub = await Pharmacy.findById(invoice.pharmacy).session(session);
-    if (!hub) throw new Error('Hub not found');
+    if (!hub) throw { message: 'Hub not found', code: 404 };
 
     const oldSellingTotal = invoice.totalSellingPrice;
+    let hasChanged = false;
+
+    if (date && new Date(date).getTime() !== new Date(invoice.date).getTime()) {
+        invoice.date = new Date(date);
+        hasChanged = true;
+    }
     
     // Map existing items for lookup
     const existingItemMap = new Map();
@@ -176,6 +183,7 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
                 excess.remainingQuantity += existingItem.quantity;
                 //sync the excess status service
                 await syncExcessStatus(excess, session);
+                hasChanged = true;
             }
         }
     }
@@ -190,11 +198,11 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
         const existingItem = existingItemMap.get(identifier);
 
         if (!existingItem) {
-            throw new Error('Adding new items to an existing invoice is not allowed. Please create a new invoice.');
+            throw { message: 'Adding new items to an existing invoice is not allowed. Please create a new invoice.', code: 400 };
         }
 
         const excess = await StockExcess.findById(existingItem.excess).session(session);
-        if (!excess) throw new Error(`Stock record for item ${identifier} not found.`);
+        if (!excess) throw { message: `Stock record for item ${identifier} not found.`, code: 404 };
 
         // Modification: Quantity
         if (inputItem.quantity !== undefined && inputItem.quantity !== existingItem.quantity) {
@@ -202,7 +210,7 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
             
             // If increase, check availability
             if (qDiff > 0 && excess.remainingQuantity < qDiff) {
-                throw new Error(`Insufficient stock for item ${excess.product}. Available: ${excess.remainingQuantity}, additional needed: ${qDiff}`);
+                throw { message: `Insufficient stock for item ${excess.product}. Available: ${excess.remainingQuantity}, additional needed: ${qDiff}`, code: 400 };
             }
 
             // Sync stock
@@ -212,12 +220,16 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
         }
 
         // Modification: Selling Price
-        if (inputItem.sellingPrice !== undefined) {
+        if (inputItem.sellingPrice !== undefined && inputItem.sellingPrice !== existingItem.sellingPrice) {
             existingItem.sellingPrice = inputItem.sellingPrice;
+            hasChanged = true;
         }
 
         // Always sync buyingPrice from excess for accuracy (in case it changed)
-        existingItem.buyingPrice = excess.purchasePrice || existingItem.buyingPrice;
+        if (excess.purchasePrice !== existingItem.buyingPrice) {
+            existingItem.buyingPrice = excess.purchasePrice || existingItem.buyingPrice;
+            hasChanged = true;
+        }
 
         // Finalize item
         totalBuyingPrice += existingItem.buyingPrice * existingItem.quantity;
@@ -226,12 +238,22 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
     }
 
     // 4. Update Invoice Record
-    invoice.items = finalItems;
-    invoice.totalBuyingPrice = totalBuyingPrice;
-    invoice.totalSellingPrice = totalSellingPrice;
-    invoice.totalRevenuePrice = totalSellingPrice - totalBuyingPrice;
-    if (date) invoice.date = new Date(date);
-    await invoice.save({ session });
+    if (hasChanged || invoice.items.length !== finalItems.length) {
+        invoice.items = finalItems;
+        invoice.totalBuyingPrice = totalBuyingPrice;
+        invoice.totalSellingPrice = totalSellingPrice;
+        invoice.totalRevenuePrice = totalSellingPrice - totalBuyingPrice;
+        await invoice.save({ session });
+
+        const auditService = require('./auditService');
+        await auditService.logAction({
+            user: req?.user?._id,
+            action: 'UPDATE',
+            entityType: 'SalesInvoice',
+            entityId: invoice._id,
+            changes: data
+        }, req);
+    }
 
     // 5. Correct Hub Cash Balance AND Regular Balance
     const oldBuyingPrice = invoice.items.reduce((sum, item) => sum + (item.buyingPrice * item.quantity), 0);
@@ -299,10 +321,10 @@ exports.updateSalesInvoice = async (invoiceId, data, session) => {
  */
 exports.deleteSalesInvoice = async (invoiceId, session) => {
     const invoice = await SalesInvoice.findById(invoiceId).session(session);
-    if (!invoice) throw new Error('Invoice not found');
+    if (!invoice) throw { message: 'Invoice not found', code: 404 };
 
     const hub = await Pharmacy.findById(invoice.pharmacy).session(session);
-    if (!hub) throw new Error('Hub not found');
+    if (!hub) throw { message: 'Hub not found', code: 404 };
 
     // 1. Restore Stock for each item
     for (const item of invoice.items) {

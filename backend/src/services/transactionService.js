@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, BalanceHistory, User, Reservation, DeliveryRequest } = require('../models');
-const { sendToUser } = require('../utils/pusherManager');
+const { sendToUser = null } = require('../utils/pusherManager') || {};
 const serialService = require('./serialService');
+const auditService = require('./auditService');
 
 /**
  * Creates a new transaction.
@@ -12,24 +13,24 @@ exports.createTransaction = async (data, session, req = null) => {
 
     // 0. Validate quantity
     if (!quantityTaken || quantityTaken <= 0) {
-        throw new Error('Quantity taken must be a positive number');
+        throw { message: 'Quantity taken must be a positive number', code: 400 };
     }
 
     // 1. Check shortage
     const shortage = await StockShortage.findById(shortageId).session(session);
     if (!shortage || !['active', 'partially_fulfilled'].includes(shortage.status)) {
-        throw new Error('Shortage not found or not active');
+        throw { message: 'Shortage not found or not active', code: 404 };
     }
 
     // 1.1 Check Product Status
     const productObj = await mongoose.model('Product').findById(shortage.product).session(session);
     if (!productObj || productObj.status !== 'active') {
-        throw new Error('This product is currently inactive and cannot be transacted.');
+        throw { message: 'This product is currently inactive and cannot be transacted.', code: 400 };
     }
 
     const remainingNeeded = shortage.remainingQuantity;
     if (quantityTaken > remainingNeeded) {
-        throw new Error(`Requested quantity (${quantityTaken}) exceeds remaining needed (${remainingNeeded})`);
+        throw { message: `Requested quantity (${quantityTaken}) exceeds remaining needed (${remainingNeeded})`, code: 409 };
     }
 
     let totalAmount = 0;
@@ -41,7 +42,7 @@ exports.createTransaction = async (data, session, req = null) => {
     for (const source of excessSources) {
         const excess = await StockExcess.findById(source.stockExcessId).session(session);
         if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
-            throw new Error(`Excess ${source.stockExcessId} is no longer available in requested quantity`);    
+            throw { message: `Excess ${source.stockExcessId} is no longer available in requested quantity`, code: 409 };    
         }
         if (excess.shortage_fulfillment) {
             shortage_fulfillment = true;
@@ -63,7 +64,7 @@ exports.createTransaction = async (data, session, req = null) => {
     }
 
     if (totalQuantity !== quantityTaken) {
-        throw new Error('Total quantity from sources does not match quantity taken from shortage');
+        throw { message: 'Total quantity from sources does not match quantity taken from shortage', code: 400 };
     }
 
     // 3. Update shortage
@@ -122,6 +123,16 @@ exports.createTransaction = async (data, session, req = null) => {
         );
     }
 
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { serial, totalAmount, totalQuantity }
+        }, req);
+    }
+
     return transaction;
 };
 
@@ -130,18 +141,24 @@ exports.createTransaction = async (data, session, req = null) => {
  * MUST be called within a session.
  * @param {string} transactionId - The ID of the transaction to update.
  * @param {string} status - The new status.
+ * @param {Object} req - Request object for audit logging.
  * @param {Object} session - Mongoose session for atomicity.
  */
-exports.updateTransactionStatus = async (transactionId, status, session) => {
+exports.updateTransactionStatus = async (transactionId, status, req, session) => {
     const transaction = await Transaction.findById(transactionId).session(session);
 
     if (!transaction) {
-        throw new Error('Transaction not found');
+        throw { message: 'Transaction not found', code: 404 };
     }
 
     if (transaction.status === 'completed' || transaction.status === 'cancelled') {
-        throw new Error('Cannot change status of a finished transaction');
+        throw { message: 'Cannot change status of a finished transaction', code: 409 };
     }
+
+    if (transaction.status === status) {
+        return transaction; // No change detected
+    }
+    
     const oldStatus = transaction.status;
     if (status !== 'completed') {
         transaction.status = status;
@@ -211,6 +228,17 @@ exports.updateTransactionStatus = async (transactionId, status, session) => {
 
     
     await transaction.save({ session });
+
+    if (req) {
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { status, oldStatus }
+        }, req);
+    }
+
     return transaction;
 };
 
@@ -221,7 +249,7 @@ exports.updateTransactionStatus = async (transactionId, status, session) => {
 exports.unassignTransaction = async (transactionId, session, req = null) => {
     const transaction = await Transaction.findById(transactionId).session(session);
     if (!transaction) {
-        throw new Error('Transaction not found');
+        throw { message: 'Transaction not found', code: 404 };
     }
 
     const oldDeliveryId = transaction.delivery;
@@ -242,16 +270,16 @@ exports.unassignTransaction = async (transactionId, session, req = null) => {
     if (oldDeliveryId) {
         try {
             const { addNotificationJob } = require('../utils/queueManager');
-            await addNotificationJob(
-                oldDeliveryId.toString(),
-                'transaction',
-                `You have been detached from Transaction #${transaction.serial || transaction._id.toString().slice(-6)}.`,
-                {
-                    relatedEntity: transaction._id,
-                    relatedEntityType: 'Transaction'
-                },
-                `تم فصلك عن المعاملة #${transaction.serial || transaction._id.toString().slice(-6)}.`
-            );
+        setImmediate(() => addNotificationJob(
+            oldDeliveryId.toString(),
+            'transaction',
+            `You have been detached from Transaction #${transaction.serial || transaction._id.toString().slice(-6)}.`,
+            {
+                relatedEntity: transaction._id,
+                relatedEntityType: 'Transaction'
+            },
+            `تم فصلك عن المعاملة #${transaction.serial || transaction._id.toString().slice(-6)}.`
+        ));
         } catch (notifErr) {
             console.error('Notification error in unassignTransaction service:', notifErr);
         }
@@ -327,7 +355,7 @@ exports.settleTransaction = async (transaction, session) => {
                 
                 // 1. Validation: original sale percentage must match if it exists
                 if (shortage.originalSalePercentage && shortage.originalSalePercentage !== excess.salePercentage) {
-                    throw new Error(`Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%. Please re-list or adjust stock.`);
+                    throw { message: `Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%. Please re-list or adjust stock.`, code: 409 };
                 }
 
                 // 2. Calculate Commission Ratio (Seller Pays)
@@ -517,7 +545,7 @@ exports.notifyParties = async (transaction) => {
         // Notify Buyer standard logic
         const buyerUsers = await User.find({ pharmacy: buyerPhId });
         for (const user of buyerUsers) {
-            await addNotificationJob(
+            setImmediate(() => addNotificationJob(
                 user._id.toString(),
                 'transaction',
                 `Transaction for "${productName}" is now ${statusMsg}.`,
@@ -526,7 +554,7 @@ exports.notifyParties = async (transaction) => {
                     relatedEntityType: 'Transaction'
                 },
                 `المعاملة الخاصة بـ "${productName}" أصبحت الآن ${statusMsgAr}.`
-            );
+            ));
             sendToUser(user._id.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
         }
 
@@ -538,7 +566,7 @@ exports.notifyParties = async (transaction) => {
                 // It doesn't explicitly say "Sold to Hub".
                 // So default message is safe: "Your transaction for X is now Y"
                 
-                await addNotificationJob(
+                setImmediate(() => addNotificationJob(
                     user._id.toString(),
                     'transaction',
                     `Your transaction for "${productName}" is now ${statusMsg}.`,
@@ -547,14 +575,14 @@ exports.notifyParties = async (transaction) => {
                         relatedEntityType: 'Transaction'
                     },
                     `معاملتك الخاصة بـ "${productName}" أصبحت الآن ${statusMsgAr}.`
-                );
+                ));
                 sendToUser(user._id.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
             }
         }
 
         // -- Notify Delivery (if assigned) --
         if (transaction.delivery) {
-            await addNotificationJob(
+            setImmediate(() => addNotificationJob(
                 transaction.delivery.toString(),
                 'transaction',
                 `${serialMsg} for "${productName}" has been ${statusMsg}.`,
@@ -563,7 +591,7 @@ exports.notifyParties = async (transaction) => {
                     relatedEntityType: 'Transaction'
                 },
                 `${serialMsgAr} لـ "${productName}" أصبحت ${statusMsgAr}.`
-            );
+            ));
             sendToUser(transaction.delivery.toString(), 'transactionUpdate', { transactionId: transaction._id, status: transaction.status });
         }
 
@@ -579,10 +607,10 @@ exports.notifyParties = async (transaction) => {
 exports.revertAddToHub = async (transaction, session, req) => {
     // 1. Fetch and Validate Hub Excess
     const hubExcess = await StockExcess.findById(transaction.added_to_hub.excessId).session(session);
-    if (!hubExcess) throw new Error('Hub excess record not found');
+    if (!hubExcess) throw { message: 'Hub excess record not found', code: 404 };
 
     if (hubExcess.remainingQuantity !== hubExcess.originalQuantity) {
-        throw new Error('Cannot revert: The transferred stock has already been used by the Hub.');
+        throw { message: 'Cannot revert: The transferred stock has already been used by the Hub.', code: 409 };
     }
 
     // 2. Cancel Hub Excess

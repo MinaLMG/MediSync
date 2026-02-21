@@ -1,6 +1,7 @@
 const { Compensation, Pharmacy, BalanceHistory, User } = require('../models');
 const { addNotificationJob } = require('../utils/queueManager');
 const { sendToUser } = require('../utils/pusherManager');
+const auditService = require('../services/auditService');
 const mongoose = require('mongoose');
 
 // @desc    Add compensation to pharmacy
@@ -15,16 +16,16 @@ exports.createCompensation = async (req, res) => {
 
         // Validation
         if (!pharmacyId || !amount || !description) {
-            throw new Error('Please provide all fields: pharmacyId, amount, description');
+            throw { message: 'Please provide all fields: pharmacyId, amount, description', code: 400 };
         }
 
         if (amount <= 0) {
-            throw new Error('Amount must be greater than 0');
+            throw { message: 'Amount must be greater than 0', code: 400 };
         }
 
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
         if (!pharmacy) {
-            throw new Error('Pharmacy not found');
+            throw { message: 'Pharmacy not found', code: 404 };
         }
 
         // Create Compensation record
@@ -80,22 +81,29 @@ exports.createCompensation = async (req, res) => {
                 details: { compensationId: compensation[0]._id }
             }], { session });
         }
-
         // Notify Pharmacy Owner
         const owner = await User.findOne({ pharmacy: pharmacyId }).session(session);
         if (owner) {
-            await addNotificationJob(
-                owner._id.toString(),
-                'system',
-                `You have received a compensation of ${amount} coins. Reason: ${description}`,
-                {
-                    priority: 'high', // System notifs are high priority
-                    relatedEntity: compensation[0]._id,
-                    relatedEntityType: 'Compensation'
-                },
-                `لقد تلقيت تعويضاً بقيمة ${amount} قطعة. السبب: ${description}`
-            );
+        setImmediate(() => addNotificationJob(
+            owner._id.toString(),
+            'system',
+            `You have received a compensation of ${amount} coins. Reason: ${description}`,
+            {
+                priority: 'high', // System notifs are high priority
+                relatedEntity: compensation[0]._id,
+                relatedEntityType: 'Compensation'
+            },
+            `لقد تلقيت تعويضاً بقيمة ${amount} قطعة. السبب: ${description}`
+        ));
         }
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Compensation',
+            entityId: compensation[0]._id,
+            changes: { amount, description, pharmacyId }
+        }, req);
 
         await session.commitTransaction();
 
@@ -106,12 +114,8 @@ exports.createCompensation = async (req, res) => {
         });
 
     } catch (error) {
-        await session.abortTransaction();
-        console.error('Compensation Error:', error);
-        res.status(400).json({
-            success: false,
-            message: error.message
-        });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -132,7 +136,7 @@ exports.getCompensations = async (req, res) => {
             data: compensations
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
@@ -148,11 +152,11 @@ exports.updateCompensation = async (req, res) => {
         const compensation = await Compensation.findById(req.params.id).session(session);
 
         if (!compensation) {
-            throw new Error('Compensation not found');
+            throw { message: 'Compensation not found', code: 404 };
         }
 
-        if (amount <= 0) {
-            throw new Error('Amount must be greater than 0');
+        if (amount !== undefined && amount <= 0) {
+            throw { message: 'Amount must be greater than 0', code: 400 };
         }
 
         const oldAmount = compensation.amount;
@@ -184,20 +188,46 @@ exports.updateCompensation = async (req, res) => {
             }], { session });
         }
 
-        // Trigger Real-time Balance Update
-        const users = await User.find({ pharmacy: pharmacy._id });
-        for (const u of users) {
-             await sendToUser(u._id.toString(), 'balanceUpdate', {
-                balance: pharmacy.balance
-            });
+        // Notify Pharmacy Owner
+        const owner = await User.findOne({ pharmacy: compensation.pharmacy }).session(session);
+        if (owner) {
+        setImmediate(() => addNotificationJob(
+            owner._id.toString(),
+            'system',
+            `Compensation updated: ${oldAmount} -> ${amount}. Reason: ${description}`,
+            {
+                priority: 'high', // System notifs are high priority
+                relatedEntity: compensation._id,
+                relatedEntityType: 'Compensation'
+            },
+            `تم تحديث التعويض: ${oldAmount} -> ${amount}. السبب: ${description}`
+        ));
         }
+
+        // Trigger Real-time Balance Update for all pharmacy users
+        const users = await User.find({ pharmacy: pharmacy._id });
+        if (users.length > 0) {
+            for (const u of users) {
+                 await sendToUser(u._id.toString(), 'balanceUpdate', {
+                    balance: pharmacy.balance
+                });
+            }
+        }
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Compensation',
+            entityId: compensation._id,
+            changes: { amount, oldAmount, description, diff }
+        }, req);
 
         await session.commitTransaction();
 
         res.status(200).json({ success: true, data: compensation });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
@@ -214,7 +244,7 @@ exports.deleteCompensation = async (req, res) => {
         const compensation = await Compensation.findById(req.params.id).session(session);
 
         if (!compensation) {
-            throw new Error('Compensation not found');
+            throw { message: 'Compensation not found', code: 404 };
         }
 
         const pharmacy = await Pharmacy.findById(compensation.pharmacy).session(session);
@@ -240,20 +270,30 @@ exports.deleteCompensation = async (req, res) => {
         // Delete Compensation
         await compensation.deleteOne({ session });
 
-        // Trigger Real-time Balance Update
+        // Trigger Real-time Balance Update for all pharmacy users
         const users = await User.find({ pharmacy: pharmacy._id });
-        for (const u of users) {
-             await sendToUser(u._id.toString(), 'balanceUpdate', {
-                balance: pharmacy.balance
-            });
+        if (users.length > 0) {
+            for (const u of users) {
+                 await sendToUser(u._id.toString(), 'balanceUpdate', {
+                    balance: pharmacy.balance
+                });
+            }
         }
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'Compensation',
+            entityId: compensation._id,
+            changes: { amount: compensation.amount, description: compensation.description }
+        }, req);
 
         await session.commitTransaction();
 
         res.status(200).json({ success: true, message: 'Compensation deleted and balance reverted' });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(400).json({ success: false, message: error.message });
+        if (session && session.inTransaction()) await session.abortTransaction();
+        res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
