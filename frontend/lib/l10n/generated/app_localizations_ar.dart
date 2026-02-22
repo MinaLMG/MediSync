@@ -202,6 +202,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuManagePharmacies => 'إدارة الصيدليات';
 
   @override
+  String get sortBy => 'فرز حسب';
+
+  @override
+  String get sortBalanceAsc => 'الرصيد (من الأقل للأعلى)';
+
+  @override
+  String get sortBalanceDesc => 'الرصيد (من الأعلى للأقل)';
+
+  @override
+  String get sortDefault => 'الافتراضي (الأحدث أولاً)';
+
+  @override
   String get menuAppSuggestions => 'اقتراحات التطبيق';
 
   @override

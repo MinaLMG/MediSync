@@ -14,8 +14,11 @@ exports.getAllProducts = async (req, res) => {
         if (req.user.role !== 'admin') matchQuery.status = 'active';
 
         if (search) {
-            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-            matchQuery.name = { $regex: escapedSearch, $options: 'i' };
+            // Escape special regex characters except '*'
+            const escaped = search.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+            // Replace '*' with '.*' and add .* at start and end for partial matching
+            const searchRegex = `.*${escaped.replace(/\*/g, '.*')}.*`;
+            matchQuery.name = { $regex: searchRegex, $options: 'i' };
         }
 
         const productsCount = await Product.countDocuments(matchQuery);
@@ -61,8 +64,8 @@ exports.getAllProducts = async (req, res) => {
         // Clean up temporary fields
         formattedProducts.forEach(p => delete p.volumeDetails);
 
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             data: formattedProducts,
             pagination: {
                 total: productsCount,
@@ -167,11 +170,11 @@ exports.getProductsLite = async (req, res) => {
             matchQuery.status = 'active';
         }
         if (search) {
-            // Escape special regex characters except *
-            const escapedSearch = search.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-            // Convert * to .*
-            const regexSearch = escapedSearch.replace(/\*/g, '.*');
-            matchQuery.name = { $regex: regexSearch, $options: 'i' };
+            // Escape special regex characters except '*'
+            const escaped = search.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+            // Replace '*' with '.*' and add .* at start and end for partial matching
+            const searchRegex = `.*${escaped.replace(/\*/g, '.*')}.*`;
+            matchQuery.name = { $regex: searchRegex, $options: 'i' };
         }
 
         const products = await Product.find(matchQuery)
@@ -332,7 +335,7 @@ exports.updateProduct = async (req, res) => {
         let hasChanged = false;
         const updates = {};
         const allowedFields = ['name', 'conversions'];
-        
+
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
@@ -379,9 +382,9 @@ exports.toggleProductStatus = async (req, res) => {
 
         const oldStatus = product.status;
         product.status = product.status === 'active' ? 'inactive' : 'active';
-        
+
         await product.save({ session });
-        
+
         const auditService = require('../services/auditService');
         await auditService.logAction({
             user: req.user._id,
@@ -409,7 +412,7 @@ exports.addPriceToVolume = async (req, res) => {
         const { price } = req.body;
         const hv = await HasVolume.findById(req.params.hasVolumeId).session(session);
         if (!hv) throw { message: 'Product Volume connection not found', code: 404 };
-        
+
         hv.prices.push(price);
         await hv.save({ session });
 
@@ -440,7 +443,7 @@ exports.removePriceFromVolume = async (req, res) => {
         const { priceIndex } = req.body;
         const hv = await HasVolume.findById(req.params.hasVolumeId).session(session);
         if (!hv) throw { message: 'Product Volume connection not found', code: 404 };
-        
+
         const removedPrice = hv.prices[priceIndex];
         hv.prices.splice(priceIndex, 1);
         await hv.save({ session });

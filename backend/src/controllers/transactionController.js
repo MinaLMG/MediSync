@@ -27,9 +27,14 @@ const getExcessService = () => require('../services/excessService');
 exports.getMatchableProducts = async (req, res) => {
     try {
         const search = req.query.search || '';
-        let matchQuery = { remainingQuantity: { $gt: 0 } };
-        // Optimization: If search is provided, we can filter earlier or later.
-        // Let's filter after grouping for simplicity or use $match after $lookup.
+
+        let searchRegex = search;
+        if (search.includes('*')) {
+            // Escape special regex characters except '*'
+            const escaped = search.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+            // Replace '*' with '.*' and add .* at start and end for partial matching
+            searchRegex = `.*${escaped.replace(/\*/g, '.*')}.*`;
+        }
         const matchable = await StockShortage.aggregate([
             { $match: { remainingQuantity: { $gt: 0 }, order: null } },
             { $group: { _id: "$product", shortageVolumes: { $addToSet: "$volume" } } },
@@ -74,7 +79,7 @@ exports.getMatchableProducts = async (req, res) => {
             {
                 $match: {
                     "product.status": "active",
-                    "product.name": { $regex: search, $options: 'i' }
+                    "product.name": { $regex: searchRegex, $options: 'i' }
                 }
             },
             {

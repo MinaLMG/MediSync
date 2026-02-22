@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import 'matching_detail_screen.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../utils/search_utils.dart';
 
 class AdminMatchableProductsScreen extends StatefulWidget {
   const AdminMatchableProductsScreen({super.key});
@@ -16,8 +17,6 @@ class AdminMatchableProductsScreen extends StatefulWidget {
 class _AdminMatchableProductsScreenState
     extends State<AdminMatchableProductsScreen> {
   String _searchQuery = '';
-  Timer? _debounce;
-
   @override
   void initState() {
     super.initState();
@@ -29,21 +28,16 @@ class _AdminMatchableProductsScreenState
       () => Provider.of<TransactionProvider>(
         context,
         listen: false,
-      ).fetchMatchableProducts(search: _searchQuery),
+      ).fetchMatchableProducts(),
     );
   }
 
   void _onSearchChanged(String v) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() => _searchQuery = v);
-      _fetchMatchable();
-    });
+    setState(() => _searchQuery = v);
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -51,7 +45,12 @@ class _AdminMatchableProductsScreenState
   Widget build(BuildContext context) {
     final transactionProvider = Provider.of<TransactionProvider>(context);
 
-    final filteredProducts = transactionProvider.matchableProducts;
+    final filteredProducts = _searchQuery.isEmpty
+        ? transactionProvider.matchableProducts
+        : transactionProvider.matchableProducts.where((item) {
+            final productName = item['product']['name'].toString();
+            return SearchUtils.matches(productName, _searchQuery);
+          }).toList();
 
     return Scaffold(
       appBar: AppBar(

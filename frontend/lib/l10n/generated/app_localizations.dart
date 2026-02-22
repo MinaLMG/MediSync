@@ -476,6 +476,30 @@ abstract class AppLocalizations {
   /// **'Manage Pharmacies'**
   String get menuManagePharmacies;
 
+  /// No description provided for @sortBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort By'**
+  String get sortBy;
+
+  /// No description provided for @sortBalanceAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance (Low to High)'**
+  String get sortBalanceAsc;
+
+  /// No description provided for @sortBalanceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance (High to Low)'**
+  String get sortBalanceDesc;
+
+  /// No description provided for @sortDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default (Newest First)'**
+  String get sortDefault;
+
   /// No description provided for @menuAppSuggestions.
   ///
   /// In en, this message translates to:

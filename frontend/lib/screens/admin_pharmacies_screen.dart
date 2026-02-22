@@ -8,6 +8,8 @@ import '../utils/search_utils.dart';
 import 'admin_simulation_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
+enum PharmacySort { defaultSort, balanceAsc, balanceDesc }
+
 class AdminPharmaciesScreen extends StatefulWidget {
   const AdminPharmaciesScreen({super.key});
 
@@ -19,6 +21,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
   bool _isLoading = false;
   List<dynamic> _pharmacies = [];
   String _searchQuery = '';
+  PharmacySort _currentSort = PharmacySort.defaultSort;
 
   @override
   void initState() {
@@ -53,10 +56,49 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
           SearchUtils.matches(ph['address'], _searchQuery);
     }).toList();
 
+    // Apply Sorting
+    switch (_currentSort) {
+      case PharmacySort.balanceAsc:
+        filteredPharmacies.sort(
+          (a, b) => (a['balance'] ?? 0).compareTo(b['balance'] ?? 0),
+        );
+        break;
+      case PharmacySort.balanceDesc:
+        filteredPharmacies.sort(
+          (a, b) => (b['balance'] ?? 0).compareTo(a['balance'] ?? 0),
+        );
+        break;
+      case PharmacySort.defaultSort:
+        // Default is createdAt -1 from backend, but we can re-sort if list was mutated
+        filteredPharmacies.sort(
+          (a, b) => (b['createdAt'] ?? '').compareTo(a['createdAt'] ?? ''),
+        );
+        break;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.managePharmaciesTitle),
         actions: [
+          PopupMenuButton<PharmacySort>(
+            icon: const Icon(Icons.sort),
+            tooltip: l10n.sortBy,
+            onSelected: (sort) => setState(() => _currentSort = sort),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: PharmacySort.defaultSort,
+                child: Text(l10n.sortDefault),
+              ),
+              PopupMenuItem(
+                value: PharmacySort.balanceAsc,
+                child: Text(l10n.sortBalanceAsc),
+              ),
+              PopupMenuItem(
+                value: PharmacySort.balanceDesc,
+                child: Text(l10n.sortBalanceDesc),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchPharmacies,
@@ -99,6 +141,40 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                           subtitle: Text(
                             ph['address'] ??
                                 AppLocalizations.of(context)!.labelAddress,
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${ph['balance'] ?? 0}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: (ph['balance'] ?? 0) >= 0
+                                          ? Colors.green[700]
+                                          : Colors.red[700],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Text(
+                                    l10n.coinsSuffix,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.expand_more,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
                           ),
                           children: [
                             Padding(

@@ -37,6 +37,29 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    flavorDimensions.add("app")
+    productFlavors {
+        create("standard") {
+            dimension = "app"
+            // Inherits default applicationId "com.example.frontend" 
+            // to support existing installations.
+        }
+        create("admin") {
+            dimension = "app"
+            applicationId = "com.medisync.admin"
+            versionNameSuffix = "-admin"
+        }
+        create("hub") {
+            dimension = "app"
+            applicationId = "com.medisync.hub"
+            versionNameSuffix = "-hub"
+        }
+        create("delivery") {
+            dimension = "app"
+            applicationId = "com.medisync.delivery"
+            versionNameSuffix = "-delivery"
+        }
+    }
 }
 
 flutter {

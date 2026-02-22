@@ -203,6 +203,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuManagePharmacies => 'Manage Pharmacies';
 
   @override
+  String get sortBy => 'Sort By';
+
+  @override
+  String get sortBalanceAsc => 'Balance (Low to High)';
+
+  @override
+  String get sortBalanceDesc => 'Balance (High to Low)';
+
+  @override
+  String get sortDefault => 'Default (Newest First)';
+
+  @override
   String get menuAppSuggestions => 'App Suggestions';
 
   @override

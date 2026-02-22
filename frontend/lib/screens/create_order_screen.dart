@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../utils/search_utils.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -720,10 +721,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     final filteredItems = _searchQuery.isEmpty
         ? excesses
         : excesses.where((item) {
-            final productName = item['product']['name']
-                .toString()
-                .toLowerCase();
-            return productName.contains(_searchQuery.toLowerCase());
+            final productName = item['product']['name'].toString();
+            return SearchUtils.matches(productName, _searchQuery);
           }).toList();
 
     return Scaffold(
