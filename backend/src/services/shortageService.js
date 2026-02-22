@@ -430,10 +430,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
             );
         }
 
-        for (const excessId of transaction.stockExcessSources.map(s => s.stockExcess)) {
-            const excess = await StockExcess.findById(excessId).session(session);
-            if (excess) await getExcessService().syncExcessStatus(excess, session);
-        }
 
         const orderId = shortage.order;
 
