@@ -1,19 +1,45 @@
-const { StockExcess, HasVolume, StockShortage, Settings, Product, Transaction, Pharmacy, SalesInvoice, User } = require('../models');
+const mongoose = require('mongoose');
+const {
+    StockExcess,
+    HasVolume,
+    StockShortage,
+    Settings,
+    Product,
+    Transaction,
+    Pharmacy,
+    SalesInvoice,
+    User
+} = require('../models');
 const auditService = require('./auditService');
 const serialService = require('./serialService');
-const mongoose = require('mongoose');
+
+// Lazy-loaded services for circular dependency safety
+const getTransactionService = () => require('./transactionService');
+const getShortageService = () => require('./shortageService');
+
+// =============================================================================
+// EXCESS MANAGEMENT (LIFE CYCLE)
+// =============================================================================
 
 /**
  * Creates a new stock excess.
+ * Handles shortage fulfillment logic, hub stock flags, and purchase price calculation.
+ *
+ * @param {Object} userData - Data for the new excess.
+ * @param {string} pharmacyId - The ID of the pharmacy creating the excess.
+ * @param {Object} [req=null] - The request object for audit logging.
+ * @param {Object} [session=null] - Mongoose session for transactions.
+ * @returns {Promise<Object>} The created StockExcess document.
+ * @throws {Object} Error object with message and code if product is inactive, shortage exists, or hub purchase price is missing.
  */
 exports.createExcess = async (userData, pharmacyId, req = null, session = null) => {
-    const { 
-        product, 
-        volume, 
-        quantity, 
-        expiryDate, 
-        selectedPrice, 
-        salePercentage, 
+    const {
+        product,
+        volume,
+        quantity,
+        expiryDate,
+        selectedPrice,
+        salePercentage,
         shortage_fulfillment,
         isHubGenerated,
         isHubPurchase,
@@ -27,6 +53,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     }
 
     // Check if a Shortage exists for this product (Constraint)
+
     const existingShortage = await StockShortage.findOne({
         pharmacy: pharmacyId,
         product,
@@ -34,11 +61,12 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     }).session(session);
 
     if (existingShortage) { // Only check for regular user adds
-        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);   
-        if (!pharmacy ||!pharmacy.isHub) {
+        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
+        if (!pharmacy || !pharmacy.isHub) {
             throw { message: 'You cannot add an excess for this product because you already have an active shortage for it.', code: 409 };
         }
     }
+
     const isShortageFulfillment = shortage_fulfillment === true;
 
     const settings = await Settings.getSettings();
@@ -52,26 +80,26 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         // "If the sale is 10%, the user sees no sale." -> Means totalSale=10, Commission=10, UserSale=0.
         // So `salePercentage` stored in DB should be the TOTAL cut (System + User).
         // If user enters 0, we effectively take 10%.
-        // But if user enters 0, is it "0 sale to end user" or "0 cut"? 
+        // But if user enters 0, is it "0 sale to end user" or "0 cut"?
         // "note for the sale that notified the users that the mininmum commision sale % is x"
         // So the input `salePercentage` IS the total sale.
         // If not provided, we should default it to `systemMinComm` (e.g. 10).
         if (salePercentage === undefined || salePercentage === null) {
-              finalSalePercentage = systemMinComm;
+            finalSalePercentage = systemMinComm;
         } else {
-             // Ensure it's at least min comm?
-             // "If the sale is 10%, the user sees no sale." -> Implies we accept 10%.
-             // What if they enter 5%? Then we take 5%? Or 10%?
-             // "we still take our minimum commission of 10%".
-             // So if they enter 5%, we must take 10%. 
-             // We should probably force it to be at least systemMinComm.
-             finalSalePercentage = Math.max(salePercentage, systemMinComm);
+            // Ensure it's at least min comm?
+            // "If the sale is 10%, the user sees no sale." -> Implies we accept 10%.
+            // What if they enter 5%? Then we take 5%? Or 10%?
+            // "we still take our minimum commission of 10%".
+            // So if they enter 5%, we must take 10%.
+            // We should probably force it to be at least systemMinComm.
+            finalSalePercentage = Math.max(salePercentage, systemMinComm);
         }
     } else {
-        // Shortage: we use provided or 0? 
-        // Usually shortage has its own logic (buyer pays commission). 
+        // Shortage: we use provided or 0?
+        // Usually shortage has its own logic (buyer pays commission).
         // We'll leave it as is or default to 0 if null.
-        finalSalePercentage = 0; 
+        finalSalePercentage = 0;
     }
 
 
@@ -100,7 +128,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
     }
 
     const excessData = {
-        pharmacy: pharmacyId, 
+        pharmacy: pharmacyId,
         product,
         volume,
         originalQuantity: quantity,
@@ -108,23 +136,24 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         expiryDate,
         selectedPrice,
         salePercentage: finalSalePercentage,
-         shortage_fulfillment: isShortageFulfillment,
+        shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
-        status: 'pending' 
+        status: 'pending'
     };
-    if(isHubPurchase){  
+    if (isHubPurchase) {
         excessData.isHubPurchase = true;
     }
-    if(isHubGenerated){ 
+    if (isHubGenerated) {
         excessData.isHubGenerated = true;
     }
     if (finalPurchasePrice) {
         excessData.purchasePrice = finalPurchasePrice;
-    }  
+    }
 
     const excess = session
         ? (await StockExcess.create([excessData], { session }))[0]
         : await StockExcess.create(excessData);
+
 
     await auditService.logAction({
         user: req?.user?._id,
@@ -140,11 +169,16 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
 /**
  * Approves an excess, setting its status to 'available'.
  * Handles pricing updates in HasVolume.
+ *
+ * @param {string} excessId - The ID of the excess to approve.
+ * @param {Object} [session=null] - Mongoose session for transactions.
+ * @returns {Promise<Object>} The approved StockExcess document.
+ * @throws {Object} Error object with message and code if excess is not found.
  */
 exports.approveExcess = async (excessId, session = null) => {
     const excess = await StockExcess.findByIdAndUpdate(
-        excessId, 
-        { status: 'available' }, 
+        excessId,
+        { status: 'available' },
         { new: true, session }
     );
     if (!excess) throw { message: 'Excess not found', code: 404 };
@@ -185,10 +219,19 @@ exports.approveExcess = async (excessId, session = null) => {
 
 /**
  * Updates an existing excess.
+ * Handles quantity changes, price/sale percentage updates, and re-approval logic.
+ *
+ * @param {string} excessId - The ID of the excess to update.
+ * @param {Object} updateData - The data to update the excess with.
+ * @param {Object} user - The user performing the update (for authorization).
+ * @param {Object} [req=null] - The request object for audit logging.
+ * @param {Object} [session=null] - Mongoose session for transactions.
+ * @returns {Promise<Object>} The updated StockExcess document.
+ * @throws {Object} Error object with message and code for various validation failures.
  */
 exports.updateExcess = async (excessId, updateData, user, req = null, session = null) => {
     const { quantity, selectedPrice, salePercentage, shortage_fulfillment } = updateData;
-    
+
     const excess = await StockExcess.findById(excessId).session(session);
     if (!excess) throw { message: 'Excess not found', code: 404 };
 
@@ -210,7 +253,7 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
             throw { message: 'Quantity for hub stock cannot be updated manually. Please update via the source document.', code: 409 };
         }
         if (quantity > excess.originalQuantity) {
-             throw { message: 'Excesses can only be decreased in quantity, not increased.', code: 400 };
+            throw { message: 'Excesses can only be decreased in quantity, not increased.', code: 400 };
         }
         if (quantity < taken) throw { message: `Quantity cannot be less than taken (${taken}).`, code: 400 };
         excess.originalQuantity = quantity;
@@ -232,7 +275,7 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
         if (updateData.expiryDate !== undefined && updateData.expiryDate !== excess.expiryDate) {
             throw { message: 'Cannot change expiry date for excess with committed stock.', code: 409 };
         }
-    }  else {
+    } else {
         // No stock sold yet - allow updates
         let needsReapproval = false;
 
@@ -248,7 +291,7 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
             if (salePercentage !== undefined && salePercentage !== excess.salePercentage) {
                 excess.salePercentage = Math.max(salePercentage, settings.minimumCommission);
                 needsReapproval = true;
-            }else{
+            } else {
                 excess.salePercentage = settings.minimumCommission;
                 excess.saleAmount = excess.selectedPrice * (settings.minimumCommission / 100);
             }
@@ -264,8 +307,7 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
             }
             excess.selectedPrice = selectedPrice;
             needsReapproval = true;
-           // Re-calculate isNewPrice for the price list logic
-            const { HasVolume } = require('../models');
+            // Re-calculate isNewPrice for the price list logic
             const hasVolume = await HasVolume.findOne({ product: excess.product, volume: excess.volume }).session(session);
             excess.isNewPrice = hasVolume && !hasVolume.prices.includes(selectedPrice);
         }
@@ -306,26 +348,45 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
     return excess;
 };
 
+/**
+ * Updates excess status based on available quantity.
+ * Transitions between 'available', 'partially_fulfilled', 'fulfilled', or 'cancelled'.
+ *
+ * @param {Object} excess - The excess document.
+ * @param {Object} [session=null] - Mongoose session.
+ */
 exports.syncExcessStatus = async (excess, session = null) => {
     // Don't change pending, rejected, or cancelled status
     if (['pending', 'rejected', 'cancelled'].includes(excess.status)) {
         return;
     }
-    if(excess.remainingQuantity==0){
+    if (excess.remainingQuantity == 0) {
         // No remaining quantity (all taken)
         excess.status = 'fulfilled';
     }
-    else if (excess.remainingQuantity == excess.originalQuantity ) {
+    else if (excess.remainingQuantity == excess.originalQuantity) {
         excess.status = 'available';
     } else {
         excess.status = 'partially_fulfilled';
     }
-    if  (session)   
-    await excess.save({ session });
+    if (session)
+        await excess.save({ session });
 };
 
+// =============================================================================
+// HUB OPERATIONS
+// =============================================================================
+
 /**
- * Moves excess quantity to a Hub pharmacy.
+ * Moves an existing pharmacy excess to a Hub.
+ * Creates a Hub Shortage, a transaction for transfer, and a new Hub Excess.
+ *
+ * @param {string} excessId - Source excess ID.
+ * @param {string} hubId - The ID of the target Hub pharmacy.
+ * @param {number} quantity - The quantity to move to the Hub.
+ * @param {Object} [req=null] - Request object for auditing.
+ * @returns {Promise<Object>} An object containing success status, the transaction, and the new hub excess.
+ * @throws {Object} Error object with message and code for various validation failures.
  */
 exports.addToHub = async (excessId, hubId, quantity, req = null) => {
     const session = await mongoose.startSession();
@@ -343,9 +404,8 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             throw { message: 'Cannot add excess to the same hub account (Self-dealing detected).', code: 409 };
         }
 
-        // Services imported here to avoid circular dependency
-        const shortageService = require('./shortageService');
-        const transactionService = require('./transactionService');
+        const shortageService = getShortageService();
+        const transactionService = getTransactionService();
 
         // 1. Create a shortage at the hub
         const shortage = await shortageService.createShortage(
@@ -360,13 +420,16 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             session
         );
 
-        // 2. Create the transaction (Hub as buyer)
+        // 2. Create Transfer Transaction
         const transaction = await transactionService.createTransaction({
             shortageId: shortage._id,
             quantityTaken: quantity,
-            excessSources: [{ stockExcessId: excess._id, quantity: quantity }],
+            excessSources: [{
+                stockExcessId: excess._id,
+                quantity: quantity
+            }],
         }, session, req);
-        
+
         // 3. Complete the transaction (Accepted -> Completed)
         await transactionService.updateTransactionStatus(transaction._id, 'accepted', req, session);
         await transactionService.updateTransactionStatus(transaction._id, 'completed', req, session);
@@ -388,14 +451,14 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         }, hubId, req, session);
         //approve the excess
         await exports.approveExcess(hubExcess._id, session);
-        
         // Update transaction with added_to_hub reference
         transaction.added_to_hub = { excessId: hubExcess._id };
+
         await transaction.save({ session });
 
         await session.commitTransaction();
 
-        // 5. Notify parties (after commit)
+        // 6. Notify parties (after commit)
         await transactionService.notifyParties(transaction);
 
         await auditService.logAction({
@@ -425,11 +488,11 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
 exports.propagateBuyingPriceUpdate = async (excessId, newBuyingPrice, session = null) => {
     // Find all sales invoices that contain this excess
     const invoices = await SalesInvoice.find({ 'items.excess': excessId }).session(session);
-    
+
     for (const invoice of invoices) {
         let totalBuying = 0;
         let totalSelling = 0;
-        
+
         for (const item of invoice.items) {
             if (item.excess.toString() === excessId.toString()) {
                 item.buyingPrice = newBuyingPrice;
@@ -437,11 +500,11 @@ exports.propagateBuyingPriceUpdate = async (excessId, newBuyingPrice, session = 
             totalBuying += (item.buyingPrice * item.quantity);
             totalSelling += (item.sellingPrice * item.quantity);
         }
-        
+
         invoice.totalBuyingPrice = totalBuying;
         invoice.totalSellingPrice = totalSelling;
         invoice.totalRevenuePrice = totalSelling - totalBuying;
-        
+
         await invoice.save({ session });
     }
 };

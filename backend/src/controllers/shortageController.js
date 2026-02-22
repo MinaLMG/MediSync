@@ -1,44 +1,91 @@
-const shortageService = require('../services/shortageService');
-const { StockShortage } = require('../models');
 const mongoose = require('mongoose');
+const { StockShortage, Order } = require('../models');
 
-// Create new shortage (Single)
+// Services
+const shortageService = require('../services/shortageService');
+
+// =============================================================================
+// SHORTAGE CREATION (SINGLE & BULK)
+// =============================================================================
+
+// @desc    Create new shortage (Single request)
+// @route   POST /api/shortage
+// @access  Pharmacy Owner / Manager
 exports.createShortage = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+        const { product, quantity, targetPrice } = req.body;
+
+        // --- Manual Validation ---
+        if (!product || !quantity) {
+            throw { message: 'Missing required fields: product and quantity are required.', code: 400 };
+        }
+        if (quantity <= 0) {
+            throw { message: 'Quantity must be a positive number.', code: 400 };
+        }
+
         const shortage = await shortageService.createShortage(req.body, req.user.pharmacy, req, session);
         await session.commitTransaction();
         res.status(201).json({ success: true, data: shortage });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();
+        console.error('❌ [Shortage Controller] createShortage failed:', error);
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
 };
 
-// Create bulk order (Multiple Shortages)
+// @desc    Create bulk order (Multiple Shortages)
+// @route   POST /api/shortage/order
+// @access  Pharmacy Owner / Manager
 exports.createOrder = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+        const { items } = req.body;
+
+        // --- Manual Validation ---
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            throw { message: 'Items array is required and cannot be empty.', code: 400 };
+        }
+        for (const item of items) {
+            if (!item.product || !item.quantity || item.quantity <= 0) {
+                throw { message: 'Invalid item in list: product and positive quantity are required.', code: 400 };
+            }
+        }
+
         const order = await shortageService.createOrder(req.body, req.user.pharmacy, req, session);
         await session.commitTransaction();
         res.status(201).json({ success: true, data: order });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();
+        console.error('❌ [Shortage Controller] createOrder failed:', error);
         res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
     }
 };
 
-// Update shortage (Manager/Owner)
+// =============================================================================
+// SHORTAGE MANAGEMENT (LIFE CYCLE)
+// =============================================================================
+
+// @desc    Update shortage quantity
+// @route   PUT /api/shortage/:id
+// @access  Pharmacy Owner / Manager
 exports.updateShortage = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+        const { quantity } = req.body;
+
+        // --- Manual Validation ---
+        if (quantity !== undefined && quantity <= 0) {
+            throw { message: 'Quantity must be a positive number.', code: 400 };
+        }
+
         const updates = {};
         const allowedFields = ['quantity'];
         for (const field of allowedFields) {
@@ -50,6 +97,7 @@ exports.updateShortage = async (req, res) => {
         res.status(200).json({ success: true, data: shortage });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();
+        console.error('❌ [Shortage Controller] updateShortage failed:', error);
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
@@ -68,12 +116,12 @@ exports.cancelShortage = async (req, res) => {
         // The service logic I wrote takes (shortageId, session, req).
         // It doesn't explicitly check pharmacy ownership inside cancelShortage yet.
         // I should probably add ownership check in controller.
-        
+
         const shortage = await StockShortage.findById(req.params.id);
         if (!shortage) throw { message: 'Shortage not found', code: 404 };
-        
+
         if (req.user.role !== 'admin' && shortage.pharmacy.toString() !== req.user.pharmacy.toString()) {
-             throw { message: 'Not authorized', code: 403 };
+            throw { message: 'Not authorized', code: 403 };
         }
 
         await shortageService.cancelShortage(req.params.id, session, req);
@@ -103,7 +151,13 @@ exports.deleteShortage = async (req, res) => {
     }
 };
 
-// Get active shortages (Admin)
+// =============================================================================
+// QUERY OPERATIONS
+// =============================================================================
+
+// @desc    Get all active shortages
+// @route   GET /api/shortage/active
+// @access  Admin
 exports.getActiveShortages = async (req, res) => {
     try {
         const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } })
@@ -120,7 +174,7 @@ exports.getActiveShortages = async (req, res) => {
 // Get shortages for my pharmacy
 exports.getMyShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ 
+        const shortages = await StockShortage.find({
             pharmacy: req.user.pharmacy,
         })
             .populate('product', 'name')
@@ -167,7 +221,7 @@ exports.getGlobalActiveShortages = async (req, res) => {
 // Get fulfilled shortages (Admin)
 exports.getFulfilledShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ 
+        const shortages = await StockShortage.find({
             $or: [
                 { status: 'cancelled' },
                 { remainingQuantity: 0 }

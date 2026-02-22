@@ -1,10 +1,31 @@
-const { StockShortage, StockExcess, Product, Pharmacy, Order, Reservation } = require('../models');
-const auditService = require('./auditService');
-const serialService = require('./serialService');
 const mongoose = require('mongoose');
+const {
+    StockShortage,
+    StockExcess,
+    Order,
+    Settings,
+    Product,
+    Pharmacy,
+    Reservation
+} = require('../models');
+const serialService = require('./serialService');
+const auditService = require('./auditService');
+
+// Lazy-loaded services for circular dependency safety
+const getExcessService = () => require('./excessService');
+
+// =============================================================================
+// SHORTAGE CREATION (SINGLE & BULK)
+// =============================================================================
 
 /**
- * Creates a single stock shortage.
+ * Creates a new stock shortage.
+ * Handles serial number generation, product validation, and initial status sync.
+ *
+ * @param {Object} data - Shortage data.
+ * @param {string} pharmacyId - Pharmacy ID.
+ * @param {Object} [req] - Request for auditing.
+ * @param {Object} [session] - Mongoose session.
  */
 exports.createShortage = async (data, pharmacyId, req = null, session = null) => {
     const { product: productId, volume, quantity, targetPrice, isSystemGenerated, salePercentage } = data;
@@ -20,7 +41,7 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
         status: { $in: ['pending', 'available', 'partially_fulfilled'] }
     }).session(session);
 
-    if (existingExcess) { 
+    if (existingExcess) {
         // Allow ONLY hubs to have both shortage and excess for the same product
         const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
         if (!pharmacy || !pharmacy.isHub) {
@@ -56,16 +77,22 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
 
 /**
  * Creates a bulk order containing multiple shortages.
+ * Links all shortages to a single Order document.
+ *
+ * @param {Object} orderData - Data containing items array.
+ * @param {string} pharmacyId - Pharmacy ID.
+ * @param {Object} [req] - Request for auditing.
+ * @param {Object} session - Mongoose session (Required for bulk operations).
  */
 exports.createOrder = async (orderData, pharmacyId, req = null, session = null) => {
     try {
         const { items } = orderData;
-        
+
         // Validate items array
         if (!items || items.length === 0) {
             throw { message: 'Order must contain at least one item', code: 400 };
         }
-        
+
         const serial = await serialService.generateOrderSerial();
 
         const order = new Order({
@@ -83,7 +110,7 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
             if (!item.quantity || item.quantity <= 0) {
                 throw { message: `Invalid quantity for product ${item.product}. Quantity must be a positive number.`, code: 400 };
             }
-            
+
             const product = await Product.findById(item.product).session(session);
             if (!product || product.status !== 'active') throw { message: `Product ${item.product} is inactive.`, code: 400 };
             const existingExcess = await StockExcess.findOne({
@@ -91,7 +118,7 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
                 product: item.product,
                 status: { $in: ['pending', 'available', 'partially_fulfilled'] }
             }).session(session);
-            if (existingExcess) {   
+            if (existingExcess) {
                 throw { message: `You cannot add a shortage for ${product.name} because you already have an excess for it.`, code: 409 };
             }
             const shortage = new StockShortage({
@@ -123,8 +150,8 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
             if (item.targetPrice) {
                 // Create or update reservation for this product/volume/price combination
                 // MUST match specific batch attributes (Original Sale)
-                const saleToReserve = item.originalSalePercentage || 0; 
-                
+                const saleToReserve = item.originalSalePercentage || 0;
+
                 await Reservation.findOneAndUpdate(
                     {
                         product: item.product,
@@ -155,8 +182,18 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
     }
 };
 
+// =============================================================================
+// SHORTAGE MANAGEMENT (LIFE CYCLE)
+// =============================================================================
+
 /**
- * Updates an existing shortage.
+ * Updates shortage quantity and synchronizes its status.
+ *
+ * @param {string} shortageId - Shortage ID.
+ * @param {Object} updateData - Data to update.
+ * @param {string} pharmacyId - Pharmacy ID (for authorization).
+ * @param {Object} [req] - Request for auditing.
+ * @param {Object} [session] - Mongoose session.
  */
 exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, session = null) => {
     try {
@@ -177,7 +214,7 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
         if (quantity !== undefined) {
             if (quantity > shortage.quantity) throw { message: 'Quantity can only be decreased.', code: 400 };
             if (quantity < fulfilled) throw { message: `Cannot be less than fulfilled (${fulfilled}).`, code: 400 };
-            
+
             const oldQuantity = shortage.quantity;
             shortage.quantity = quantity;
             shortage.remainingQuantity = quantity - fulfilled;
@@ -185,7 +222,7 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
             // Update reservation if this shortage has an order and targetPrice
             if (shortage.order && shortage.targetPrice) {
                 const quantityDiff = quantity - oldQuantity;
-                
+
                 await Reservation.findOneAndUpdate(
                     {
                         product: shortage.product,
@@ -205,7 +242,7 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
 
         await exports.syncShortageStatus(shortage, session);
         // shortage.save() and order sync handled inside sync
-        
+
         await auditService.logAction({
             user: req?.user?._id,
             action: 'UPDATE',
@@ -220,8 +257,17 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
     }
 };
 
+// =============================================================================
+// ORDER SYNCHRONIZATION
+// =============================================================================
+
 /**
- * Synchronizes the status of a shortage.
+ * Synchronizes shortage status based on remaining quantity.
+ * Transitions between 'active', 'partially_fulfilled', 'fulfilled', or 'cancelled'.
+ * Also triggers parent order synchronization if applicable.
+ *
+ * @param {Object} shortage - Shortage document.
+ * @param {Object} session - Mongoose session.
  */
 exports.syncShortageStatus = async (shortage, session = null) => {
     // Don't change cancelled status
@@ -234,9 +280,9 @@ exports.syncShortageStatus = async (shortage, session = null) => {
     } else {
         shortage.status = 'active';
     }
-    
+
     // Save the shortage state first so updateOrderTotals sees correct data
-    if(session)
+    if (session)
         await shortage.save({ session });
 
     // Update parent order if exists
@@ -246,18 +292,22 @@ exports.syncShortageStatus = async (shortage, session = null) => {
 };
 
 /**
- * Updates an order's totals and status based on its shortages.
+ * Synchronizes the status and fulfillment data of a parent Order.
+ * Called whenever a linked shortage changes status or quantity.
+ *
+ * @param {string} orderId - Order ID.
+ * @param {Object} session - Mongoose session.
  */
 exports.updateOrderTotals = async (orderId, session = null) => {
     const order = await Order.findById(orderId).session(session);
     if (!order) return;
 
     const remainingShortages = await StockShortage.find({ order: orderId, status: { $ne: 'cancelled' } }).session(session);
-    
+
     // 1. Update Counts
     order.totalItems = remainingShortages.length;
     order.fulfilledItems = remainingShortages.filter(s => s.status === 'fulfilled').length;
-    
+
     // 2. Update Total Amount (Sum of Quantity * targetPrice)
     order.totalAmount = remainingShortages.reduce((sum, s) => {
         return sum + (s.quantity * (s.targetPrice || 0));
@@ -265,7 +315,7 @@ exports.updateOrderTotals = async (orderId, session = null) => {
 
     // 3. Update Order Status
     if (order.totalItems === 0) {
-        order.status = 'fulfilled'; 
+        order.status = 'fulfilled';
     } else if (order.fulfilledItems === order.totalItems) {
         order.status = 'fulfilled';
     } else if (order.fulfilledItems > 0 || remainingShortages.some(s => s.status === 'partially_fulfilled')) {
@@ -335,10 +385,10 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
         // Let's modify updateOrderTotals as well to be safe.
         await exports.updateOrderTotals(shortage.order, session);
     }
-    
+
     // Log action
     if (req) {
-         await auditService.logAction({
+        await auditService.logAction({
             user: req.user?._id,
             action: 'CANCEL',
             entityType: 'StockShortage',
@@ -346,7 +396,7 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
             changes: { status: 'cancelled' }
         }, req);
     }
-    
+
     return shortage;
 };
 
@@ -378,6 +428,11 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
                 },
                 { session }
             );
+        }
+
+        for (const excessId of transaction.stockExcessSources.map(s => s.stockExcess)) {
+            const excess = await StockExcess.findById(excessId).session(session);
+            if (excess) await getExcessService().syncExcessStatus(excess, session);
         }
 
         const orderId = shortage.order;

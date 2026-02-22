@@ -25,7 +25,6 @@ router.get('/matchable', authorize('admin'), getLimiter, getMatchableProducts);
 router.get('/matches/:productId', authorize('admin'), getLimiter, getMatchesForProduct);
 router.get('/', authorize('admin', 'delivery'), getLimiter, getTransactions);
 
-router.post('/buy', authorize('pharmacy_owner', 'manager'), strictLimiter, buyFromMarket);
 router.post('/fulfill', authorize('admin'), strictLimiter, fulfillOrder); // Order specific
 router.post('/', authorize('admin'), strictLimiter, createTransaction);
 router.put('/:id/status', authorize('admin'), strictLimiter, updateTransactionStatus);

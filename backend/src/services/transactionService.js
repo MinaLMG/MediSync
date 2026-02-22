@@ -1,12 +1,36 @@
 const mongoose = require('mongoose');
-const { Transaction, StockShortage, StockExcess, Pharmacy, Settings, BalanceHistory, User, Reservation, DeliveryRequest } = require('../models');
+const {
+    Transaction,
+    StockShortage,
+    StockExcess,
+    Pharmacy,
+    Settings,
+    BalanceHistory,
+    User,
+    Reservation,
+    DeliveryRequest,
+    Product
+} = require('../models');
 const { sendToUser = null } = require('../utils/pusherManager') || {};
 const serialService = require('./serialService');
 const auditService = require('./auditService');
 
+// Lazy-loaded services to avoid circular dependencies (where they reference transactionService)
+const getShortageService = () => require('./shortageService');
+const getExcessService = () => require('./excessService');
+
+// =============================================================================
+// TRANSACTION CREATION & STATUS MANAGEMENT
+// =============================================================================
+
 /**
- * Creates a new transaction.
- * MUST be called within a session.
+ * Creates a new transaction from a shortage and one or more excess sources.
+ * Validates availability, updates inventory, handles reservations, and logs the action.
+ * 
+ * @param {Object} data - Transaction data (shortageId, quantityTaken, excessSources, etc.)
+ * @param {Object} session - Mongoose session for atomicity.
+ * @param {Object} [req] - Express request object for audit logging.
+ * @returns {Promise<Object>} The created transaction.
  */
 exports.createTransaction = async (data, session, req = null) => {
     const { shortageId, quantityTaken, excessSources, buyerCommissionRatio, sellerBonusRatio, commissionRatio } = data;
@@ -23,7 +47,7 @@ exports.createTransaction = async (data, session, req = null) => {
     }
 
     // 1.1 Check Product Status
-    const productObj = await mongoose.model('Product').findById(shortage.product).session(session);
+    const productObj = await Product.findById(shortage.product).session(session);
     if (!productObj || productObj.status !== 'active') {
         throw { message: 'This product is currently inactive and cannot be transacted.', code: 400 };
     }
@@ -36,13 +60,13 @@ exports.createTransaction = async (data, session, req = null) => {
     let totalAmount = 0;
     let totalQuantity = 0;
     const refinedSources = [];
-    let shortage_fulfillment =false
+    let shortage_fulfillment = false
 
     // 2. Check and update excesses
     for (const source of excessSources) {
         const excess = await StockExcess.findById(source.stockExcessId).session(session);
         if (!excess || !['available', 'partially_fulfilled'].includes(excess.status) || excess.remainingQuantity < source.quantity) {
-            throw { message: `Excess ${source.stockExcessId} is no longer available in requested quantity`, code: 409 };    
+            throw { message: `Excess ${source.stockExcessId} is no longer available in requested quantity`, code: 409 };
         }
         if (excess.shortage_fulfillment) {
             shortage_fulfillment = true;
@@ -50,7 +74,7 @@ exports.createTransaction = async (data, session, req = null) => {
         // Deduct from excess
         excess.remainingQuantity -= source.quantity;
         await excess.save({ session });
-        
+
         const amount = source.quantity * excess.selectedPrice;
         totalAmount += amount;
         totalQuantity += source.quantity;
@@ -67,11 +91,9 @@ exports.createTransaction = async (data, session, req = null) => {
         throw { message: 'Total quantity from sources does not match quantity taken from shortage', code: 400 };
     }
 
-    // 3. Update shortage
+    // 3. Update shortage and parent Order
     shortage.remainingQuantity -= quantityTaken;
-    const { syncShortageStatus } = require('./shortageService');
-    await syncShortageStatus(shortage, session);
-    // shortage.save() and updateOrderTotals are now handled inside syncShortageStatus
+    await getShortageService().syncShortageStatus(shortage, session);
 
     // 4. Generate Serial atomically
     const serial = await serialService.generateDateSerial('transaction');
@@ -98,18 +120,17 @@ exports.createTransaction = async (data, session, req = null) => {
 
     await transaction.save({ session });
 
-    // 6. Sync excess statuses
-    const { syncExcessStatus } = require('./excessService');
+    // 6. Sync excess statuses to 'fulfilled' or 'partially_fulfilled'
     for (const source of refinedSources) {
         const excess = await StockExcess.findById(source.stockExcess).session(session);
-        await syncExcessStatus(excess, session);
+        await getExcessService().syncExcessStatus(excess, session);
     }
 
     // 7. Cleanup reservations (BLOCKING - critical for data consistency)
     if (shortage.order && shortage.targetPrice) {
         // Determine which sale percentage to use for lookup
         const saleToLookup = shortage.originalSalePercentage || shortage.salePercentage || 0;
-       
+
         await Reservation.findOneAndUpdate(
             {
                 product: shortage.product,
@@ -118,7 +139,7 @@ exports.createTransaction = async (data, session, req = null) => {
                 expiryDate: shortage.expiryDate || "ANY",
                 salePercentage: saleToLookup
             },
-            { $inc: { quantity: -quantityTaken} },
+            { $inc: { quantity: -quantityTaken } },
             { session }
         );
     }
@@ -138,11 +159,13 @@ exports.createTransaction = async (data, session, req = null) => {
 
 /**
  * Updates transaction status (Accepted, Rejected, Completed, Cancelled).
- * MUST be called within a session.
+ * Handles stock restoration on cancellation/rejection.
+ * 
  * @param {string} transactionId - The ID of the transaction to update.
- * @param {string} status - The new status.
+ * @param {string} status - The target status.
  * @param {Object} req - Request object for audit logging.
  * @param {Object} session - Mongoose session for atomicity.
+ * @returns {Promise<Object>} The updated transaction.
  */
 exports.updateTransactionStatus = async (transactionId, status, req, session) => {
     const transaction = await Transaction.findById(transactionId).session(session);
@@ -158,23 +181,23 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
     if (transaction.status === status) {
         return transaction; // No change detected
     }
-    
+
     const oldStatus = transaction.status;
     if (status !== 'completed') {// the settle transaction is the only function can set transaction status to accepted
         transaction.status = status;
     }
     console.log(`[DEBUG] transaction ${transaction._id} status set to ${transaction.status} (target: ${status})`);
-    
+
     if (status === 'cancelled' || status === 'rejected') {
-        const { syncExcessStatus } = require('./excessService');
-        const { syncShortageStatus } = require('./shortageService');
+        const excessService = getExcessService();
+        const shortageService = getShortageService();
 
         // 1. Restore excess quantities
         for (const source of transaction.stockExcessSources) {
             const excess = await StockExcess.findById(source.stockExcess).session(session);
             if (excess) {
                 excess.remainingQuantity += source.quantity;
-                await syncExcessStatus(excess, session); 
+                await excessService.syncExcessStatus(excess, session);
             }
         }
 
@@ -182,8 +205,7 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
         const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
         if (shortage) {
             shortage.remainingQuantity += transaction.stockShortage.quantityTaken;
-            await syncShortageStatus(shortage, session);
-            // shortage.save() and updateOrderTotals handled in syncShortageStatus
+            await shortageService.syncShortageStatus(shortage, session);
 
             // 3. Restore Reservations if part of an order
             if (shortage.order && shortage.targetPrice) {
@@ -212,21 +234,21 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
         );
     }
     // [New] Autonomous approval of DeliveryRequest for the assigned delivery user
-    else if ((status === 'accepted' || status === 'completed') ) {
-        if(transaction.delivery){
-    // Approve the active request for this transaction/user
+    else if ((status === 'accepted' || status === 'completed')) {
+        if (transaction.delivery) {
+            // Approve the active request for this transaction/user
             await DeliveryRequest.updateMany(
                 { transaction: transaction._id, delivery: transaction.delivery, status: 'pending' },
                 { status: 'approved' },
                 { session }
             );
-        }  
+        }
         if (status === 'completed') {
             await exports.settleTransaction(transaction, session);
         }
-    } 
+    }
 
-    
+
     await transaction.save({ session });
 
     if (req) {
@@ -243,8 +265,13 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
 };
 
 /**
- * Unassigns a delivery person from a transaction and resets its status if needed.
- * Also rejects all pending delivery requests for this transaction.
+ * Unassigns a delivery person from a transaction.
+ * Resets delivery status and notifies the delivery user.
+ * 
+ * @param {string} transactionId - Transaction ID.
+ * @param {Object} session - Mongoose session.
+ * @param {Object} [req] - Request object for auditing.
+ * @returns {Promise<Object>} The updated transaction.
  */
 exports.unassignTransaction = async (transactionId, session, req = null) => {
     const transaction = await Transaction.findById(transactionId).session(session);
@@ -270,16 +297,16 @@ exports.unassignTransaction = async (transactionId, session, req = null) => {
     if (oldDeliveryId) {
         try {
             const { addNotificationJob } = require('../utils/queueManager');
-        setImmediate(() => addNotificationJob(
-            oldDeliveryId.toString(),
-            'transaction',
-            `You have been detached from Transaction #${transaction.serial || transaction._id.toString().slice(-6)}.`,
-            {
-                relatedEntity: transaction._id,
-                relatedEntityType: 'Transaction'
-            },
-            `تم فصلك عن المعاملة #${transaction.serial || transaction._id.toString().slice(-6)}.`
-        ));
+            setImmediate(() => addNotificationJob(
+                oldDeliveryId.toString(),
+                'transaction',
+                `You have been detached from Transaction #${transaction.serial || transaction._id.toString().slice(-6)}.`,
+                {
+                    relatedEntity: transaction._id,
+                    relatedEntityType: 'Transaction'
+                },
+                `تم فصلك عن المعاملة #${transaction.serial || transaction._id.toString().slice(-6)}.`
+            ));
         } catch (notifErr) {
             console.error('Notification error in unassignTransaction service:', notifErr);
         }
@@ -288,13 +315,20 @@ exports.unassignTransaction = async (transactionId, session, req = null) => {
     return transaction;
 };
 
+// =============================================================================
+// FINANCIAL SETTLEMENT & REVERSAL
+// =============================================================================
+
 /**
  * Executes the financial settlement for a completed transaction.
- * Updates balances, creates ledger entries, and notifies users.
- * MUST be called within a session.
+ * Calculates commissions, bonuses, and hub-specific logic.
+ * Updates pharmacy balances and records ledger entries.
+ * 
+ * @param {Object} transaction - The transaction document to settle.
+ * @param {Object} session - Mongoose session.
  */
 exports.settleTransaction = async (transaction, session) => {
-    if (transaction.status === 'completed') {   
+    if (transaction.status === 'completed') {
         return; // Already settled
     }
 
@@ -303,7 +337,7 @@ exports.settleTransaction = async (transaction, session) => {
 
     const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
     const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
-    
+
     let totalBuyerEffect = 0;
     let buyerDetailsList = [];
 
@@ -319,6 +353,7 @@ exports.settleTransaction = async (transaction, session) => {
             let sourceBuyerEffect = 0;
             let sourceBuyerDetails = {};
 
+            // --- Case A: Shortage Fulfillment (Admin Matching) ---
             if (excess.shortage_fulfillment) {
                 // CASE 1: Shortage Fulfillment
                 // If not provided at creation, use latest system settings
@@ -350,35 +385,32 @@ exports.settleTransaction = async (transaction, session) => {
                     commissionRatio: commRatio,
                     excessId: excess._id
                 };
+
             } else {
-                // CASE 2: REGULAR TRANSACTION (Market Order or Direct Match)
-                
+                // --- Case B: Regular Transaction (Market Order or Direct Match) ---
+
                 // 1. Validation: original sale percentage must match if it exists
                 if (shortage.originalSalePercentage && shortage.originalSalePercentage !== excess.salePercentage) {
                     throw { message: `Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%. Please re-list or adjust stock.`, code: 409 };
                 }
 
-                // 2. Calculate Commission Ratio (Seller Pays)
-                // If not provided at creation, use latest system settings
-                if (transaction.commissionRatio === undefined) {
-                    transaction.commissionRatio = settings.minimumCommission / 100;
-                }
-
-                // Commission = max(transaction override or baseline system commission, excess sale value)
-                let sellerCommissionRatio = 
-                    (excess.salePercentage || 0) / 100
-                        ;
+                // Commission is based on the excess sale value.
+                // The baseline system commission is used as a floor during creation, but here
+                // we use the actual percentage stored or agreed upon.
+                let sellerCommissionRatio = (excess.salePercentage !== undefined && excess.salePercentage !== null)
+                    ? (excess.salePercentage / 100)
+                    : systemMinCommRatio;
 
                 // 3. Calculate Sale Ratio (Buyer Receives)
                 // The sale the buyer explicitly selected and agreed on (from shortage)
                 let buyerSaleRatio = (shortage.salePercentage || 0) / 100;
 
-                // Hub Seller Rule: Use purchase price directly for hub-owned stock
+                // Sub-case: Hub Seller Logic
                 if (sellerPh.isHub && (excess.isHubGenerated || excess.isHubPurchase)) {
                     // Hub selling transferred or purchased items
                     // Use purchase price directly as positive effect
                     sellerEffect = excess.purchasePrice * source.quantity;
-                    
+
                     sellerDetails = {
                         type: excess.isHubPurchase ? 'hub_purchase_sale' : 'hub_transfer_sale',
                         baseAmount: source.totalAmount,
@@ -389,7 +421,7 @@ exports.settleTransaction = async (transaction, session) => {
                 } else {
                     // Regular seller (not hub) - calculate commission normally
                     sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
-                    
+
                     sellerDetails = {
                         type: 'excess_rebalance',
                         baseAmount: source.totalAmount,
@@ -398,21 +430,22 @@ exports.settleTransaction = async (transaction, session) => {
                     };
                 }
 
-                // Hub Buyer Rule: Match seller's sale ratio (creates zero net effect)
-                if (buyerPh.isHub) { 
+                // Sub-case: Hub Buyer Logic (Net Zero Effect)
+                if (buyerPh.isHub) {
                     // Hub as buyer: pay same amount as seller receives (zero net effect)
                     buyerSaleRatio = (excess.salePercentage || 0) / 100;
                 }
 
                 // Buyer Pays: Price * (1 - buyerSaleRatio)
                 sourceBuyerEffect = -(1 - buyerSaleRatio) * source.totalAmount;
-                
+
                 sourceBuyerDetails = {
                     type: 'excess_rebalance',
                     baseAmount: source.totalAmount,
                     saleRatio: buyerSaleRatio,
                     excessId: excess._id
                 };
+
             }
 
             // Update Seller
@@ -444,14 +477,14 @@ exports.settleTransaction = async (transaction, session) => {
                 for (const user of sellerUsers) {
                     sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
                 }
-            } catch (err) {}
+            } catch (err) { }
 
             totalBuyerEffect += sourceBuyerEffect;
             buyerDetailsList.push(sourceBuyerDetails);
         }
     }
 
-// 2. Process Final Buyer Effect
+    // 2. Process Final Buyer Effect
     if (buyerPh) {
         const buyerPrevBalance = buyerPh.balance;
         buyerPh.balance += totalBuyerEffect;
@@ -483,25 +516,29 @@ exports.settleTransaction = async (transaction, session) => {
             for (const user of buyerUsers) {
                 sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
             }
-        } catch (err) {}
+        } catch (err) { }
     }
 
     // 3. Final stock sync
+    const excessService = getExcessService();
     for (const source of transaction.stockExcessSources) {
         const excess = await StockExcess.findById(source.stockExcess).session(session);
         if (excess) {
-            const { syncExcessStatus } = require('./excessService');
-            await syncExcessStatus(excess, session); 
+            await excessService.syncExcessStatus(excess, session);
         }
     }
-    
+
     transaction.status = 'completed';
     await transaction.save({ session });
 };
 
+// =============================================================================
+// STAKEHOLDER NOTIFICATIONS
+// =============================================================================
+
 /**
  * Notifies all stakeholders (buyer, sellers, delivery) about a transaction status change.
- * This should be called AFTER the DB transaction is committed to ensure delivery.
+ * Fires after DB commit via push notifications and WebSocket.
  */
 exports.notifyParties = async (transaction) => {
     try {
@@ -514,10 +551,10 @@ exports.notifyParties = async (transaction) => {
 
         const buyerPhId = shortage.pharmacy._id;
         const buyerIsHub = shortage.pharmacy.isHub;
-        
+
         // Hide Hub Name
         const productName = shortage.product?.name || 'medicine';
-        
+
         // Find all unique sellers
         const uniqueSellerPhIds = [...new Set(transaction.stockExcessSources.map(s => {
             if (s.sellerPharmacy && s.sellerPharmacy._id) return s.sellerPharmacy._id.toString();
@@ -541,7 +578,7 @@ exports.notifyParties = async (transaction) => {
         // User asked: "i don't need the user to know anything about hub"
         // This implies if the User is the Buyer or Seller, they shouldn't see "Hub".
         // If User is Seller (selling to Hub), they interact with "Hub" (masked).
-        
+
         // Notify Buyer standard logic
         const buyerUsers = await User.find({ pharmacy: buyerPhId });
         for (const user of buyerUsers) {
@@ -565,7 +602,7 @@ exports.notifyParties = async (transaction) => {
                 // If the buyer was a Hub, and we are notifying the seller, the message is generic enough "Your transaction..."
                 // It doesn't explicitly say "Sold to Hub".
                 // So default message is safe: "Your transaction for X is now Y"
-                
+
                 setImmediate(() => addNotificationJob(
                     user._id.toString(),
                     'transaction',
@@ -601,8 +638,12 @@ exports.notifyParties = async (transaction) => {
 };
 
 /**
- * Reverts an "Add to Hub" transaction.
- * Specific logic: Cancel Hub Excess, Restore User Excess, Cancel Hub Shortage, Reverse Financials.
+ * Reverts an "Add to Hub" transaction. 
+ * Reverses Hub stock creation, restores original user stock, and reverses all financials.
+ * 
+ * @param {Object} transaction - Hub transfer transaction.
+ * @param {Object} session - Mongoose session.
+ * @param {Object} [req] - Request for auditing.
  */
 exports.revertAddToHub = async (transaction, session, req) => {
     // 1. Fetch and Validate Hub Excess
@@ -623,37 +664,35 @@ exports.revertAddToHub = async (transaction, session, req) => {
     const auditService = require('./auditService');
     await auditService.logAction({
         user: req?.user?._id,
-        action: 'CANCEL', 
+        action: 'CANCEL',
         entityType: 'StockExcess',
         entityId: hubExcess._id,
         changes: { status: 'cancelled', reversalTransactionId: transaction._id }
     }, req);
 
     // 3. Cancel Hub Shortage (Do not restore it)
-    // Use the global cancel shortage service logic
-    const { cancelShortage, syncShortageStatus } = require('./shortageService');
-    // Ensure we have ID
+    const shortageService = getShortageService();
     const shortageId = transaction.stockShortage.shortage._id || transaction.stockShortage.shortage;
 
     // Restore shortage quantity first so it passes the "unused" check in cancelShortage
     const shortage = await StockShortage.findById(shortageId).session(session);
     if (shortage) {
         shortage.remainingQuantity += quantiyReverted;
-        await syncShortageStatus(shortage, session);
+        await shortageService.syncShortageStatus(shortage, session);
         await shortage.save({ session });
     }
 
-    await cancelShortage(shortageId, session, req);
+    await shortageService.cancelShortage(shortageId, session, req);
 
     // 4. Restore Source Excesses (User's Stock)
-    const { syncExcessStatus } = require('./excessService');
+    const excessService = getExcessService();
     for (const source of transaction.stockExcessSources) {
         // Handle populated or unpopulated stockExcess
         const excessId = source.stockExcess._id || source.stockExcess;
         const excess = await StockExcess.findById(excessId).session(session);
         if (excess) {
             excess.remainingQuantity += source.quantity;
-            await syncExcessStatus(excess, session);    
+            await excessService.syncExcessStatus(excess, session);
         }
     }
 
@@ -661,7 +700,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
     // 5a. Revert Buyer (Hub) Payment
     // We fetch shortage again or use ID to get pharmacy if needed, but we already have shortageId above.
     // However, shortage object might be needed for pharmacy ID.
-    const shortageObj = await StockShortage.findById(shortageId).session(session); 
+    const shortageObj = await StockShortage.findById(shortageId).session(session);
     const buyerPh = await Pharmacy.findById(shortageObj.pharmacy).session(session);
 
     if (buyerPh && transaction.stockShortage.balanceEffect) {
@@ -690,7 +729,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
             for (const user of users) {
                 sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // 5b. Revert Seller (User) Revenue
@@ -724,7 +763,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
                     for (const user of users) {
                         sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
         }
     }

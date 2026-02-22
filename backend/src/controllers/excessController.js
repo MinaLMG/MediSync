@@ -1,21 +1,65 @@
+const mongoose = require('mongoose');
+const {
+    StockExcess,
+    HasVolume,
+    Settings,
+    Reservation,
+    Product,
+    User
+} = require('../models');
+
+// Services
 const excessService = require('../services/excessService');
 const hubSummaryService = require('../services/hubSummaryService');
-const { StockExcess, HasVolume, Settings, Reservation } = require('../models');
-const { default: mongoose } = require('mongoose');
+const { addNotificationJob } = require('../utils/queueManager');
 
+// =============================================================================
+// EXCESS MANAGEMENT (LIFE CYCLE)
+// =============================================================================
+
+// @desc    Create a new stock excess
+// @route   POST /api/excess
+// @access  Pharmacy Owner / Manager
 exports.createExcess = async (req, res) => {
     try {
+        const { product, quantity, selectedPrice, expiryDate } = req.body;
+
+        // --- Manual Validation ---
+        if (!product || !quantity || !selectedPrice || !expiryDate) {
+            throw { message: 'Missing required fields: product, quantity, selectedPrice, and expiryDate are required.', code: 400 };
+        }
+        if (quantity <= 0) {
+            throw { message: 'Quantity must be a positive number.', code: 400 };
+        }
+        if (selectedPrice < 0) {
+            throw { message: 'Price cannot be negative.', code: 400 };
+        }
+
         const excess = await excessService.createExcess(req.body, req.user.pharmacy, req);
         res.status(201).json({ success: true, data: excess });
     } catch (error) {
+        console.error('❌ [Excess Controller] createExcess failed:', error);
         res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
+// @desc    Update an existing excess
+// @route   PUT /api/excess/:id
+// @access  Pharmacy Owner / Manager
 exports.updateExcess = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+        const { quantity, selectedPrice } = req.body;
+
+        // --- Manual Validation ---
+        if (quantity !== undefined && quantity <= 0) {
+            throw { message: 'Quantity must be a positive number.', code: 400 };
+        }
+        if (selectedPrice !== undefined && selectedPrice < 0) {
+            throw { message: 'Price cannot be negative.', code: 400 };
+        }
+
         const updates = {};
         const allowedFields = ['quantity', 'selectedPrice', 'salePercentage', 'shortage_fulfillment', 'expiryDate'];
         for (const field of allowedFields) {
@@ -27,6 +71,7 @@ exports.updateExcess = async (req, res) => {
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();
+        console.error('❌ [Excess Controller] updateExcess failed:', error);
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
@@ -37,9 +82,9 @@ exports.deleteExcess = async (req, res) => {
     try {
         const excess = await StockExcess.findById(req.params.id);
         if (!excess) throw { message: 'Excess not found', code: 404 };
-        
+
         if (req.user.role !== 'admin' && excess.pharmacy.toString() !== req.user.pharmacy.toString()) {
-             throw { message: 'Unauthorized', code: 403 };
+            throw { message: 'Unauthorized', code: 403 };
         }
         if ((excess.originalQuantity - excess.remainingQuantity) > 0) {
             throw { message: 'Cannot delete fulfilled excess', code: 409 };
@@ -54,8 +99,10 @@ exports.deleteExcess = async (req, res) => {
     }
 };
 
+// @desc    Approve a pending excess
+// @route   PUT /api/excess/:id/approve
+// @access  Admin
 exports.approveExcess = async (req, res) => {
-    const mongoose = require('mongoose');
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -76,13 +123,13 @@ exports.rejectExcess = async (req, res) => {
     try {
         const { rejectionReason } = req.body;
         if (!rejectionReason) throw { message: 'Reason required', code: 400 };
-        
+
         const excess = await StockExcess.findById(req.params.id).session(session);
         if (!excess) throw { message: 'Excess not found', code: 404 };
 
         if (excess.status === 'rejected') {
-             await session.commitTransaction();
-             return res.status(200).json({ success: true, data: excess });
+            await session.commitTransaction();
+            return res.status(200).json({ success: true, data: excess });
         }
 
         if (excess.isHubGenerated || excess.isHubPurchase) {
@@ -123,6 +170,13 @@ exports.rejectExcess = async (req, res) => {
     }
 };
 
+// =============================================================================
+// QUERY OPERATIONS
+// =============================================================================
+
+// @desc    Get all pending excesses
+// @route   GET /api/excess/pending
+// @access  Admin
 exports.getPendingExcesses = async (req, res) => {
     try {
         const excesses = await StockExcess.find({ status: 'pending' }).populate('pharmacy', 'name phone').populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
@@ -132,21 +186,27 @@ exports.getPendingExcesses = async (req, res) => {
     }
 };
 
+// @desc    Get excesses listed by the authenticated pharmacy
+// @route   GET /api/excess/my
+// @access  Pharmacy Owner / Manager
 exports.getMyExcesses = async (req, res) => {
     try {
-    const excesses = await StockExcess.find({ 
-        pharmacy: req.user.pharmacy,
-    }).populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
+        const excesses = await StockExcess.find({
+            pharmacy: req.user.pharmacy,
+        }).populate('product', 'name').populate('volume', 'name').sort({ createdAt: -1 });
         res.status(200).json({ success: true, data: excesses });
     } catch (error) {
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
 
+// @desc    Get all available and partially fulfilled excesses for the market
+// @route   GET /api/excess/available
+// @access  Pharmacy Owner / Manager
 exports.getAvailableExcesses = async (req, res) => {
     try {
-        const excesses = await StockExcess.find({ 
-            status: { $in: ['available', 'partially_fulfilled'] } 
+        const excesses = await StockExcess.find({
+            status: { $in: ['available', 'partially_fulfilled'] }
         })
             .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
@@ -159,10 +219,13 @@ exports.getAvailableExcesses = async (req, res) => {
     }
 };
 
+// @desc    Get all fulfilled, rejected, or expired excesses
+// @route   GET /api/excess/fulfilled
+// @access  Pharmacy Owner / Manager
 exports.getFulfilledExcesses = async (req, res) => {
     try {
-        const excesses = await StockExcess.find({ 
-            status: { $in: ['fulfilled', 'rejected', 'expired'] } 
+        const excesses = await StockExcess.find({
+            status: { $in: ['fulfilled', 'rejected', 'expired'] }
         })
             .populate('pharmacy', 'name address phone')
             .populate('product', 'name')
@@ -175,19 +238,35 @@ exports.getFulfilledExcesses = async (req, res) => {
     }
 };
 
+// @desc    Synchronize the status of an excess based on its remaining quantity
+// @access  Internal (called by other services/controllers)
 exports.syncExcessStatus = async (excess, session = null) => {
     return excessService.syncExcessStatus(excess, session);
 };
 
+// =============================================================================
+// HUB OPERATIONS
+// =============================================================================
+
+// @desc    Transfer excess stock to a hub
+// @route   POST /api/excess/hub
+// @access  Admin / Pharmacy Owner
 exports.addToHub = async (req, res) => {
     try {
         const { excessId, hubId, quantity } = req.body;
+
+        // --- Manual Validation ---
         if (!excessId || !hubId || !quantity) {
-             throw { message: 'Missing required fields', code: 400 };
+            throw { message: 'Missing required fields: excessId, hubId, and quantity are required.', code: 400 };
         }
+        if (quantity <= 0) {
+            throw { message: 'Quantity must be a positive number.', code: 400 };
+        }
+
         const result = await excessService.addToHub(excessId, hubId, quantity, req);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
+        console.error('❌ [Excess Controller] addToHub failed:', error);
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
@@ -200,7 +279,7 @@ exports.getMarketExcesses = async (req, res) => {
         const settings = await Settings.getSettings();
         const systemMinComm = settings.minimumCommission || 10;
         const commissionService = require('../services/commissionService');
-        
+
         // 1. Get raw aggregated excesses (Grouped by Product -> Price -> Expiry/Sale)
         const marketItems = await StockExcess.aggregate([
             {
@@ -216,9 +295,9 @@ exports.getMarketExcesses = async (req, res) => {
             // Group by strict criteria: Product, Volume, Price, Expiry, Sale
             {
                 $group: {
-                    _id: { 
-                        product: "$product", 
-                        volume: "$volume", 
+                    _id: {
+                        product: "$product",
+                        volume: "$volume",
                         price: "$selectedPrice",
                         expiryDate: "$expiryDate",
                         salePercentage: "$salePercentage"
@@ -226,14 +305,14 @@ exports.getMarketExcesses = async (req, res) => {
                     totalQuantity: { $sum: "$remainingQuantity" } // Sum quantity for this batch
                 }
             },
-   // Lookup Product and Volume details early or later?
+            // Lookup Product and Volume details early or later?
             // We need to deduct reservations first.
         ]);
         // 2. Get Active Reservations for these products
         // We can match reservations that correspond to the found products?
         // Or just getAll reservations for safety (or optimize).
         // Optimization: Get reservations where product IN [marketItems.products].
-                
+
         const productIds = marketItems.map(i => i._id.product);
         const reservations = await Reservation.aggregate([
             {
@@ -267,7 +346,7 @@ exports.getMarketExcesses = async (req, res) => {
 
         for (const group of marketItems) {
             const key = `${group._id.product}-${group._id.volume}-${group._id.price}-${group._id.expiryDate}-${group._id.salePercentage}`;
-           
+
             const reserved = reservationMap[key] || 0;
             const available = group.totalQuantity - reserved;
 
@@ -304,7 +383,7 @@ exports.getMarketExcesses = async (req, res) => {
                     prices: {}
                 };
             }
-            
+
             const pGroup = productMap[prodKey];
             pGroup.minPrice = Math.min(pGroup.minPrice, item.price);
             pGroup.maxSale = Math.max(pGroup.maxSale, item.userSale);
@@ -333,7 +412,7 @@ exports.getMarketExcesses = async (req, res) => {
             volume: p.volume,
             minPrice: p.minPrice,
             maxSale: p.maxSale,
-            prices: Object.values(p.prices).sort((a,b) => a.price - b.price)
+            prices: Object.values(p.prices).sort((a, b) => a.price - b.price)
         }));
 
         // Populate Product/Volume Details (We have IDs)
@@ -343,7 +422,7 @@ exports.getMarketExcesses = async (req, res) => {
             { path: 'product', select: 'name' },
             { path: 'volume', select: 'name' }
         ]);
-        
+
         // Final Sort by Product Name
         finalResult.sort((a, b) => (a.product?.name || '').localeCompare(b.product?.name || ''));
 
@@ -402,7 +481,7 @@ exports.getMarketInsight = async (req, res) => {
 exports.getPharmacyExcesses = async (req, res) => {
     try {
         const { pharmacyId } = req.params;
-        const excesses = await StockExcess.find({ 
+        const excesses = await StockExcess.find({
             pharmacy: pharmacyId,
             status: { $in: ['available', 'partially_fulfilled'] },
             remainingQuantity: { $gt: 0 }
