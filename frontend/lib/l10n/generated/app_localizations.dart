@@ -1820,6 +1820,30 @@ abstract class AppLocalizations {
   /// **'Sale Ratio: {ratio}%'**
   String labelSaleRatio(num ratio);
 
+  /// No description provided for @labelPriceRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{min} - {max}'**
+  String labelPriceRange(String min, String max, String currency);
+
+  /// No description provided for @titleMarketplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Marketplace'**
+  String get titleMarketplace;
+
+  /// No description provided for @actionAddToOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Order'**
+  String get actionAddToOrder;
+
+  /// No description provided for @msgPurchaseLogicPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase logic pending excess ID'**
+  String get msgPurchaseLogicPending;
+
   /// No description provided for @labelAllocated.
   ///
   /// In en, this message translates to:
@@ -4213,6 +4237,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Expiry date must be in MM/YY format'**
   String get msgInvalidMMYY;
+
+  /// No description provided for @labelCartWithCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart ({count})'**
+  String labelCartWithCount(Object count);
 }
 
 class _AppLocalizationsDelegate

@@ -1,11 +1,21 @@
 const ownerPaymentService = require('../services/ownerPaymentService');
 const mongoose = require('mongoose');
+const auditService = require('../services/auditService');
 
 exports.createPayment = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         const payment = await ownerPaymentService.processOwnerPayment(req.body, req.user.pharmacy, session, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'OwnerPayment',
+            entityId: payment._id,
+            changes: { value: payment.value, ownerId: payment.owner }
+        }, req);
+
         await session.commitTransaction();
         res.status(201).json({ success: true, data: payment });
     } catch (error) {
@@ -27,6 +37,15 @@ exports.updatePayment = async (req, res) => {
             session,
             req
         );
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'OwnerPayment',
+            entityId: payment._id,
+            changes: req.body
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: payment });
     } catch (error) {
@@ -47,6 +66,15 @@ exports.deletePayment = async (req, res) => {
             session,
             req
         );
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'OwnerPayment',
+            entityId: req.params.id,
+            changes: { status: 'deleted' }
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Payment deleted successfully' });
     } catch (error) {

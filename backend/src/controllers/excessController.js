@@ -12,6 +12,7 @@ const {
 const excessService = require('../services/excessService');
 const hubSummaryService = require('../services/hubSummaryService');
 const { addNotificationJob } = require('../utils/queueManager');
+const auditService = require('../services/auditService');
 
 // =============================================================================
 // EXCESS MANAGEMENT (LIFE CYCLE)
@@ -41,6 +42,15 @@ exports.createExcess = async (req, res) => {
         }
 
         const excess = await excessService.createExcess(req.body, req.user.pharmacy, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'StockExcess',
+            entityId: excess._id,
+            changes: excess.toObject()
+        }, req);
+
         res.status(201).json({ success: true, data: excess });
     } catch (error) {
         console.error('❌ [Excess Controller] createExcess failed:', error);
@@ -72,6 +82,15 @@ exports.updateExcess = async (req, res) => {
         }
 
         const excess = await excessService.updateExcess(req.params.id, updates, req.user, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'StockExcess',
+            entityId: excess._id,
+            changes: updates
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
@@ -98,6 +117,15 @@ exports.deleteExcess = async (req, res) => {
             throw { message: 'Hub stock (transfers or purchases) cannot be deleted directly. Please use the source document to manage this stock.', code: 409 };
         }
         await excess.deleteOne();
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'StockExcess',
+            entityId: req.params.id,
+            changes: excess.toObject()
+        }, req);
+
         res.status(200).json({ success: true, message: 'Deleted' });
     } catch (error) {
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
@@ -112,6 +140,15 @@ exports.approveExcess = async (req, res) => {
     session.startTransaction();
     try {
         const excess = await excessService.approveExcess(req.params.id, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'APPROVE',
+            entityType: 'StockExcess',
+            entityId: excess._id,
+            changes: { status: 'available' }
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: excess });
     } catch (error) {
@@ -144,6 +181,14 @@ exports.rejectExcess = async (req, res) => {
         excess.status = 'rejected';
         excess.rejectionReason = rejectionReason;
         await excess.save({ session });
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'REJECT',
+            entityType: 'StockExcess',
+            entityId: excess._id,
+            changes: { status: 'rejected', rejectionReason }
+        }, req);
 
         // Notify User
         const { addNotificationJob } = require('../utils/queueManager');
@@ -269,6 +314,15 @@ exports.addToHub = async (req, res) => {
         }
 
         const result = await excessService.addToHub(excessId, hubId, quantity, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'ADD_TO_HUB',
+            entityType: 'StockExcess',
+            entityId: excessId,
+            changes: { hubId, quantity, newExcessId: result.hubExcess._id }
+        }, req);
+
         res.status(200).json({ success: true, data: result });
     } catch (error) {
         console.error('❌ [Excess Controller] addToHub failed:', error);

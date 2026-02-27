@@ -408,6 +408,23 @@
       }
     }
   },
+  "labelPriceRange": "Price Range: {min} - {max} {currency}",
+  "@labelPriceRange": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "titleMarketplace": "Marketplace",
+  "actionAddToOrder": "Add to Order",
+  "msgPurchaseLogicPending": "Purchase logic pending excess ID",
   "labelAllocated": "Allocated: {current} / {total}",
   "@labelAllocated": {
     "placeholders": {
@@ -1067,5 +1084,7 @@
   "labelInvoiceSalePercentage": "Invoice Sale %",
   "labelLossPercentage": "Y (Loss %)",
   "errorCommRatioMismatch": "Buyer Commission must be greater than or equal to Seller Bonus (Reward)",
-  "msgInvalidMMYY": "Expiry date must be in MM/YY format"
+  "msgInvalidMMYY": "Expiry date must be in MM/YY format",
+  "labelCartWithCount": "Cart ({count})",
+  "labelPriceRange": "{min} - {max}"
 }

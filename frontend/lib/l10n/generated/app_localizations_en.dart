@@ -923,6 +923,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String labelPriceRange(String min, String max, String currency) {
+    return '$min - $max';
+  }
+
+  @override
+  String get titleMarketplace => 'Marketplace';
+
+  @override
+  String get actionAddToOrder => 'Add to Order';
+
+  @override
+  String get msgPurchaseLogicPending => 'Purchase logic pending excess ID';
+
+  @override
   String labelAllocated(int current, int total) {
     return 'Allocated: $current / $total';
   }
@@ -2226,4 +2240,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get msgInvalidMMYY => 'Expiry date must be in MM/YY format';
+
+  @override
+  String labelCartWithCount(Object count) {
+    return 'Cart ($count)';
+  }
 }

@@ -64,13 +64,6 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
 
     const shortageDoc = shortage[0];
 
-    await auditService.logAction({
-        user: req?.user?._id,
-        action: 'CREATE',
-        entityType: 'StockShortage',
-        entityId: shortageDoc._id,
-        changes: shortageDoc.toObject()
-    }, req);
 
     return shortageDoc;
 };
@@ -168,13 +161,6 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
             }
         }
 
-        await auditService.logAction({
-            user: req?.user?._id,
-            action: 'CREATE',
-            entityType: 'Order',
-            entityId: order._id,
-            changes: { serial, itemsCount: items.length }
-        }, req);
 
         return order;
     } catch (error) {
@@ -243,13 +229,6 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
         await exports.syncShortageStatus(shortage, session);
         // shortage.save() and order sync handled inside sync
 
-        await auditService.logAction({
-            user: req?.user?._id,
-            action: 'UPDATE',
-            entityType: 'StockShortage',
-            entityId: shortage._id,
-            changes: updateData
-        }, req);
 
         return shortage;
     } catch (error) {
@@ -387,15 +366,6 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
     }
 
     // Log action
-    if (req) {
-        await auditService.logAction({
-            user: req.user?._id,
-            action: 'CANCEL',
-            entityType: 'StockShortage',
-            entityId: shortage._id,
-            changes: { status: 'cancelled' }
-        }, req);
-    }
 
     return shortage;
 };
@@ -440,13 +410,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
             await exports.updateOrderTotals(orderId, session);
         }
 
-        await auditService.logAction({
-            user: req?.user?._id,
-            action: 'DELETE',
-            entityType: 'StockShortage',
-            entityId: shortageId,
-            changes: shortage.toObject()
-        }, req);
 
     } catch (error) {
         throw error;

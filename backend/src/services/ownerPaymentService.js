@@ -46,15 +46,6 @@ exports.processOwnerPayment = async (data, pharmacyId, session, req = null) => {
         details: { ownerId, value }
     }], { session });
 
-    if (req) {
-        await auditService.logAction({
-            user: req.user._id,
-            action: 'CREATE',
-            entityType: 'OwnerPayment',
-            entityId: payment._id,
-            changes: { value, ownerId, ownerName: owner.name }
-        }, req);
-    }
 
     return payment;
 };
@@ -101,15 +92,6 @@ exports.updateOwnerPayment = async (paymentId, data, pharmacyId, session, req = 
         details: { ownerId: owner._id, oldVal: payment.value - diff, newVal: newValue, diff }
     }], { session });
 
-    if (req) {
-        await auditService.logAction({
-            user: req.user._id,
-            action: 'UPDATE',
-            entityType: 'OwnerPayment',
-            entityId: payment._id,
-            changes: { value: newValue, oldTotal: payment.value - diff, diff }
-        }, req);
-    }
 
     return payment;
 };
@@ -146,15 +128,6 @@ exports.deleteOwnerPayment = async (paymentId, pharmacyId, session, req = null) 
         details: { ownerId: owner._id, value: payment.value, action: 'delete' }
     }], { session });
 
-    if (req) {
-        await auditService.logAction({
-            user: req.user._id,
-            action: 'DELETE',
-            entityType: 'OwnerPayment',
-            entityId: payment._id,
-            changes: { value: payment.value, ownerId: owner._id, ownerName: owner.name }
-        }, req);
-    }
 
     await payment.deleteOne({ session });
     return { success: true };

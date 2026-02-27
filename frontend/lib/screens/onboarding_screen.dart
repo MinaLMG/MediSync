@@ -17,7 +17,8 @@ class OnboardingScreen extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const DashboardScreen(userType: 'manager'),
+            builder: (context) =>
+                const DashboardScreen(userType: 'pharmacy_owner'),
           ),
         );
       });

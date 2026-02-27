@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'pharmacy_owner', 'pharmacy_staff', 'delivery'],
-        default: 'pharmacy_staff'
+        enum: ['admin', 'delivery', 'pharmacy_owner'],
+        default: 'pharmacy_owner'
     },
     pharmacy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -65,9 +65,9 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     if (!this.isModified('hashedPassword')) return next();
-    
+
     try {
         const salt = await bcrypt.genSalt(10);
         this.hashedPassword = await bcrypt.hash(this.hashedPassword, salt);
@@ -78,12 +78,12 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.hashedPassword);
 };
 
 // Don't return sensitive data
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
     const user = this.toObject();
     delete user.hashedPassword;
     delete user.refreshToken;

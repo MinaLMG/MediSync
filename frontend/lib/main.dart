@@ -146,7 +146,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               } else if (role == 'delivery') {
                 return const DeliveryDashboardScreen();
               } else if (auth.userStatus == 'active') {
-                return const DashboardScreen(userType: 'manager');
+                return const DashboardScreen(userType: 'pharmacy_owner');
               } else {
                 return const OnboardingScreen();
               }

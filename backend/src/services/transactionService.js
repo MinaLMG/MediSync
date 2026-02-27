@@ -144,15 +144,6 @@ exports.createTransaction = async (data, session, req = null) => {
         );
     }
 
-    if (req) {
-        await auditService.logAction({
-            user: req.user._id,
-            action: 'CREATE',
-            entityType: 'Transaction',
-            entityId: transaction._id,
-            changes: { serial, totalAmount, totalQuantity }
-        }, req);
-    }
 
     return transaction;
 };
@@ -251,15 +242,6 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
 
     await transaction.save({ session });
 
-    if (req) {
-        await auditService.logAction({
-            user: req.user._id,
-            action: 'UPDATE',
-            entityType: 'Transaction',
-            entityId: transaction._id,
-            changes: { status, oldStatus }
-        }, req);
-    }
 
     return transaction;
 };
@@ -665,14 +647,6 @@ exports.revertAddToHub = async (transaction, session, req) => {
     await hubExcess.save({ session });
 
     // Log the cancellation of the Hub Excess explicitly
-    const auditService = require('./auditService');
-    await auditService.logAction({
-        user: req?.user?._id,
-        action: 'CANCEL',
-        entityType: 'StockExcess',
-        entityId: hubExcess._id,
-        changes: { status: 'cancelled', reversalTransactionId: transaction._id }
-    }, req);
 
     // 3. Cancel Hub Shortage (Do not restore it)
     const shortageService = getShortageService();

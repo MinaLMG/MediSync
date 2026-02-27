@@ -155,14 +155,6 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         : await StockExcess.create(excessData);
 
 
-    await auditService.logAction({
-        user: req?.user?._id,
-        action: 'CREATE',
-        entityType: 'StockExcess',
-        entityId: excess._id,
-        changes: excess.toObject()
-    }, req);
-
     return excess;
 };
 
@@ -337,14 +329,6 @@ exports.updateExcess = async (excessId, updateData, user, req = null, session = 
     await exports.syncExcessStatus(excess, session);
     await excess.save({ session });
 
-    await auditService.logAction({
-        user: user._id,
-        action: 'UPDATE',
-        entityType: 'StockExcess',
-        entityId: excess._id,
-        changes: updateData
-    }, req);
-
     return excess;
 };
 
@@ -461,13 +445,6 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
         // 6. Notify parties (after commit)
         await transactionService.notifyParties(transaction);
 
-        await auditService.logAction({
-            user: req?.user?._id,
-            action: 'ADD_TO_HUB',
-            entityType: 'StockExcess',
-            entityId: excessId,
-            changes: { hubId, quantity, newExcessId: hubExcess._id }
-        }, req);
 
         return { success: true, transaction, hubExcess };
     } catch (error) {

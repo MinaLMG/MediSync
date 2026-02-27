@@ -9,6 +9,6 @@ const { getLimiter } = require('../middlewares/rateLimiter');
 router.use(protect);
 
 // Get My Requests History (Manager/Owner)
-router.get('/my', authorize('manager', 'pharmacy_owner'), getLimiter, getMyRequestsHistory);
+router.get('/my', authorize('pharmacy_owner'), getLimiter, getMyRequestsHistory);
 
 module.exports = router;

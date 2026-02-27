@@ -917,8 +917,22 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String labelPriceRange(String min, String max, String currency) {
+    return '$min - $max';
+  }
+
+  @override
+  String get titleMarketplace => 'سوق الأدوية';
+
+  @override
+  String get actionAddToOrder => 'إضافة للطلب';
+
+  @override
+  String get msgPurchaseLogicPending => 'منطق الشراء قيد التنفيذ';
+
+  @override
   String labelAllocated(int current, int total) {
-    return 'مخصص: $current / $total';
+    return 'Allocated: $current / $total';
   }
 
   @override
@@ -2217,4 +2231,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get msgInvalidMMYY => 'تاريخ الانتهاء يجب أن يكون بتنسيق MM/YY';
+
+  @override
+  String labelCartWithCount(Object count) {
+    return 'العربة ($count)';
+  }
 }

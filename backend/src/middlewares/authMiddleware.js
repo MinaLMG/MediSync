@@ -24,7 +24,7 @@ const protect = async (req, res, next) => {
 
             next();
         } catch (error) {
-            console.error(error);
+            console.error('❌ [Auth Middleware] Token Verification Failed:', error.message);
             res.status(401).json({ success: false, message: 'Not authorized, token failed' });
         }
     }
@@ -38,6 +38,7 @@ const protect = async (req, res, next) => {
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!roles.includes(req.user.role)) {
+            console.warn(`⚠️ [Auth Middleware] Role Blocked: User ${req.user._id} (role: ${req.user.role}) attempted to access route restricted to [${roles.join(', ')}]`);
             return res.status(403).json({
                 success: false,
                 message: `User role ${req.user.role} is not authorized to access this route`

@@ -622,7 +622,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${l10n.labelTotalCost.replaceAll(':', '')}:',
+                      '${l10n.labelTotalCost} ',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -978,8 +978,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                         children: [
                                           Text(
                                             prices.length > 1
-                                                ? '$minPrice - $maxPrice'
-                                                : '$minPrice',
+                                                ? l10n.labelPriceRange(
+                                                    minPrice.toStringAsFixed(0),
+                                                    maxPrice.toStringAsFixed(0),
+                                                    l10n.labelCoins,
+                                                  )
+                                                : '${minPrice.toStringAsFixed(0)} ${l10n.labelCoins}',
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
@@ -1036,7 +1040,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               onPressed: _viewCart,
               backgroundColor: Colors.blue[800],
               icon: const Icon(Icons.shopping_cart),
-              label: Text('Cart (${_cart.length})'),
+              label: Text(l10n.labelCartWithCount(_cart.length)),
             )
           : null,
     );

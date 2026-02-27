@@ -20,8 +20,8 @@ exports.registerUser = async (userData, req = null) => {
     const { name, phone, email, password, role, pharmacyId } = userData;
 
     // Check if user exists
-    const userExists = await User.findOne({ 
-        $or: [{ email }, { phone }] 
+    const userExists = await User.findOne({
+        $or: [{ email }, { phone }]
     });
 
     if (userExists) {
@@ -41,13 +41,6 @@ exports.registerUser = async (userData, req = null) => {
     });
 
     if (user) {
-        await auditService.logAction({
-            user: user._id,
-            action: 'CREATE',
-            entityType: 'User',
-            entityId: user._id,
-            changes: { email: user.email, role: user.role }
-        }, req);
 
         return {
             _id: user._id,
@@ -71,13 +64,6 @@ exports.loginUser = async (email, password, req = null) => {
     if (user && (await user.comparePassword(password))) {
         user.lastLogin = Date.now();
         await user.save();
-
-        await auditService.logAction({
-            user: user._id,
-            action: 'LOGIN',
-            entityType: 'User',
-            entityId: user._id
-        }, req);
 
         return {
             _id: user._id,
@@ -111,12 +97,6 @@ exports.socialLogin = async (userData, req = null) => {
         });
     }
 
-    await auditService.logAction({
-        user: user._id,
-        action: 'LOGIN_SOCIAL',
-        entityType: 'User',
-        entityId: user._id
-    }, req);
 
     return {
         _id: user._id,
@@ -146,12 +126,6 @@ exports.linkPharmacy = async (userId, pharmacyData, session, req = null) => {
     user.status = 'waiting';
     await user.save({ session });
 
-    await auditService.logAction({
-        user: userId,
-        action: 'LINK_PHARMACY',
-        entityType: 'Pharmacy',
-        entityId: pharmacy._id
-    }, req);
 
     await user.populate('pharmacy');
     return { user, pharmacy };
@@ -170,12 +144,6 @@ exports.changePassword = async (userId, oldPassword, newPassword, req = null, se
     user.hashedPassword = newPassword;
     await user.save({ session });
 
-    await auditService.logAction({
-        user: userId,
-        action: 'CHANGE_PASSWORD',
-        entityType: 'User',
-        entityId: userId
-    }, req);
 
     return true;
 };
@@ -195,21 +163,14 @@ exports.updateUserDetail = async (userId, updateData, req = null, session = null
     // Intelligent Change Detection: Only update if changed
     const currentPending = JSON.stringify(user.pendingUpdate || {});
     const newPending = JSON.stringify(updateData);
-    
+
     if (currentPending === newPending) {
-         return user; // No changes detected
+        return user; // No changes detected
     }
 
     user.pendingUpdate = updateData;
     await user.save({ session });
 
-    await auditService.logAction({
-        user: userId,
-        action: 'UPDATE_REQUEST',
-        entityType: 'User',
-        entityId: userId,
-        changes: updateData
-    }, req);
 
     await user.populate('pharmacy');
     return user;

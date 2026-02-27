@@ -185,6 +185,15 @@ exports.createTransaction = async (req, res) => {
         }
 
         const transaction = await transactionService.createTransaction(req.body, session, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { serial: transaction.serial, totalAmount: transaction.totalAmount, totalQuantity: transaction.totalQuantity }
+        }, req);
+
         await session.commitTransaction();
 
         // Centralized Notifications (after commit)
@@ -238,6 +247,14 @@ exports.updateTransactionStatus = async (req, res) => {
 
         const transaction = await transactionService.updateTransactionStatus(req.params.id, status, req, session);
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { status }
+        }, req);
+
         await session.commitTransaction();
 
         // Centralized Notifications (called after commit)
@@ -267,6 +284,15 @@ exports.assignTransaction = async (req, res) => {
 
         transaction.delivery = req.user._id;
         await transaction.save({ session });
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { delivery: req.user._id, action: 'ASSIGN' }
+        }, req);
+
         await session.commitTransaction();
 
         const updatedTransaction = await Transaction.findById(transaction._id)
@@ -304,6 +330,15 @@ exports.unassignTransaction = async (req, res) => {
     session.startTransaction();
     try {
         const transaction = await transactionService.unassignTransaction(req.params.id, session, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { delivery: null, action: 'UNASSIGN' }
+        }, req);
+
         await session.commitTransaction();
 
         // Centralized Notifications (called after commit)
@@ -417,6 +452,15 @@ exports.revertTransaction = async (req, res) => {
         // Special handling for "Add to Hub" transactions
         if (transaction.added_to_hub && transaction.added_to_hub.excessId) {
             await transactionService.revertAddToHub(transaction, session, req);
+
+            await auditService.logAction({
+                user: req.user._id,
+                action: 'REVERT_ADD_TO_HUB',
+                entityType: 'Transaction',
+                entityId: transaction._id,
+                changes: { status: 'cancelled', type: 'add_to_hub_reversal' }
+            }, req);
+
             await session.commitTransaction();
             await transactionService.notifyParties(transaction);
             return res.status(200).json({ success: true, data: transaction });
@@ -602,6 +646,14 @@ exports.revertTransaction = async (req, res) => {
         transaction.reversalTicket = ticket._id;
         await transaction.save({ session });
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'REVERT',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { status: 'cancelled', reversalTicketId: ticket._id }
+        }, req);
+
         await session.commitTransaction();
 
         // Notify stakeholders about reversal
@@ -724,6 +776,14 @@ exports.updateReversalTicket = async (req, res) => {
         if (description) ticket.description = description;
         await ticket.save({ session });
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'ReversalTicket',
+            entityId: ticket._id,
+            changes: { expenses: resolvedExpenses, description }
+        }, req);
+
         await ticket.populate([
             { path: 'expenses.user', select: 'name' },
             { path: 'expenses.pharmacy', select: 'name' }
@@ -773,6 +833,14 @@ exports.updateTransactionRatios = async (req, res) => {
 
         await transaction.save();
 
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE_RATIOS',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: { buyerCommissionRatio, sellerBonusRatio }
+        }, req);
+
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
         console.error('[Error] updateTransactionRatios failed:', error);
@@ -807,8 +875,8 @@ exports.updateTransaction = async (req, res) => {
             throw { message: 'Cannot modify a completed or cancelled transaction', code: 409 };
         }
 
-        const shortageService = getShortageService();
-        const excessService = getExcessService();
+        const shortageService = require('../services/shortageService');
+        const excessService = require('../services/excessService');
 
         // 2. Revert old stock changes
         // Restore shortage
@@ -897,6 +965,14 @@ exports.updateTransaction = async (req, res) => {
         transaction.totalAmount = newTotalAmount;
 
         await transaction.save({ session });
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'Transaction',
+            entityId: transaction._id,
+            changes: req.body
+        }, req);
 
         await session.commitTransaction();
         res.status(200).json({ success: true, data: transaction });

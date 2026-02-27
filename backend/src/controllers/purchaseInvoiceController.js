@@ -1,11 +1,21 @@
 const purchaseInvoiceService = require('../services/purchaseInvoiceService');
 const mongoose = require('mongoose');
+const auditService = require('../services/auditService');
 
 exports.createInvoice = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         const invoice = await purchaseInvoiceService.createPurchaseInvoice(req.body, req.user.pharmacy, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'PurchaseInvoice',
+            entityId: invoice._id,
+            changes: req.body
+        }, req);
+
         await session.commitTransaction();
         res.status(201).json({ success: true, data: invoice });
     } catch (error) {
@@ -30,6 +40,15 @@ exports.updateInvoice = async (req, res) => {
     session.startTransaction();
     try {
         const invoice = await purchaseInvoiceService.updatePurchaseInvoice(req.params.id, req.body, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'PurchaseInvoice',
+            entityId: invoice._id,
+            changes: req.body
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: invoice });
     } catch (error) {
@@ -45,6 +64,15 @@ exports.deleteInvoice = async (req, res) => {
     session.startTransaction();
     try {
         await purchaseInvoiceService.deletePurchaseInvoice(req.params.id, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'DELETE',
+            entityType: 'PurchaseInvoice',
+            entityId: req.params.id,
+            changes: { status: 'deleted' }
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Purchase invoice deleted' });
     } catch (error) {

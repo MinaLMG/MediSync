@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get('/hub-cash', protect, getHubCashSummary);
 
-router.get('/', protect, authorize('admin', 'pharmacy_owner', 'pharmacy_manager'), getPayments);
+router.get('/', protect, authorize('admin', 'pharmacy_owner'), getPayments);
 router.post('/', protect, authorize('admin'), createPayment);
 router.put('/:id', protect, authorize('admin'), updatePayment);
 router.delete('/:id', protect, authorize('admin'), deletePayment);

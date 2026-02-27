@@ -3,6 +3,7 @@ const { StockShortage, Order } = require('../models');
 
 // Services
 const shortageService = require('../services/shortageService');
+const auditService = require('../services/auditService');
 
 // =============================================================================
 // SHORTAGE CREATION (SINGLE & BULK)
@@ -32,6 +33,15 @@ exports.createShortage = async (req, res) => {
 
 
         const shortage = await shortageService.createShortage(req.body, req.user.pharmacy, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'StockShortage',
+            entityId: shortage._id,
+            changes: shortage.toObject()
+        }, req);
+
         await session.commitTransaction();
         res.status(201).json({ success: true, data: shortage });
     } catch (error) {
@@ -63,6 +73,15 @@ exports.createOrder = async (req, res) => {
         }
 
         const order = await shortageService.createOrder(req.body, req.user.pharmacy, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Order',
+            entityId: order._id,
+            changes: { serial: order.serial, itemsCount: items.length }
+        }, req);
+
         await session.commitTransaction();
         res.status(201).json({ success: true, data: order });
     } catch (error) {
@@ -99,6 +118,15 @@ exports.updateShortage = async (req, res) => {
         }
 
         const shortage = await shortageService.updateShortage(req.params.id, updates, req.user.pharmacy, req, session);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'StockShortage',
+            entityId: shortage._id,
+            changes: updates
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, data: shortage });
     } catch (error) {
@@ -131,6 +159,15 @@ exports.cancelShortage = async (req, res) => {
         }
 
         await shortageService.cancelShortage(req.params.id, session, req);
+
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CANCEL',
+            entityType: 'StockShortage',
+            entityId: req.params.id,
+            changes: { status: 'cancelled' }
+        }, req);
+
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Cancelled successfully' });
     } catch (error) {
@@ -146,7 +183,19 @@ exports.deleteShortage = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+        const shortage = await StockShortage.findById(req.params.id).session(session);
         await shortageService.deleteShortage(req.params.id, req.user.pharmacy, req, session);
+
+        if (shortage) {
+            await auditService.logAction({
+                user: req.user._id,
+                action: 'DELETE',
+                entityType: 'StockShortage',
+                entityId: req.params.id,
+                changes: shortage.toObject()
+            }, req);
+        }
+
         await session.commitTransaction();
         res.status(200).json({ success: true, message: 'Deleted successfully' });
     } catch (error) {

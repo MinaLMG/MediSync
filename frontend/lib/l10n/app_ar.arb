@@ -408,17 +408,23 @@
       }
     }
   },
-  "labelAllocated": "مخصص: {current} / {total}",
-  "@labelAllocated": {
+  "labelPriceRange": "نطاق السعر: {min} - {max} {currency}",
+  "@labelPriceRange": {
     "placeholders": {
-      "current": {
-        "type": "int"
+      "min": {
+        "type": "String"
       },
-      "total": {
-        "type": "int"
+      "max": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
       }
     }
   },
+  "titleMarketplace": "سوق الأدوية",
+  "actionAddToOrder": "إضافة للطلب",
+  "msgPurchaseLogicPending": "منطق الشراء قيد التنفيذ",
   "msgOverLimit": "تجاوز الحد!",
   "labelAdminOverrides": "تجاوزات المشرف (اختياري)",
   "labelBuyerComm": "عمولة المشتري %",
@@ -1069,5 +1075,7 @@
   "labelInvoiceSalePercentage": "نسبة البيع المفوترة",
   "labelLossPercentage": "Y (نسبة الخسارة)",
   "errorCommRatioMismatch": "يجب أن تكون عمولة المشتري أكبر من أو تساوي مكافأة البائع",
-  "msgInvalidMMYY": "تاريخ الانتهاء يجب أن يكون بتنسيق MM/YY"
+  "msgInvalidMMYY": "تاريخ الانتهاء يجب أن يكون بتنسيق MM/YY",
+  "labelCartWithCount": "العربة ({count})",
+  "labelPriceRange": "{min} - {max}"
 }

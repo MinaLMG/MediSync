@@ -213,6 +213,16 @@ exports.suggestProduct = async (req, res) => {
             value: 1,
             suggestedBy: req.user._id
         });
+
+        const auditService = require('../services/auditService');
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'ProductSuggestion',
+            entityId: suggestion._id,
+            changes: { name, price }
+        }, req);
+
         res.status(201).json({ success: true, data: suggestion });
     } catch (error) {
         res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
@@ -277,6 +287,16 @@ exports.updateSuggestionStatus = async (req, res) => {
         }
 
         await suggestion.save({ session });
+
+        const auditService = require('../services/auditService');
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'UPDATE',
+            entityType: 'ProductSuggestion',
+            entityId: suggestion._id,
+            changes: { status, adminNotes, productId: product && product[0] ? product[0]._id : null }
+        }, req);
+
         await session.commitTransaction();
 
         setImmediate(() => addNotificationJob(
@@ -335,6 +355,16 @@ exports.createProduct = async (req, res) => {
         }], { session });
 
         await session.commitTransaction();
+
+        const auditService = require('../services/auditService');
+        await auditService.logAction({
+            user: req.user._id,
+            action: 'CREATE',
+            entityType: 'Product',
+            entityId: product[0]._id,
+            changes: { name, prices }
+        }, req);
+
         res.status(201).json({ success: true, data: product[0] });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();

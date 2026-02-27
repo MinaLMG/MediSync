@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) =>
-                    const DashboardScreen(userType: 'manager'),
+                    const DashboardScreen(userType: 'pharmacy_owner'),
               ),
             );
           } else {

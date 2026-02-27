@@ -12,7 +12,7 @@ router.get('/', getLimiter, productController.getAllProducts);
 router.get('/lite', getLimiter, productController.getProductsLite);
 
 // Suggestions
-router.post('/suggest', authorize('pharmacy_owner', 'pharmacy_staff'), strictLimiter, productController.suggestProduct);
+router.post('/suggest', authorize('pharmacy_owner'), strictLimiter, productController.suggestProduct);
 router.get('/suggestions', getLimiter, productController.getSuggestions);
 router.put('/suggestions/:id', authorize('admin'), strictLimiter, productController.updateSuggestionStatus);
 

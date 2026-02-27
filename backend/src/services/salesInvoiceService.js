@@ -9,7 +9,7 @@ const { sendToUser } = require('../utils/pusherManager');
  */
 exports.createSalesInvoice = async (data, pharmacyId, session) => {
     const { items, date } = data; // items: [{ excessId, quantity, sellingPrice }]
-    
+
     const hub = await Pharmacy.findById(pharmacyId).session(session);
     if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
@@ -21,9 +21,9 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
     for (const item of items) {
         const excess = await StockExcess.findById(item.excess).session(session);
         if (!excess) throw { message: `Stock Excess not found for item`, code: 404 };
-        
+
         if (excess.remainingQuantity < item.quantity) {
-             throw { message: `Insufficient quantity for ${excess.product}. Available: ${excess.remainingQuantity}, Requested: ${item.quantity}`, code: 400 };
+            throw { message: `Insufficient quantity for ${excess.product}. Available: ${excess.remainingQuantity}, Requested: ${item.quantity}`, code: 400 };
         }
 
         // Deduct Quantity
@@ -38,7 +38,7 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
         if (costPrice === undefined || costPrice === null) {
             throw { message: `Cost price not found for ${excess.product}`, code: 400 };
         }
-        
+
         // Ensure accurate unit cost for this transaction
         const itemBuyingPrice = costPrice; // Unit Cost
         const itemSellingPrice = item.sellingPrice; // Unit Sale Price
@@ -72,13 +72,13 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
     // Update Hub Cash Balance (Sale increases cash by total selling price)
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
-    
+
     hub.cashBalance += totalSellingPrice;
     hub.balance += totalBuyingPrice; // Add back purchase price to cancel inventory cost
-    
+
     await hub.save({ session });
-    
-   
+
+
 
     // Record History in CashBalanceHistory (total selling price)
     await CashBalanceHistory.create([{
@@ -105,7 +105,7 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
         relatedEntityType: 'SalesInvoice',
         description: `Sales Invoice Cost Recovery #${invoice._id.toString().slice(-6).toUpperCase()}`,
         description_ar: `استرداد تكلفة فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
-        details: { 
+        details: {
             invoiceId: invoice._id,
             totalSellingPrice,
             totalBuyingPrice,
@@ -113,7 +113,7 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
         }
     }], { session });
 
-     // Trigger Real-time Balance Update
+    // Trigger Real-time Balance Update
     const users = await User.find({ pharmacy: pharmacyId });
     for (const u of users) {
         await sendToUser(u._id.toString(), 'balanceUpdate', {
@@ -151,7 +151,7 @@ exports.getInvoicesByPharmacy = async (pharmacyId) => {
  */
 exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
     const { items, date } = data;
-    console.log("items",items)
+    console.log("items", items)
     // 1. Fetch Invoice and Hub
     const invoice = await SalesInvoice.findById(invoiceId).session(session);
     if (!invoice) throw { message: 'Sales Invoice not found', code: 404 };
@@ -166,14 +166,14 @@ exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
         invoice.date = new Date(date);
         hasChanged = true;
     }
-    
+
     // Map existing items for lookup
     const existingItemMap = new Map();
     invoice.items.forEach(item => {
         existingItemMap.set(item.excess.toString(), item); // Fallback
     });
 
-    const inputItemIds = new Set(items.map(i => ( i.excess).toString()));
+    const inputItemIds = new Set(items.map(i => (i.excess).toString()));
 
     // 2. Identify Deletions & Restore Stock
     for (const existingItem of invoice.items) {
@@ -207,7 +207,7 @@ exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
         // Modification: Quantity
         if (inputItem.quantity !== undefined && inputItem.quantity !== existingItem.quantity) {
             const qDiff = inputItem.quantity - existingItem.quantity;
-            
+
             // If increase, check availability
             if (qDiff > 0 && excess.remainingQuantity < qDiff) {
                 throw { message: `Insufficient stock for item ${excess.product}. Available: ${excess.remainingQuantity}, additional needed: ${qDiff}`, code: 400 };
@@ -245,30 +245,22 @@ exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
         invoice.totalRevenuePrice = totalSellingPrice - totalBuyingPrice;
         await invoice.save({ session });
 
-        const auditService = require('./auditService');
-        await auditService.logAction({
-            user: req?.user?._id,
-            action: 'UPDATE',
-            entityType: 'SalesInvoice',
-            entityId: invoice._id,
-            changes: data
-        }, req);
     }
 
     // 5. Correct Hub Cash Balance AND Regular Balance
     const oldBuyingPrice = invoice.items.reduce((sum, item) => sum + (item.buyingPrice * item.quantity), 0);
     const balanceDiff = totalSellingPrice - oldSellingTotal;
     const buyingPriceDiff = totalBuyingPrice - oldBuyingPrice;
-    
+
     if (balanceDiff !== 0 || buyingPriceDiff !== 0) {
         const prevCashBalance = hub.cashBalance;
         const prevBalance = hub.balance;
-        
-        hub.cashBalance += balanceDiff; 
+
+        hub.cashBalance += balanceDiff;
         hub.balance += buyingPriceDiff; // Adjust inventory cost recovery
         await hub.save({ session });
-        
-        
+
+
 
         // CashBalanceHistory for cash changes
         if (balanceDiff !== 0) {
@@ -285,7 +277,7 @@ exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
                 details: { invoiceId: invoice._id, diff: balanceDiff }
             }], { session });
         }
-        
+
         // BalanceHistory for buying price changes
         if (buyingPriceDiff !== 0) {
             await BalanceHistory.create([{
@@ -339,13 +331,13 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
     // 2. Update Hub Cash Balance AND Regular Balance
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
-    
+
     hub.cashBalance -= invoice.totalSellingPrice;
     hub.balance -= invoice.totalBuyingPrice; // Reverse purchase price recovery
-    
+
     await hub.save({ session });
-    
-    
+
+
 
     // 3. Record History in CashBalanceHistory
     await CashBalanceHistory.create([{
@@ -360,7 +352,7 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
         description_ar: `عكس: تم حذف فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
         details: { invoiceId: invoice._id }
     }], { session });
-    
+
     // 4. Record History in BalanceHistory (purchase price reversal)
     await BalanceHistory.create([{
         pharmacy: hub._id,
@@ -373,7 +365,7 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
         description: `Reversal: Sales Invoice Cost Deleted #${invoice._id.toString().slice(-6).toUpperCase()}`,
         description_ar: `عكس: تم حذف تكلفة فاتورة بيع #${invoice._id.toString().slice(-6).toUpperCase()}`,
         details: { invoiceId: invoice._id, buyingPrice: invoice.totalBuyingPrice }
-    }], { session });   
+    }], { session });
     // Trigger Real-time Balance Update
     const users = await User.find({ pharmacy: hub._id });
     for (const u of users) {

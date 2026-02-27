@@ -1,4 +1,4 @@
-const { PurchaseInvoice, Pharmacy, CashBalanceHistory,BalanceHistory, User } = require('../models');
+const { PurchaseInvoice, Pharmacy, CashBalanceHistory, BalanceHistory, User } = require('../models');
 const { sendToUser } = require('../utils/pusherManager');
 const excessService = require('./excessService');
 const mongoose = require('mongoose');
@@ -9,9 +9,9 @@ const mongoose = require('mongoose');
  */
 exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
     const { items, totalAmount, date } = data;
-    console.log("items",items)
-    console.log("totalAmount",totalAmount)
-    console.log("date",date)
+    console.log("items", items)
+    console.log("totalAmount", totalAmount)
+    console.log("date", date)
     const hub = await Pharmacy.findById(pharmacyId).session(session);
     if (!hub || !hub.isHub) throw { message: 'Pharmacy is not a hub', code: 403 };
 
@@ -26,9 +26,9 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
         date: date || new Date(),
         items: [] // Will populate after creating items
     });
-    console.log("invoice",invoice)
+    console.log("invoice", invoice)
     const processedItems = [];
-    console.log("processedItems",processedItems)
+    console.log("processedItems", processedItems)
     // 2. Process each item using excessService
     for (const item of items) {
         const { product, volume, quantity, buyingPrice, sellingPrice, salePercentage, expiryDate } = item;
@@ -40,18 +40,18 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
             quantity,
             expiryDate,
             selectedPrice: sellingPrice,
-            salePercentage: salePercentage || 0, 
+            salePercentage: salePercentage || 0,
             shortage_fulfillment: false
         }, pharmacyId, req, session);
 
         // Approve and mark as hub purchase
         await excessService.approveExcess(excess._id, session);
-        
+
         excess.isHubGenerated = false; // NOT a transfer
         excess.isHubPurchase = true;   // Direct purchase from supplier
         excess.purchasePrice = buyingPrice;
         await excess.save({ session });
-        
+
         processedItems.push({
             product,
             volume,
@@ -65,22 +65,22 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
     }
 
     invoice.items = processedItems;
-    console.log("invoice.items",invoice.items)
+    console.log("invoice.items", invoice.items)
     await invoice.save({ session });
-    console.log("invoice",invoice)
+    console.log("invoice", invoice)
     // 3. Update Hub Cash Balance AND Regular Balance
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
-    
+
     // Deduct from BOTH cash balance AND regular balance
     hub.cashBalance -= totalAmount;
     hub.balance -= totalAmount;
-    
+
     await hub.save({ session });
-    console.log("hub",hub)
-    
-    
-    
+    console.log("hub", hub)
+
+
+
     // 4. Record History in CashBalanceHistory
     await CashBalanceHistory.create([{
         pharmacy: pharmacyId,
@@ -146,11 +146,11 @@ exports.getInvoicesByPharmacy = async (pharmacyId) => {
  */
 exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
     const { items, date } = data;
-    console.log("items",items) 
+    console.log("items", items)
     // 1. Fetch Invoice and Hub
     const invoice = await PurchaseInvoice.findById(invoiceId).session(session);
     if (!invoice) throw { message: 'Purchase Invoice not found', code: 404 };
-    
+
     const hub = await Pharmacy.findById(invoice.pharmacy).session(session);
     if (!hub) throw { message: 'Hub not found', code: 404 };
 
@@ -190,9 +190,9 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
 
     // 3. Process Input Items (Modifications & Existence Check)
     for (const inputItem of items) {
-        if (!inputItem.excess) 
+        if (!inputItem.excess)
             throw { message: 'Adding new items to an existing invoice is not allowed. Please create a new invoice.', code: 400 }; // Skip items without identifier
-        
+
         const identifier = inputItem.excess.toString();
         const existingItem = existingItemMap.get(identifier);
 
@@ -222,7 +222,7 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
                 throw { message: `Cannot change sale percentage of item because stock usage has already started.`, code: 400 };
             }
             if (inputItem.expiryDate && inputItem.expiryDate !== existingItem.expiryDate) {
-                 throw { message: `Cannot change expiry date because stock usage has already started.`, code: 400 };
+                throw { message: `Cannot change expiry date because stock usage has already started.`, code: 400 };
             }
         } else {
             if (inputItem.sellingPrice !== undefined && inputItem.sellingPrice !== existingItem.sellingPrice) {
@@ -275,15 +275,7 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
         invoice.items = finalItems;
         invoice.totalAmount = newTotal;
         await invoice.save({ session });
-        
-        const auditService = require('./auditService');
-        await auditService.logAction({
-            user: req.user._id,
-                action: 'UPDATE',
-                entityType: 'PurchaseInvoice',
-                entityId: invoice._id,
-                changes: req.body
-            }, req);
+
     }
 
     // 5. Correct Hub Cash Balance AND Regular Balance
@@ -295,13 +287,13 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
 
         const prevCashBalance = hub.cashBalance;
         const prevBalance = hub.balance;
-        
+
         // Adjust both balances
         hub.cashBalance -= balanceDiff;
         hub.balance -= balanceDiff;
         await hub.save({ session });
-        
-        
+
+
 
         // Record CashBalanceHistory
         await CashBalanceHistory.create([{
@@ -316,7 +308,7 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
             description_ar: `تصحيح: تم تحديث فاتورة شراء #${invoice._id.toString().slice(-6).toUpperCase()}`,
             details: { invoiceId: invoice._id, diff: -balanceDiff }
         }], { session });
-        
+
         // Record BalanceHistory
         await BalanceHistory.create([{
             pharmacy: hub._id,
@@ -369,14 +361,14 @@ exports.deletePurchaseInvoice = async (invoiceId, session) => {
     // 2. Reverse Cash Balance AND Regular Balance
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
-    
+
     // Restore both balances
     hub.cashBalance += invoice.totalAmount;
     hub.balance += invoice.totalAmount;
     await hub.save({ session });
-    
+
     // Trigger Real-time Balance Update
-    
+
 
     // 3. Record CashBalanceHistory
     await CashBalanceHistory.create([{
@@ -391,7 +383,7 @@ exports.deletePurchaseInvoice = async (invoiceId, session) => {
         description_ar: `عكس: تم حذف فاتورة شراء #${invoice._id.toString().slice(-6).toUpperCase()}`,
         details: { invoiceId: invoice._id }
     }], { session });
-    
+
     // 4. Record BalanceHistory
     await BalanceHistory.create([{
         pharmacy: hub._id,
