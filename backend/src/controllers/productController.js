@@ -161,6 +161,10 @@ exports.getProductById = async (req, res) => {
     }
 };
 
+// =============================================================================
+// PRODUCT QUERY (FULL & LITE)
+// =============================================================================
+
 // Get products lite (id, name) for dropdowns
 exports.getProductsLite = async (req, res) => {
     try {
@@ -188,9 +192,21 @@ exports.getProductsLite = async (req, res) => {
     }
 };
 
+// =============================================================================
+// PRODUCT SUGGESTIONS (MANAGER)
+// =============================================================================
+
 // Suggest a new product (Manager)
 exports.suggestProduct = async (req, res) => {
     try {
+        const { name, price } = req.body;
+        if (!name || !price) {
+            throw { message: 'Product name and price are required for suggestions.', code: 400 };
+        }
+        if (price <= 0) {
+            throw { message: 'Suggested price must be positive.', code: 400 };
+        }
+
         const suggestion = await ProductSuggestion.create({
             ...req.body,
             volumeName: 'unit',
@@ -283,6 +299,10 @@ exports.updateSuggestionStatus = async (req, res) => {
         session.endSession();
     }
 };
+
+// =============================================================================
+// PRODUCT MANAGEMENT (ADMIN)
+// =============================================================================
 
 // Create Product Direct (Admin)
 exports.createProduct = async (req, res) => {

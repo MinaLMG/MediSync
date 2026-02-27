@@ -159,13 +159,9 @@ class _MatchingDetailScreenState extends State<MatchingDetailScreen> {
 
       if (buyerComm < sellerBonus) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Buyer Commission must be greater than or equal to Seller Bonus (Reward)',
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.errorCommRatioMismatch)));
         }
         return;
       }

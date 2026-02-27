@@ -35,6 +35,11 @@ exports.createExcess = async (req, res) => {
             throw { message: 'Price cannot be negative.', code: 400 };
         }
 
+        // Validate expiryDate format (MM/YY)
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) {
+            throw { message: 'Expiry date must be in MM/YY format.', code: 400 };
+        }
+
         const excess = await excessService.createExcess(req.body, req.user.pharmacy, req);
         res.status(201).json({ success: true, data: excess });
     } catch (error) {

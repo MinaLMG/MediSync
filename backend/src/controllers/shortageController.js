@@ -25,6 +25,12 @@ exports.createShortage = async (req, res) => {
             throw { message: 'Quantity must be a positive number.', code: 400 };
         }
 
+        // Validate targetPrice if provided
+        if (targetPrice !== undefined && targetPrice < 0) {
+            throw { message: 'Target price cannot be negative.', code: 400 };
+        }
+
+
         const shortage = await shortageService.createShortage(req.body, req.user.pharmacy, req, session);
         await session.commitTransaction();
         res.status(201).json({ success: true, data: shortage });
@@ -210,7 +216,7 @@ exports.getOrders = async (req, res) => {
 // Global active for News Marquee
 exports.getGlobalActiveShortages = async (req, res) => {
     try {
-        const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 } }).select('product').populate('product', 'name');
+        const shortages = await StockShortage.find({ remainingQuantity: { $gt: 0 }, order: null }).select('product').populate('product', 'name');
         const productNames = [...new Set(shortages.map(s => s.product?.name).filter(Boolean))];
         res.status(200).json({ success: true, count: productNames.length, data: productNames });
     } catch (error) {

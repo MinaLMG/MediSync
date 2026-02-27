@@ -758,8 +758,18 @@ exports.updateTransactionRatios = async (req, res) => {
             throw { message: 'Cannot update ratios of a finished transaction', code: 409 };
         }
 
-        if (buyerCommissionRatio !== undefined) transaction.buyerCommissionRatio = buyerCommissionRatio / 100;
-        if (sellerBonusRatio !== undefined) transaction.sellerBonusRatio = sellerBonusRatio / 100;
+        if (buyerCommissionRatio !== undefined) {
+            if (buyerCommissionRatio < 0 || buyerCommissionRatio > 100) {
+                throw { message: 'Buyer commission ratio must be between 0 and 100.', code: 400 };
+            }
+            transaction.buyerCommissionRatio = buyerCommissionRatio / 100;
+        }
+        if (sellerBonusRatio !== undefined) {
+            if (sellerBonusRatio < 0 || sellerBonusRatio > 100) {
+                throw { message: 'Seller bonus ratio must be between 0 and 100.', code: 400 };
+            }
+            transaction.sellerBonusRatio = sellerBonusRatio / 100;
+        }
 
         await transaction.save();
 

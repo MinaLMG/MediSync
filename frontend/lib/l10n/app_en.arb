@@ -1065,5 +1065,7 @@
   "compensationRevenueLabel": "Compensations Revenue",
   "labelMaxQuantity": "Max Qty",
   "labelInvoiceSalePercentage": "Invoice Sale %",
-  "labelLossPercentage": "Y (Loss %)"
+  "labelLossPercentage": "Y (Loss %)",
+  "errorCommRatioMismatch": "Buyer Commission must be greater than or equal to Seller Bonus (Reward)",
+  "msgInvalidMMYY": "Expiry date must be in MM/YY format"
 }

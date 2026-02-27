@@ -367,7 +367,9 @@ exports.settleTransaction = async (transaction, session) => {
                 let bonusRatio = transaction.sellerBonusRatio;
                 let commRatio = transaction.buyerCommissionRatio;
 
-                // Override for Hub
+                // --- Hub-Specific Overrides ---
+                // If a Hub is the seller, they don't get a bonus since it's a system transfer.
+                // If a Hub is the buyer, they don't pay commission to themselves.
                 if (sellerPh.isHub) bonusRatio = 0;
                 if (buyerPh.isHub) commRatio = 0;
 
@@ -419,7 +421,8 @@ exports.settleTransaction = async (transaction, session) => {
                         sellingPrice: source.agreedPrice
                     };
                 } else {
-                    // Regular seller (not hub) - calculate commission normally
+                    // Regular seller (not hub) - calculate commission normally.
+                    // The profit is (1 - commissionRatio) * totalAmount.
                     sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
 
                     sellerDetails = {
@@ -431,8 +434,9 @@ exports.settleTransaction = async (transaction, session) => {
                 }
 
                 // Sub-case: Hub Buyer Logic (Net Zero Effect)
+                // If the buyer is a Hub, they are essentially taking stock in at the same "value" 
+                // the seller received it at, ensuring no system "leakage" during transfers.
                 if (buyerPh.isHub) {
-                    // Hub as buyer: pay same amount as seller receives (zero net effect)
                     buyerSaleRatio = (excess.salePercentage || 0) / 100;
                 }
 

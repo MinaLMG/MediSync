@@ -430,7 +430,6 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
             );
         }
 
-
         const orderId = shortage.order;
 
         // 2. Delete Shortage

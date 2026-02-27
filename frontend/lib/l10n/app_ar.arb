@@ -1067,5 +1067,7 @@
   "compensationRevenueLabel": "إيراد التعويضات",
   "labelMaxQuantity": "أقصى كمية",
   "labelInvoiceSalePercentage": "نسبة البيع المفوترة",
-  "labelLossPercentage": "Y (نسبة الخسارة)"
+  "labelLossPercentage": "Y (نسبة الخسارة)",
+  "errorCommRatioMismatch": "يجب أن تكون عمولة المشتري أكبر من أو تساوي مكافأة البائع",
+  "msgInvalidMMYY": "تاريخ الانتهاء يجب أن يكون بتنسيق MM/YY"
 }

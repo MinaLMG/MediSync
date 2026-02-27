@@ -410,7 +410,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           }
                         },
                         validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
+                            v == null || v.isEmpty ? l10n.errorRequired : null,
                       ),
                       const SizedBox(height: 16),
 
@@ -455,7 +455,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                                 _selectedPrice = null;
                                 _fetchMarketInsight();
                               }),
-                        validator: (v) => v == null ? 'Required' : null,
+                        validator: (v) => v == null ? l10n.errorRequired : null,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -496,7 +496,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                               if (_isManualPrice) _selectedPrice = null;
                             }),
                           ),
-                          const Text('Enter Manual Price'),
+                          Text(l10n.actionEnterManualPrice),
                         ],
                       ),
                       if (_isManualPrice)
@@ -511,7 +511,8 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                               RegExp(r'^\d*\.?\d*'),
                             ),
                           ],
-                          validator: (v) => v!.isEmpty ? 'Required' : null,
+                          validator: (v) =>
+                              v!.isEmpty ? l10n.errorRequired : null,
                           onChanged: (v) => _fetchMarketInsight(),
                         ),
                       const SizedBox(height: 16),
@@ -526,14 +527,15 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                       ),
                       keyboardType: TextInputType.number,
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
+                        if (v == null || v.isEmpty) return l10n.errorRequired;
                         final qty = int.tryParse(v);
-                        if (qty == null || qty <= 0) return 'Invalid quantity';
+                        if (qty == null || qty <= 0)
+                          return l10n.msgInvalidQuantity;
                         if (isEditMode) {
                           if (qty >
                               (widget.initialData?['originalQuantity'] ?? 0))
-                            return 'Too high';
-                          if (qty < taken) return 'Too low';
+                            return l10n.msgTooHigh;
+                          if (qty < taken) return l10n.msgTooLow;
                         }
                         return null;
                       },
@@ -552,7 +554,7 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                           border: const OutlineInputBorder(),
                         ),
                         validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
+                            v == null || v.isEmpty ? l10n.errorRequired : null,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -658,7 +660,9 @@ class _AddExcessScreenState extends State<AddExcessScreen> {
                                 ),
                               )
                             : Text(
-                                isEditMode ? 'Update Excess' : 'Submit Excess',
+                                isEditMode
+                                    ? l10n.actionUpdateExcess
+                                    : l10n.actionSubmitExcess,
                               ),
                       ),
                     ),

@@ -2210,4 +2210,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get labelLossPercentage => 'Y (نسبة الخسارة)';
+
+  @override
+  String get errorCommRatioMismatch =>
+      'يجب أن تكون عمولة المشتري أكبر من أو تساوي مكافأة البائع';
+
+  @override
+  String get msgInvalidMMYY => 'تاريخ الانتهاء يجب أن يكون بتنسيق MM/YY';
 }

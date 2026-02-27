@@ -4201,6 +4201,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Y (Loss %)'**
   String get labelLossPercentage;
+
+  /// No description provided for @errorCommRatioMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer Commission must be greater than or equal to Seller Bonus (Reward)'**
+  String get errorCommRatioMismatch;
+
+  /// No description provided for @msgInvalidMMYY.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry date must be in MM/YY format'**
+  String get msgInvalidMMYY;
 }
 
 class _AppLocalizationsDelegate

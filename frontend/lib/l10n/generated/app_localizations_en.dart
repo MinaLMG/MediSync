@@ -2219,4 +2219,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelLossPercentage => 'Y (Loss %)';
+
+  @override
+  String get errorCommRatioMismatch =>
+      'Buyer Commission must be greater than or equal to Seller Bonus (Reward)';
+
+  @override
+  String get msgInvalidMMYY => 'Expiry date must be in MM/YY format';
 }
