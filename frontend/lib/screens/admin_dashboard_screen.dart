@@ -18,6 +18,7 @@ import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
 import 'admin_order_list_screen.dart';
 import 'admin/admin_transactions_summary_screen.dart';
+import 'admin/admin_stats_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -221,6 +222,12 @@ class AdminHomeTab extends StatelessWidget {
         'icon': Icons.summarize,
         'color': Colors.blue[900],
       },
+      {
+        'id': 'Admin Stats',
+        'title': AppLocalizations.of(context)!.menuAdminStats,
+        'icon': Icons.query_stats,
+        'color': Colors.indigo[900],
+      },
     ];
 
     return RefreshIndicator(
@@ -397,6 +404,11 @@ class AdminHomeTab extends StatelessWidget {
               MaterialPageRoute(
                 builder: (context) => const AdminTransactionsSummaryScreen(),
               ),
+            );
+          } else if (id == 'Admin Stats') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminStatsScreen()),
             );
           }
         },

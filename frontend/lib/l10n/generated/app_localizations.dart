@@ -182,23 +182,11 @@ abstract class AppLocalizations {
   /// **'Successfully moved to hub'**
   String get msgMoveToHubSuccess;
 
-  /// No description provided for @actionEdit.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit'**
-  String get actionEdit;
-
   /// No description provided for @actionCreate.
   ///
   /// In en, this message translates to:
   /// **'Create'**
   String get actionCreate;
-
-  /// No description provided for @actionDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get actionDelete;
 
   /// No description provided for @loginFailed.
   ///
@@ -1151,7 +1139,7 @@ abstract class AppLocalizations {
   /// No description provided for @tabAvailable.
   ///
   /// In en, this message translates to:
-  /// **'AVAILABLE'**
+  /// **'Available'**
   String get tabAvailable;
 
   /// No description provided for @tabFulfilled.
@@ -1195,6 +1183,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log out'**
   String get actionLogout;
+
+  /// No description provided for @actionEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get actionEdit;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get actionDelete;
 
   /// No description provided for @labelVolume.
   ///
@@ -1673,7 +1673,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelTotalQuantity.
   ///
   /// In en, this message translates to:
-  /// **'Total Quantity:'**
+  /// **'Total Quantity'**
   String get labelTotalQuantity;
 
   /// No description provided for @labelRemaining.
@@ -1823,7 +1823,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelPriceRange.
   ///
   /// In en, this message translates to:
-  /// **'{min} - {max}'**
+  /// **'Price Range: {min} - {max} {currency}'**
   String labelPriceRange(String min, String max, String currency);
 
   /// No description provided for @titleMarketplace.
@@ -2759,7 +2759,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelTransactionHash.
   ///
   /// In en, this message translates to:
-  /// **'Transaction: '**
+  /// **'Transaction #'**
   String get labelTransactionHash;
 
   /// No description provided for @labelUnitsSuffix.
@@ -2771,13 +2771,13 @@ abstract class AppLocalizations {
   /// No description provided for @labelExcessPharmacy.
   ///
   /// In en, this message translates to:
-  /// **'Excess:'**
+  /// **'Excess Pharmacy:'**
   String get labelExcessPharmacy;
 
   /// No description provided for @labelShortagePharmacy.
   ///
   /// In en, this message translates to:
-  /// **'Shortage:'**
+  /// **'Shortage Pharmacy:'**
   String get labelShortagePharmacy;
 
   /// No description provided for @actionAssignToMe.
@@ -3809,7 +3809,7 @@ abstract class AppLocalizations {
   /// No description provided for @optimisticValue.
   ///
   /// In en, this message translates to:
-  /// **'Optimistic Value'**
+  /// **'Optimistic Stock Value'**
   String get optimisticValue;
 
   /// No description provided for @makePayment.
@@ -3821,7 +3821,7 @@ abstract class AppLocalizations {
   /// No description provided for @paymentValue.
   ///
   /// In en, this message translates to:
-  /// **'Payment Value'**
+  /// **'Payment Value (Positive: To Hub, Negative: From Hub)'**
   String get paymentValue;
 
   /// No description provided for @purchaseInvoice.
@@ -3841,6 +3841,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Revenue'**
   String get totalRevenue;
+
+  /// No description provided for @transactionRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Revenue'**
+  String get transactionRevenue;
 
   /// No description provided for @negativeCommissions.
   ///
@@ -3881,7 +3887,7 @@ abstract class AppLocalizations {
   /// No description provided for @menuHubSalesInvoice.
   ///
   /// In en, this message translates to:
-  /// **'Hub Sales Invoice'**
+  /// **'Sales Invoice'**
   String get menuHubSalesInvoice;
 
   /// No description provided for @menuAdminTransactionsSummary.
@@ -3889,6 +3895,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transactions Summary'**
   String get menuAdminTransactionsSummary;
+
+  /// No description provided for @noOwnersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No owners found'**
+  String get noOwnersFound;
+
+  /// No description provided for @balance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get balance;
 
   /// No description provided for @cancel.
   ///
@@ -3907,24 +3925,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Confirm'**
   String get confirm;
-
-  /// No description provided for @noOwnersFound.
-  ///
-  /// In en, this message translates to:
-  /// **'No owners found'**
-  String get noOwnersFound;
-
-  /// No description provided for @balance.
-  ///
-  /// In en, this message translates to:
-  /// **'Balance'**
-  String get balance;
-
-  /// No description provided for @transactionRevenue.
-  ///
-  /// In en, this message translates to:
-  /// **'Transaction Revenue'**
-  String get transactionRevenue;
 
   /// No description provided for @menuHubCalculations.
   ///
@@ -4243,6 +4243,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cart ({count})'**
   String labelCartWithCount(Object count);
+
+  /// No description provided for @menuAdminStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Stats'**
+  String get menuAdminStats;
+
+  /// No description provided for @adminStatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Statistics'**
+  String get adminStatsTitle;
+
+  /// No description provided for @exportShoppingSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Shopping Sheet'**
+  String get exportShoppingSheet;
+
+  /// No description provided for @msgExportingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting data...'**
+  String get msgExportingData;
+
+  /// No description provided for @msgExportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel file saved successfully'**
+  String get msgExportSuccess;
+
+  /// No description provided for @msgExportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export data'**
+  String get msgExportError;
+
+  /// No description provided for @labelMarketExcessesExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Excesses Export'**
+  String get labelMarketExcessesExport;
 }
 
 class _AppLocalizationsDelegate

@@ -39,6 +39,9 @@ dependencies:
   intl: ^0.20.2
   image_picker: ^1.2.1
   dart_pusher_channels: ^1.2.3
+  excel: 2.1.0
+  path_provider: 2.0.11
+  open_file: 3.2.1
 
 dev_dependencies:
   flutter_test:

@@ -51,13 +51,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get msgMoveToHubSuccess => 'تم النقل للمركز بنجاح';
 
   @override
-  String get actionEdit => 'تعديل';
-
-  @override
   String get actionCreate => 'إنشاء';
-
-  @override
-  String get actionDelete => 'حذف';
 
   @override
   String get loginFailed => 'فشل تسجيل الدخول';
@@ -577,6 +571,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get actionLogout => 'تسجيل خروج';
 
   @override
+  String get actionEdit => 'تعديل';
+
+  @override
+  String get actionDelete => 'حذف';
+
+  @override
   String get labelVolume => 'الحجم';
 
   @override
@@ -830,7 +830,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelType => 'النوع';
 
   @override
-  String get labelTotalQuantity => 'إجمالي الكمية:';
+  String get labelTotalQuantity => 'إجمالي الكمية';
 
   @override
   String get labelRemaining => 'المتبقي';
@@ -918,7 +918,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String labelPriceRange(String min, String max, String currency) {
-    return '$min - $max';
+    return 'نطاق السعر: $min - $max $currency';
   }
 
   @override
@@ -932,7 +932,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String labelAllocated(int current, int total) {
-    return 'Allocated: $current / $total';
+    return 'تم التخصيص: $current / $total';
   }
 
   @override
@@ -1435,16 +1435,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelOrderHash => 'طلب رقم ';
 
   @override
-  String get labelTransactionHash => 'المعاملة: ';
+  String get labelTransactionHash => 'معاملة رقم ';
 
   @override
   String get labelUnitsSuffix => 'وحدات';
 
   @override
-  String get labelExcessPharmacy => 'الوفرة:';
+  String get labelExcessPharmacy => 'صيدلية الوفرة:';
 
   @override
-  String get labelShortagePharmacy => 'النقص:';
+  String get labelShortagePharmacy => 'صيدلية العجز:';
 
   @override
   String get actionAssignToMe => 'تعيين لي';
@@ -1467,7 +1467,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get labelOrderPrefix => 'طلب رقم #';
+  String get labelOrderPrefix => 'طلب رقم ';
 
   @override
   String get helpSupportTitle => 'المساعدة والدعم';
@@ -1557,7 +1557,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tabHistory => 'السجل';
 
   @override
-  String get msgAssigningToYou => 'جاري التعيين لك...';
+  String get msgAssigningToYou => 'جاري التخصيص لك...';
 
   @override
   String get msgAssignmentSuccess => 'نجاح! تم تعيين المعاملة.';
@@ -2015,13 +2015,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cashBalance => 'الرصيد النقدي';
 
   @override
-  String get optimisticValue => 'القيمة التفاؤلية';
+  String get optimisticValue => 'قيمة المخزون التقديرية';
 
   @override
   String get makePayment => 'إجراء دفع';
 
   @override
-  String get paymentValue => 'قيمة الدفعة';
+  String get paymentValue => 'قيمة الدفع (موجب: للفرع، سالب: من الفرع)';
 
   @override
   String get purchaseInvoice => 'فاتورة شراء';
@@ -2033,6 +2033,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalRevenue => 'إجمالي الإيرادات';
 
   @override
+  String get transactionRevenue => 'إيرادات المعاملات';
+
+  @override
   String get negativeCommissions => 'عمولات سلبية';
 
   @override
@@ -2042,7 +2045,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get salesInvoiceRevenue => 'أرباح فواتير المبيعات';
 
   @override
-  String get menuHubOwners => 'إدارة الملاك';
+  String get menuHubOwners => 'ملاك المركز';
 
   @override
   String get menuHubPayments => 'مدفوعات الملاك';
@@ -2057,6 +2060,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuAdminTransactionsSummary => 'ملخص المعاملات';
 
   @override
+  String get noOwnersFound => 'لم يتم العثور على ملاك';
+
+  @override
+  String get balance => 'الرصيد';
+
+  @override
   String get cancel => 'إلغاء';
 
   @override
@@ -2064,15 +2073,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get confirm => 'تأكيد';
-
-  @override
-  String get noOwnersFound => 'لم يتم العثور على ملاك';
-
-  @override
-  String get balance => 'الرصيد';
-
-  @override
-  String get transactionRevenue => 'إيرادات المعاملات';
 
   @override
   String get menuHubCalculations => 'أداة الحسابات';
@@ -2236,4 +2236,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String labelCartWithCount(Object count) {
     return 'العربة ($count)';
   }
+
+  @override
+  String get menuAdminStats => 'إحصائيات المسؤول';
+
+  @override
+  String get adminStatsTitle => 'إحصائيات المسؤول';
+
+  @override
+  String get exportShoppingSheet => 'تصدير ورقة التسوق';
+
+  @override
+  String get msgExportingData => 'جاري تصدير البيانات...';
+
+  @override
+  String get msgExportSuccess => 'تم حفظ ملف إكسيل بنجاح';
+
+  @override
+  String get msgExportError => 'فشل في تصدير البيانات';
+
+  @override
+  String get labelMarketExcessesExport => 'تصدير عروض السوق';
 }

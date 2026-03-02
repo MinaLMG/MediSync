@@ -51,13 +51,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get msgMoveToHubSuccess => 'Successfully moved to hub';
 
   @override
-  String get actionEdit => 'Edit';
-
-  @override
   String get actionCreate => 'Create';
-
-  @override
-  String get actionDelete => 'Delete';
 
   @override
   String get loginFailed => 'Login failed';
@@ -554,7 +548,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabPending => 'Pending';
 
   @override
-  String get tabAvailable => 'AVAILABLE';
+  String get tabAvailable => 'Available';
 
   @override
   String get tabFulfilled => 'Fulfilled';
@@ -576,6 +570,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionLogout => 'Log out';
+
+  @override
+  String get actionEdit => 'Edit';
+
+  @override
+  String get actionDelete => 'Delete';
 
   @override
   String get labelVolume => 'Volume';
@@ -836,7 +836,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelType => 'Type';
 
   @override
-  String get labelTotalQuantity => 'Total Quantity:';
+  String get labelTotalQuantity => 'Total Quantity';
 
   @override
   String get labelRemaining => 'Remaining';
@@ -924,7 +924,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String labelPriceRange(String min, String max, String currency) {
-    return '$min - $max';
+    return 'Price Range: $min - $max $currency';
   }
 
   @override
@@ -1442,16 +1442,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelOrderHash => 'Order #';
 
   @override
-  String get labelTransactionHash => 'Transaction: ';
+  String get labelTransactionHash => 'Transaction #';
 
   @override
   String get labelUnitsSuffix => 'UNITS';
 
   @override
-  String get labelExcessPharmacy => 'Excess:';
+  String get labelExcessPharmacy => 'Excess Pharmacy:';
 
   @override
-  String get labelShortagePharmacy => 'Shortage:';
+  String get labelShortagePharmacy => 'Shortage Pharmacy:';
 
   @override
   String get actionAssignToMe => 'Assign to Me';
@@ -2024,13 +2024,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cashBalance => 'Cash Balance';
 
   @override
-  String get optimisticValue => 'Optimistic Value';
+  String get optimisticValue => 'Optimistic Stock Value';
 
   @override
   String get makePayment => 'Make Payment';
 
   @override
-  String get paymentValue => 'Payment Value';
+  String get paymentValue =>
+      'Payment Value (Positive: To Hub, Negative: From Hub)';
 
   @override
   String get purchaseInvoice => 'Purchase Invoice';
@@ -2040,6 +2041,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get totalRevenue => 'Total Revenue';
+
+  @override
+  String get transactionRevenue => 'Transaction Revenue';
 
   @override
   String get negativeCommissions => 'Negative Commissions';
@@ -2060,10 +2064,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuHubPurchaseInvoice => 'Purchase Invoice';
 
   @override
-  String get menuHubSalesInvoice => 'Hub Sales Invoice';
+  String get menuHubSalesInvoice => 'Sales Invoice';
 
   @override
   String get menuAdminTransactionsSummary => 'Transactions Summary';
+
+  @override
+  String get noOwnersFound => 'No owners found';
+
+  @override
+  String get balance => 'Balance';
 
   @override
   String get cancel => 'Cancel';
@@ -2073,15 +2083,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirm => 'Confirm';
-
-  @override
-  String get noOwnersFound => 'No owners found';
-
-  @override
-  String get balance => 'Balance';
-
-  @override
-  String get transactionRevenue => 'Transaction Revenue';
 
   @override
   String get menuHubCalculations => 'Calculations Widget';
@@ -2245,4 +2246,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String labelCartWithCount(Object count) {
     return 'Cart ($count)';
   }
+
+  @override
+  String get menuAdminStats => 'Admin Stats';
+
+  @override
+  String get adminStatsTitle => 'Admin Statistics';
+
+  @override
+  String get exportShoppingSheet => 'Export Shopping Sheet';
+
+  @override
+  String get msgExportingData => 'Exporting data...';
+
+  @override
+  String get msgExportSuccess => 'Excel file saved successfully';
+
+  @override
+  String get msgExportError => 'Failed to export data';
+
+  @override
+  String get labelMarketExcessesExport => 'Market Excesses Export';
 }
