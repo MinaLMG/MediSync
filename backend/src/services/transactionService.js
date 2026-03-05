@@ -754,7 +754,6 @@ exports.revertAddToHub = async (transaction, session, req) => {
         action: 'REVERT_ADD_TO_HUB',
         entityType: 'Transaction',
         entityId: transaction._id,
-        changes: { revertQuantity }
     }, req);
     return transaction;
 };
