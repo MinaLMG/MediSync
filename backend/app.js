@@ -19,8 +19,8 @@ connectDB();
 
 // Health check route
 app.get('/health', (req, res) => {
-    res.status(200).json({ 
-        status: 'OK', 
+    res.status(200).json({
+        status: 'OK',
         message: 'MediSync API is running',
         timestamp: new Date().toISOString()
     });
@@ -47,6 +47,7 @@ app.use('/api/owner-payments', require('./src/routes/ownerPaymentRoutes'));
 app.use('/api/purchase-invoices', require('./src/routes/purchaseInvoiceRoutes'));
 app.use('/api/sales-invoices', require('./src/routes/salesInvoiceRoutes'));
 app.use('/api/summaries', require('./src/routes/summaryRoutes'));
+app.use('/api/quotas', require('./src/routes/productQuotaRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

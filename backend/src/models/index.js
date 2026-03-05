@@ -25,5 +25,7 @@ module.exports = {
     OwnerPayment: require('./OwnerPayment'),
     PurchaseInvoice: require('./PurchaseInvoice'),
     SalesInvoice: require('./SalesInvoice'),
-    CashBalanceHistory: require('./CashBalanceHistory')
+    CashBalanceHistory: require('./CashBalanceHistory'),
+    PharmacyQuota: require('./PharmacyQuota'),
+    ProductQuota: require('./ProductQuota')
 };

@@ -13,6 +13,7 @@ const auditService = require('./auditService');
 
 // Lazy-loaded services for circular dependency safety
 const getExcessService = () => require('./excessService');
+const getQuotaService = () => require('./quotaService');
 
 // =============================================================================
 // SHORTAGE CREATION (SINGLE & BULK)
@@ -28,7 +29,7 @@ const getExcessService = () => require('./excessService');
  * @param {Object} [session] - Mongoose session.
  */
 exports.createShortage = async (data, pharmacyId, req = null, session = null) => {
-    const { product: productId, volume, quantity, targetPrice, isSystemGenerated, salePercentage } = data;
+    const { product: productId, volume, quantity, targetPrice, expiryDate, salePercentage, isSystemGenerated } = data;
 
     const product = await Product.findById(productId).session(session);
     if (!product || product.status !== 'active') {
@@ -64,6 +65,8 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
 
     const shortageDoc = shortage[0];
 
+    // Note: Quota check is skipped for standalone shortages per last refinement
+
 
     return shortageDoc;
 };
@@ -84,6 +87,20 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
         // Validate items array
         if (!items || items.length === 0) {
             throw { message: 'Order must contain at least one item', code: 400 };
+        }
+
+        const quotaService = getQuotaService();
+        // Pre-validate quotas for all items and increment usage
+        for (const item of items) {
+            const dealAttributes = {
+                product: item.product,
+                volume: item.volume,
+                price: item.targetPrice,
+                expiryDate: item.expiryDate || "ANY",
+                salePercentage: item.originalSalePercentage || item.salePercentage || 0
+            };
+            await quotaService.checkQuota(pharmacyId, dealAttributes, item.quantity, session);
+            await quotaService.incrementQuota(pharmacyId, dealAttributes, item.quantity, session);
         }
 
         const serial = await serialService.generateOrderSerial();
@@ -204,6 +221,26 @@ exports.updateShortage = async (shortageId, updateData, pharmacyId, req = null, 
             const oldQuantity = shortage.quantity;
             shortage.quantity = quantity;
             shortage.remainingQuantity = quantity - fulfilled;
+
+            // Update quota usage ONLY for order-linked shortages
+            if (shortage.order) {
+                const quotaService = getQuotaService();
+                const dealAttributes = {
+                    product: shortage.product,
+                    volume: shortage.volume,
+                    price: shortage.targetPrice,
+                    expiryDate: shortage.expiryDate || "ANY",
+                    salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
+                };
+                const quantityDiff = quantity - oldQuantity;
+                if (quantityDiff > 0) {
+                    //check quota then increment 
+                    await quotaService.checkQuota(pharmacyId, dealAttributes, quantityDiff, session);
+                    await quotaService.incrementQuota(pharmacyId, dealAttributes, quantityDiff, session);
+                } else if (quantityDiff < 0) {
+                    await quotaService.decrementQuota(pharmacyId, dealAttributes, Math.abs(quantityDiff), session);
+                }
+            }
 
             // Update reservation if this shortage has an order and targetPrice
             if (shortage.order && shortage.targetPrice) {
@@ -347,6 +384,18 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
     shortage.remainingQuantity = 0;
     await shortage.save({ session });
 
+    // Decrement quota usage ONLY if linked to an order
+    if (shortage.order) {
+        const dealAttributes = {
+            product: shortage.product,
+            volume: shortage.volume,
+            price: shortage.targetPrice,
+            expiryDate: shortage.expiryDate || "ANY",
+            salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
+        };
+        await getQuotaService().decrementQuota(shortage.pharmacy, dealAttributes, shortage.quantity, session);
+    }
+
     // 3. Update Order Totals if linked
     if (shortage.order) {
         // We need to update order totals. 
@@ -404,6 +453,18 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
 
         // 2. Delete Shortage
         await shortage.deleteOne({ session });
+
+        // Decrement quota usage ONLY if linked to an order
+        if (orderId) {
+            const dealAttributes = {
+                product: shortage.product,
+                volume: shortage.volume,
+                price: shortage.targetPrice,
+                expiryDate: shortage.expiryDate || "ANY",
+                salePercentage: shortage.originalSalePercentage || shortage.salePercentage || 0
+            };
+            await getQuotaService().decrementQuota(pharmacyId, dealAttributes, shortage.quantity, session);
+        }
 
         // 3. Update Order Totals
         if (orderId) {

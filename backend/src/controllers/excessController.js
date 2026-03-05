@@ -378,7 +378,6 @@ exports.getMarketExcesses = async (req, res) => {
         // We can match reservations that correspond to the found products?
         // Or just getAll reservations for safety (or optimize).
         // Optimization: Get reservations where product IN [marketItems.products].
-
         const productIds = marketItems.map(i => i._id.product);
         const reservations = await Reservation.aggregate([
             {
@@ -399,16 +398,14 @@ exports.getMarketExcesses = async (req, res) => {
                 }
             }
         ]);
-
         // Map Reservations for O(1) lookup
         const reservationMap = {};
         reservations.forEach(r => {
             const key = `${r._id.product}-${r._id.volume}-${r._id.price}-${r._id.expiryDate}-${r._id.salePercentage}`;
             reservationMap[key] = r.reservedQuantity;
         });
-
         // 3. Process Market Items: Deduct Reservations & Calculate Sale
-        const processedItems = [];
+        const tempItems = [];
 
         for (const group of marketItems) {
             const key = `${group._id.product}-${group._id.volume}-${group._id.price}-${group._id.expiryDate}-${group._id.salePercentage}`;
@@ -420,20 +417,34 @@ exports.getMarketExcesses = async (req, res) => {
                 const originalSale = group._id.salePercentage || 0;
                 // Use commission service for consistent calculation
                 const { agreedSale } = commissionService.calculateAgreedCommissionSync(originalSale, systemMinComm);
-                processedItems.push({
+                tempItems.push({
                     product: group._id.product,
                     volume: group._id.volume,
                     price: group._id.price,
                     // Item Details
                     quantity: available,
-                    expiryDate: group._id.expiryDate,
+                    // Deal Details
+                    expiryDate: group._id.expiryDate || "ANY",
                     originalSalePercentage: originalSale, // To backend
                     salePercentage: agreedSale, // To frontend (User sees this)
                     userSale: agreedSale // Compatibility
                 });
             }
         }
+        // Apply Quota Capping (Bulk Fix N+1)
+        const quotaService = require('../services/quotaService');
+        const quotaMap = await quotaService.bulkGetRemainingQuotas(req.user.pharmacy, tempItems);
+        const processedItems = [];
+        for (const item of tempItems) {
+            const key = `${item.product}-${item.volume}-${item.price}-${item.expiryDate}-${item.originalSalePercentage}`;
+            const remainingQuota = quotaMap[key];
 
+            item.quantity = Math.min(item.quantity, remainingQuota);
+
+            if (item.quantity > 0) {
+                processedItems.push(item);
+            }
+        }
         // 4. Re-Structure into Hierarchy (Product -> Volume -> Prices -> Items)
         // Group by Product+Volume
         const productMap = {};
@@ -471,7 +482,6 @@ exports.getMarketExcesses = async (req, res) => {
                 userSale: item.userSale
             });
         }
-
         // Convert Map to Array and Populate
         const finalResult = Object.values(productMap).map(p => ({
             product: p.product,
@@ -480,7 +490,6 @@ exports.getMarketExcesses = async (req, res) => {
             maxSale: p.maxSale,
             prices: Object.values(p.prices).sort((a, b) => a.price - b.price)
         }));
-
         // Populate Product/Volume Details (We have IDs)
         // Note: Population in aggregation is faster usually, but we did logic in JS.
         // We can Populate manually.
@@ -491,7 +500,6 @@ exports.getMarketExcesses = async (req, res) => {
 
         // Final Sort by Product Name
         finalResult.sort((a, b) => (a.product?.name || '').localeCompare(b.product?.name || ''));
-
         res.status(200).json({ success: true, count: finalResult.length, data: finalResult });
     } catch (error) {
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });

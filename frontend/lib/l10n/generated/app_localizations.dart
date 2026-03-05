@@ -464,6 +464,12 @@ abstract class AppLocalizations {
   /// **'Manage Pharmacies'**
   String get menuManagePharmacies;
 
+  /// No description provided for @menuProductQuotas.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Quotas'**
+  String get menuProductQuotas;
+
   /// No description provided for @sortBy.
   ///
   /// In en, this message translates to:
@@ -506,6 +512,60 @@ abstract class AppLocalizations {
   /// **'System Settings'**
   String get menuSystemSettings;
 
+  /// No description provided for @menuAdminTransactionsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions Summary'**
+  String get menuAdminTransactionsSummary;
+
+  /// No description provided for @menuAdminStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Stats'**
+  String get menuAdminStats;
+
+  /// No description provided for @productQuotasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Product purchase quotas'**
+  String get productQuotasTitle;
+
+  /// No description provided for @labelMaxQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Qty'**
+  String get labelMaxQuantity;
+
+  /// No description provided for @labelQuantityTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity Taken'**
+  String get labelQuantityTaken;
+
+  /// No description provided for @labelExpiryDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry Date'**
+  String get labelExpiryDate;
+
+  /// No description provided for @msgQuotaCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota created successfully'**
+  String get msgQuotaCreated;
+
+  /// No description provided for @msgQuotaUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota updated successfully'**
+  String get msgQuotaUpdated;
+
+  /// No description provided for @msgQuotaDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota deleted successfully'**
+  String get msgQuotaDeleted;
+
   /// No description provided for @manageUsersTitle.
   ///
   /// In en, this message translates to:
@@ -529,6 +589,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search users (* for wildcard)...'**
   String get searchUsersHint;
+
+  /// No description provided for @searchPharmaciesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search pharmacies (* for wildcard)...'**
+  String get searchPharmaciesHint;
 
   /// No description provided for @noUsersFound.
   ///
@@ -974,17 +1040,17 @@ abstract class AppLocalizations {
   /// **'Manage Pharmacies'**
   String get managePharmaciesTitle;
 
-  /// No description provided for @searchPharmaciesHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Search pharmacies...'**
-  String get searchPharmaciesHint;
-
   /// No description provided for @noPharmaciesFound.
   ///
   /// In en, this message translates to:
   /// **'No pharmacies found.'**
   String get noPharmaciesFound;
+
+  /// No description provided for @noProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No products found.'**
+  String get noProductsFound;
 
   /// No description provided for @labelAddress.
   ///
@@ -1184,17 +1250,23 @@ abstract class AppLocalizations {
   /// **'Log out'**
   String get actionLogout;
 
-  /// No description provided for @actionEdit.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit'**
-  String get actionEdit;
-
   /// No description provided for @actionDelete.
   ///
   /// In en, this message translates to:
   /// **'Delete'**
   String get actionDelete;
+
+  /// No description provided for @dialogDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Item'**
+  String get dialogDeleteTitle;
+
+  /// No description provided for @dialogDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this item?'**
+  String get dialogDeleteConfirm;
 
   /// No description provided for @labelVolume.
   ///
@@ -3890,12 +3962,6 @@ abstract class AppLocalizations {
   /// **'Sales Invoice'**
   String get menuHubSalesInvoice;
 
-  /// No description provided for @menuAdminTransactionsSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'Transactions Summary'**
-  String get menuAdminTransactionsSummary;
-
   /// No description provided for @noOwnersFound.
   ///
   /// In en, this message translates to:
@@ -4184,6 +4250,12 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get edit;
 
+  /// No description provided for @actionEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get actionEdit;
+
   /// No description provided for @delete.
   ///
   /// In en, this message translates to:
@@ -4207,12 +4279,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Compensations Revenue'**
   String get compensationRevenueLabel;
-
-  /// No description provided for @labelMaxQuantity.
-  ///
-  /// In en, this message translates to:
-  /// **'Max Qty'**
-  String get labelMaxQuantity;
 
   /// No description provided for @labelInvoiceSalePercentage.
   ///
@@ -4243,12 +4309,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cart ({count})'**
   String labelCartWithCount(Object count);
-
-  /// No description provided for @menuAdminStats.
-  ///
-  /// In en, this message translates to:
-  /// **'Admin Stats'**
-  String get menuAdminStats;
 
   /// No description provided for @adminStatsTitle.
   ///

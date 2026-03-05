@@ -14,6 +14,7 @@ import 'providers/balance_history_provider.dart';
 import 'providers/requests_history_provider.dart';
 import 'providers/payment_provider.dart';
 import 'providers/hub_provider.dart';
+import 'providers/quota_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
@@ -70,6 +71,7 @@ void main() {
           update: (context, auth, previous) =>
               (previous ?? HubProvider(auth.token))..update(auth.token),
         ),
+        ChangeNotifierProvider(create: (_) => QuotaProvider()),
       ],
       child: const MyApp(),
     ),

@@ -197,6 +197,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuManagePharmacies => 'Manage Pharmacies';
 
   @override
+  String get menuProductQuotas => 'Product Quotas';
+
+  @override
   String get sortBy => 'Sort By';
 
   @override
@@ -218,6 +221,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuSystemSettings => 'System Settings';
 
   @override
+  String get menuAdminTransactionsSummary => 'Transactions Summary';
+
+  @override
+  String get menuAdminStats => 'Admin Stats';
+
+  @override
+  String get productQuotasTitle => 'Product purchase quotas';
+
+  @override
+  String get labelMaxQuantity => 'Max Qty';
+
+  @override
+  String get labelQuantityTaken => 'Quantity Taken';
+
+  @override
+  String get labelExpiryDate => 'Expiry Date';
+
+  @override
+  String get msgQuotaCreated => 'Quota created successfully';
+
+  @override
+  String get msgQuotaUpdated => 'Quota updated successfully';
+
+  @override
+  String get msgQuotaDeleted => 'Quota deleted successfully';
+
+  @override
   String get manageUsersTitle => 'Manage Users';
 
   @override
@@ -228,6 +258,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchUsersHint => 'Search users (* for wildcard)...';
+
+  @override
+  String get searchPharmaciesHint => 'Search pharmacies (* for wildcard)...';
 
   @override
   String get noUsersFound => 'No users found.';
@@ -462,10 +495,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managePharmaciesTitle => 'Manage Pharmacies';
 
   @override
-  String get searchPharmaciesHint => 'Search pharmacies...';
+  String get noPharmaciesFound => 'No pharmacies found.';
 
   @override
-  String get noPharmaciesFound => 'No pharmacies found.';
+  String get noProductsFound => 'No products found.';
 
   @override
   String get labelAddress => 'Address';
@@ -572,10 +605,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionLogout => 'Log out';
 
   @override
-  String get actionEdit => 'Edit';
+  String get actionDelete => 'Delete';
 
   @override
-  String get actionDelete => 'Delete';
+  String get dialogDeleteTitle => 'Delete Item';
+
+  @override
+  String get dialogDeleteConfirm =>
+      'Are you sure you want to delete this item?';
 
   @override
   String get labelVolume => 'Volume';
@@ -2067,9 +2104,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuHubSalesInvoice => 'Sales Invoice';
 
   @override
-  String get menuAdminTransactionsSummary => 'Transactions Summary';
-
-  @override
   String get noOwnersFound => 'No owners found';
 
   @override
@@ -2215,6 +2249,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get edit => 'Edit';
 
   @override
+  String get actionEdit => 'Edit';
+
+  @override
   String get delete => 'Delete';
 
   @override
@@ -2225,9 +2262,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compensationRevenueLabel => 'Compensations Revenue';
-
-  @override
-  String get labelMaxQuantity => 'Max Qty';
 
   @override
   String get labelInvoiceSalePercentage => 'Invoice Sale %';
@@ -2246,9 +2280,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String labelCartWithCount(Object count) {
     return 'Cart ($count)';
   }
-
-  @override
-  String get menuAdminStats => 'Admin Stats';
 
   @override
   String get adminStatsTitle => 'Admin Statistics';

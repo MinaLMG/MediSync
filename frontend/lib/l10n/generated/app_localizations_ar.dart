@@ -196,6 +196,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuManagePharmacies => 'إدارة الصيدليات';
 
   @override
+  String get menuProductQuotas => 'حصص المنتجات';
+
+  @override
   String get sortBy => 'فرز حسب';
 
   @override
@@ -217,6 +220,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuSystemSettings => 'إعدادات النظام';
 
   @override
+  String get menuAdminTransactionsSummary => 'ملخص المعاملات';
+
+  @override
+  String get menuAdminStats => 'إحصائيات المسؤول';
+
+  @override
+  String get productQuotasTitle => 'حصص شراء المنتجات';
+
+  @override
+  String get labelMaxQuantity => 'أقصى كمية';
+
+  @override
+  String get labelQuantityTaken => 'Quantity Taken';
+
+  @override
+  String get labelExpiryDate => 'Expiry Date';
+
+  @override
+  String get msgQuotaCreated => 'تم إنشاء الحصة بنجاح';
+
+  @override
+  String get msgQuotaUpdated => 'تم تحديث الحصة بنجاح';
+
+  @override
+  String get msgQuotaDeleted => 'تم حذف الحصة بنجاح';
+
+  @override
   String get manageUsersTitle => 'إدارة المستخدمين';
 
   @override
@@ -226,7 +256,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tabActiveUsers => 'المستخدمين النشطين';
 
   @override
-  String get searchUsersHint => 'البحث عن مستخدمين (* للكل)...';
+  String get searchUsersHint => 'البحث في المستخدمين (* للكل)...';
+
+  @override
+  String get searchPharmaciesHint => 'البحث في الصيدليات...';
 
   @override
   String get noUsersFound => 'لم يتم العثور على مستخدمين.';
@@ -461,10 +494,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get managePharmaciesTitle => 'إدارة الصيدليات';
 
   @override
-  String get searchPharmaciesHint => 'البحث في الصيدليات...';
+  String get noPharmaciesFound => 'لم يتم العثور على صيدليات.';
 
   @override
-  String get noPharmaciesFound => 'لم يتم العثور على صيدليات.';
+  String get noProductsFound => 'لم يتم العثور على منتجات';
 
   @override
   String get labelAddress => 'العنوان';
@@ -571,10 +604,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get actionLogout => 'تسجيل خروج';
 
   @override
-  String get actionEdit => 'تعديل';
+  String get actionDelete => 'حذف';
 
   @override
-  String get actionDelete => 'حذف';
+  String get dialogDeleteTitle => 'Delete Item';
+
+  @override
+  String get dialogDeleteConfirm =>
+      'Are you sure you want to delete this item?';
 
   @override
   String get labelVolume => 'الحجم';
@@ -2057,9 +2094,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get menuHubSalesInvoice => 'فاتورة مبيعات المركز';
 
   @override
-  String get menuAdminTransactionsSummary => 'ملخص المعاملات';
-
-  @override
   String get noOwnersFound => 'لم يتم العثور على ملاك';
 
   @override
@@ -2205,6 +2239,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get edit => 'تعديل';
 
   @override
+  String get actionEdit => 'تعديل';
+
+  @override
   String get delete => 'حذف';
 
   @override
@@ -2215,9 +2252,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compensationRevenueLabel => 'إيراد التعويضات';
-
-  @override
-  String get labelMaxQuantity => 'أقصى كمية';
 
   @override
   String get labelInvoiceSalePercentage => 'نسبة البيع المفوترة';
@@ -2236,9 +2270,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String labelCartWithCount(Object count) {
     return 'العربة ($count)';
   }
-
-  @override
-  String get menuAdminStats => 'إحصائيات المسؤول';
 
   @override
   String get adminStatsTitle => 'إحصائيات المسؤول';

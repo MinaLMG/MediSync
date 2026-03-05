@@ -16,6 +16,7 @@ import 'admin_delivery_requests_screen.dart';
 import 'admin_account_updates_screen.dart';
 import 'admin_settings_screen.dart';
 import 'profile_screen.dart';
+import 'admin/admin_product_quota_screen.dart';
 import 'admin_order_list_screen.dart';
 import 'admin/admin_transactions_summary_screen.dart';
 import 'admin/admin_stats_screen.dart';
@@ -225,8 +226,14 @@ class AdminHomeTab extends StatelessWidget {
       {
         'id': 'Admin Stats',
         'title': AppLocalizations.of(context)!.menuAdminStats,
-        'icon': Icons.query_stats,
+        'icon': Icons.analytics,
         'color': Colors.indigo[900],
+      },
+      {
+        'id': 'Product Quotas',
+        'title': AppLocalizations.of(context)!.menuProductQuotas,
+        'icon': Icons.lock_clock,
+        'color': Colors.blueGrey,
       },
     ];
 
@@ -409,6 +416,13 @@ class AdminHomeTab extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AdminStatsScreen()),
+            );
+          } else if (id == 'Product Quotas') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminProductQuotaScreen(),
+              ),
             );
           }
         },

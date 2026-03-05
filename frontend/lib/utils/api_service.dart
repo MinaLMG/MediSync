@@ -1,15 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'config.dart'; // Blocked by gitignore, using fallback
+import 'config.dart';
 
 class ApiService {
-  // Fallback if Config is not accessible
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = Constants.baseUrl;
 
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString(Constants.tokenKey);
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -67,7 +66,7 @@ class ApiService {
     Map<String, dynamic>? queryParams,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString(Constants.tokenKey);
 
     final uri = Uri.parse(
       '$baseUrl$endpoint',
