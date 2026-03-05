@@ -351,6 +351,7 @@ exports.getMarketExcesses = async (req, res) => {
             {
                 $match: {
                     pharmacy: { $ne: req.user.pharmacy },
+                    relatedPharmacy: { $ne: req.user.pharmacy }, // Cannot see own stock even in Hub
                     status: { $in: ['available', 'partially_fulfilled'] },
                     remainingQuantity: { $gt: 0 },
                     // Filter out shortage fulfillment (specific requests)
@@ -574,3 +575,4 @@ exports.getHubSystemSummary = async (req, res) => {
         res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
     }
 };
+

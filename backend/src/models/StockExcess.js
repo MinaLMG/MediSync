@@ -9,7 +9,7 @@
  * rejected: Denied by admin. LOCKED.
  * expired: Expired by date. LOCKED.
  */
-const mongoose= require('mongoose')
+const mongoose = require('mongoose')
 const stockExcessSchema = new mongoose.Schema({
     pharmacy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -40,7 +40,7 @@ const stockExcessSchema = new mongoose.Schema({
         type: String, // Stored as "MM/YY"
         required: true,
         validate: {
-            validator: function(v) {
+            validator: function (v) {
                 return /^(0[1-9]|1[0-2])\/\d{2}$/.test(v);
             },
             message: 'Expiry date must be in MM/YY format'
@@ -91,6 +91,10 @@ const stockExcessSchema = new mongoose.Schema({
     },
     purchasePrice: {
         type: Number
+    },
+    relatedPharmacy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pharmacy'
     }
 }, {
     timestamps: true
@@ -100,5 +104,6 @@ const stockExcessSchema = new mongoose.Schema({
 stockExcessSchema.index({ pharmacy: 1, status: 1 });
 stockExcessSchema.index({ status: 1 }); // For admin fetching pending/available
 stockExcessSchema.index({ expiryDate: 1 });
+stockExcessSchema.index({ relatedPharmacy: 1 });
 
 module.exports = mongoose.model('StockExcess', stockExcessSchema);

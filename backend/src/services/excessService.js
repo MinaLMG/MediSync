@@ -44,6 +44,7 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         isHubGenerated,
         isHubPurchase,
         purchasePrice,
+        relatedPharmacy,
     } = userData;
 
     // Check product status
@@ -138,7 +139,8 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         salePercentage: finalSalePercentage,
         shortage_fulfillment: isShortageFulfillment,
         isNewPrice,
-        status: 'pending'
+        status: 'pending',
+        relatedPharmacy: relatedPharmacy
     };
     if (isHubPurchase) {
         excessData.isHubPurchase = true;
@@ -432,6 +434,7 @@ exports.addToHub = async (excessId, hubId, quantity, req = null) => {
             isHubGenerated: true,  // Transfer from pharmacy to hub
             isHubPurchase: false,   // NOT a direct purchase from supplier
             purchasePrice: purchasePrice,
+            relatedPharmacy: excess.pharmacy, // The original pharmacy owner
         }, hubId, req, session);
         //approve the excess
         await exports.approveExcess(hubExcess._id, session);
