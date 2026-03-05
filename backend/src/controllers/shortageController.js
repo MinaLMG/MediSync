@@ -18,6 +18,13 @@ exports.createShortage = async (req, res) => {
     try {
         const { product, quantity, targetPrice } = req.body;
 
+        // --- Hub Restriction ---
+        const Pharmacy = mongoose.model('Pharmacy');
+        const pharmacy = await Pharmacy.findById(req.user.pharmacy);
+        if (pharmacy && pharmacy.isHub) {
+            throw { message: 'Hub pharmacies cannot create shortages. Use Purchase Invoices instead.', code: 403 };
+        }
+
         // --- Manual Validation ---
         if (!product || !quantity) {
             throw { message: 'Missing required fields: product and quantity are required.', code: 400 };
@@ -61,6 +68,13 @@ exports.createOrder = async (req, res) => {
     session.startTransaction();
     try {
         const { items } = req.body;
+
+        // --- Hub Restriction ---
+        const Pharmacy = mongoose.model('Pharmacy');
+        const pharmacy = await Pharmacy.findById(req.user.pharmacy);
+        if (pharmacy && pharmacy.isHub) {
+            throw { message: 'Hub pharmacies cannot create orders.', code: 403 };
+        }
 
         // --- Manual Validation ---
         if (!items || !Array.isArray(items) || items.length === 0) {

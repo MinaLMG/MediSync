@@ -885,79 +885,81 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton(
-                            onPressed: provider.isLoading
-                                ? null
-                                : () {
-                                    final int total =
-                                        item['originalQuantity'] ?? 0;
-                                    final int remaining =
-                                        item['remainingQuantity'] ?? 0;
-                                    if (total - remaining > 0) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
+                          if (item['pharmacy']?['isHub'] != true)
+                            TextButton(
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () {
+                                      final int total =
+                                          item['originalQuantity'] ?? 0;
+                                      final int remaining =
+                                          item['remainingQuantity'] ?? 0;
+                                      if (total - remaining > 0) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.msgCannotDeleteTakenExcess,
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.labelConfirmDelete,
+                                          ),
                                           content: Text(
                                             AppLocalizations.of(
                                               context,
-                                            )!.msgCannotDeleteTakenExcess,
+                                            )!.msgConfirmDeleteExcessAvailable,
                                           ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx),
+                                              child: Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.actionCancel,
+                                              ),
+                                            ),
+                                            TextButton(
+                                              onPressed: provider.isLoading
+                                                  ? null
+                                                  : () {
+                                                      Navigator.pop(ctx);
+                                                      provider.deleteExcess(
+                                                        item['_id'],
+                                                      );
+                                                    },
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: Colors.red,
+                                              ),
+                                              child: Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.actionDelete,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       );
-                                      return;
-                                    }
-                                    showDialog(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.labelConfirmDelete,
-                                        ),
-                                        content: Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.msgConfirmDeleteExcessAvailable,
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(ctx),
-                                            child: Text(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.actionCancel,
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: provider.isLoading
-                                                ? null
-                                                : () {
-                                                    Navigator.pop(ctx);
-                                                    provider.deleteExcess(
-                                                      item['_id'],
-                                                    );
-                                                  },
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                            ),
-                                            child: Text(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.actionDelete,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red,
+                                    },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!.actionDelete,
+                              ),
                             ),
-                            child: Text(
-                              AppLocalizations.of(context)!.actionDelete,
-                            ),
-                          ),
                           const SizedBox(width: 8),
                           TextButton(
                             onPressed: provider.isLoading
@@ -981,35 +983,36 @@ class _ExcessFollowUpScreenState extends State<ExcessFollowUpScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: provider.isLoading
-                                ? null
-                                : () {
-                                    provider.fetchHubs().then((_) {
-                                      if (mounted) {
-                                        _showHubSelectionDialog(item);
-                                      }
-                                    });
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: provider.isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                          if (item['pharmacy']?['isHub'] != true)
+                            ElevatedButton(
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () {
+                                      provider.fetchHubs().then((_) {
+                                        if (mounted) {
+                                          _showHubSelectionDialog(item);
+                                        }
+                                      });
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.actionAddToHub,
                                     ),
-                                  )
-                                : Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.actionAddToHub,
-                                  ),
-                          ),
+                            ),
                         ],
                       ),
                     ],

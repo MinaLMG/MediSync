@@ -423,7 +423,7 @@ exports.revertTransaction = async (req, res) => {
     session.startTransaction();
     try {
         const { id } = req.params;
-        const { expenses, description } = req.body; // Array of { userId, amount }
+        const { expenses, description, revertQuantity } = req.body; // Array of { userId, amount }
 
         const transaction = await Transaction.findById(id).populate({
             path: 'stockShortage.shortage',
@@ -451,15 +451,11 @@ exports.revertTransaction = async (req, res) => {
 
         // Special handling for "Add to Hub" transactions
         if (transaction.added_to_hub && transaction.added_to_hub.excessId) {
-            await transactionService.revertAddToHub(transaction, session, req);
-
-            await auditService.logAction({
-                user: req.user._id,
-                action: 'REVERT_ADD_TO_HUB',
-                entityType: 'Transaction',
-                entityId: transaction._id,
-                changes: { status: 'cancelled', type: 'add_to_hub_reversal' }
-            }, req);
+            if (revertQuantity && revertQuantity > 0) {
+                await transactionService.partialRevertAddToHub(transaction, revertQuantity, session, req);
+            } else {
+                await transactionService.revertAddToHub(transaction, session, req);
+            }
 
             await session.commitTransaction();
             await transactionService.notifyParties(transaction);

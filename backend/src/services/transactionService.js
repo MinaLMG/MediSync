@@ -749,6 +749,171 @@ exports.revertAddToHub = async (transaction, session, req) => {
     // 6. Set Transaction Status
     transaction.status = 'cancelled';
     await transaction.save({ session });
+    await auditService.logAction({
+        user: req?.user?._id || transaction.stockShortage.shortage.pharmacy, // Fallback if req is missing
+        action: 'REVERT_ADD_TO_HUB',
+        entityType: 'Transaction',
+        entityId: transaction._id,
+        changes: { revertQuantity }
+    }, req);
+    return transaction;
+};
 
+/**
+ * Partially reverts an "Add to Hub" transaction.
+ * Reduces Hub stock, restores original user stock, and reverses proportional financials.
+ * 
+ * @param {Object} transaction - Hub transfer transaction.
+ * @param {number} revertQuantity - Quantity to take back from the Hub.
+ * @param {Object} session - Mongoose session.
+ * @param {Object} [req] - Request for auditing.
+ */
+exports.partialRevertAddToHub = async (transaction, revertQuantity, session, req) => {
+    // 1. Validation
+    if (revertQuantity <= 0) throw { message: 'Revert quantity must be positive', code: 400 };
+
+    const hubExcess = await StockExcess.findById(transaction.added_to_hub.excessId).session(session);
+    if (!hubExcess) throw { message: 'Hub excess record not found', code: 404 };
+
+    if (hubExcess.remainingQuantity < revertQuantity) {
+        throw { message: 'Cannot revert: Requested quantity exceeds Hub remaining stock.', code: 409 };
+    }
+
+
+    // 2. Adjust Hub Excess
+    hubExcess.originalQuantity -= revertQuantity;
+    hubExcess.remainingQuantity -= revertQuantity;
+
+    const excessService = getExcessService();
+    await excessService.syncExcessStatus(hubExcess, session);
+    await hubExcess.save({ session });
+
+    // 3. Adjust Hub Shortage
+    const shortageService = getShortageService();
+    const shortageId = transaction.stockShortage.shortage._id || transaction.stockShortage.shortage;
+    const shortage = await StockShortage.findById(shortageId).session(session);
+    if (shortage) {
+        shortage.quantity -= revertQuantity;
+        // fulfilledQuantity is implicitly adjusted as it's computed as total - remaining.
+        await shortage.save({ session });
+        await shortageService.syncShortageStatus(shortage, session);
+    } else {
+        throw { message: 'Cannot revert: Hub Shortage record not found.', code: 409 };
+    }
+
+    // 4. Restore Source Excesses and Adjust Financials Proportionally
+    const source = transaction.stockExcessSources[0];
+    if (!source) throw { message: 'Transaction source not found', code: 404 };
+
+    const excessId = source.stockExcess._id || source.stockExcess;
+    const excess = await StockExcess.findById(excessId).session(session);
+
+    if (!excess) {
+        throw { message: `Cannot revert: seller excess record ${excessId} not found.`, code: 409 };
+    }
+
+    // Restore quantity to original seller's excess
+    excess.remainingQuantity += revertQuantity;
+    await getExcessService().syncExcessStatus(excess, session);
+    await excess.save({ session });
+
+    // Calculate proportional amounts from the transaction itself (Source of Truth for historical values)
+    const unitGrossPrice = source.totalAmount / source.quantity;
+    const unitNetSettlement = Math.abs(source.balanceEffect) / source.quantity;
+
+    const GrossRevertAmount = unitGrossPrice * revertQuantity;
+    const NetRevertAmount = unitNetSettlement * revertQuantity;
+
+    // Financial Reversal for Seller    
+    const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
+    if (sellerPh) {
+        const prevBalance = sellerPh.balance;
+        sellerPh.balance -= NetRevertAmount;
+        await sellerPh.save({ session });
+
+        await BalanceHistory.create([{
+            pharmacy: sellerPh._id,
+            type: 'transaction_revenue',
+            amount: -NetRevertAmount,
+            previousBalance: prevBalance,
+            newBalance: sellerPh.balance,
+            relatedEntity: transaction._id,
+            relatedEntityType: 'Transaction',
+            description: `Partial reversal of revenue (${revertQuantity} units) for transaction #${transaction.serial}`,
+            description_ar: `عكس جزئي للتحصيل (${revertQuantity} وحدة) للمعاملة #${transaction.serial}`,
+            product: excess.product,
+            quantity: revertQuantity,
+            details: { type: 'partial_reversal', revertQuantity: revertQuantity }
+        }], { session });
+
+        try {
+            const users = await User.find({ pharmacy: sellerPh._id }).session(session);
+            for (const user of users) {
+                sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
+            }
+        } catch (e) { }
+    } else {
+        throw { message: 'Cannot revert: seller pharmacy record not found.', code: 409 };
+    }
+
+    // Adjust transaction metadata for this source
+    source.quantity -= revertQuantity;
+    source.balanceEffect -= NetRevertAmount;
+    source.totalAmount -= GrossRevertAmount;
+
+
+    // 5. Revert Buyer (Hub) Payment
+
+    const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
+    if (buyerPh) {
+        const prevBalance = buyerPh.balance;
+        buyerPh.balance += NetRevertAmount;
+        await buyerPh.save({ session });
+
+        await BalanceHistory.create([{
+            pharmacy: buyerPh._id,
+            type: 'transaction_payment',
+            amount: NetRevertAmount,
+            previousBalance: prevBalance,
+            newBalance: buyerPh.balance,
+            relatedEntity: transaction._id,
+            relatedEntityType: 'Transaction',
+            description: `Partial reversal of payment (${revertQuantity} units) for transaction #${transaction.serial}`,
+            description_ar: `عكس جزئي للدفع (${revertQuantity} وحدة) للمعاملة #${transaction.serial}`,
+            product: shortage.product,
+            quantity: revertQuantity,
+            details: { type: 'partial_reversal', revertQuantity }
+        }], { session });
+
+        try {
+            const users = await User.find({ pharmacy: buyerPh._id }).session(session);
+            for (const user of users) {
+                sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
+            }
+        } catch (e) { }
+    } else {
+        throw { message: 'Cannot revert: buyer pharmacy record not found.', code: 409 };
+    }
+
+    transaction.stockShortage.quantityTaken -= revertQuantity;
+    transaction.stockShortage.balanceEffect += NetRevertAmount;
+
+    // Update Transaction Totals
+    transaction.totalQuantity -= revertQuantity;
+    transaction.totalAmount -= GrossRevertAmount;
+
+    if (transaction.totalQuantity === 0) {
+        transaction.status = 'cancelled';
+    }
+
+    await auditService.logAction({
+        user: req?.user?._id || transaction.stockShortage.shortage.pharmacy, // Fallback if req is missing
+        action: 'PARTIAL_REVERT_ADD_TO_HUB',
+        entityType: 'Transaction',
+        entityId: transaction._id,
+        changes: { revertQuantity }
+    }, req);
+
+    await transaction.save({ session });
     return transaction;
 };

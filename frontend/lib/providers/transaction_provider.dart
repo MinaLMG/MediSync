@@ -287,13 +287,19 @@ class TransactionProvider with ChangeNotifier {
   // Revert a completed transaction
   Future<bool> revertTransaction(
     String id,
-    Map<String, dynamic> reversalTicket,
-  ) async {
+    Map<String, dynamic> reversalTicket, {
+    int? revertQuantity,
+  }) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
+      final Map<String, dynamic> body = Map.from(reversalTicket);
+      if (revertQuantity != null) {
+        body['revertQuantity'] = revertQuantity;
+      }
+
       final response = await http
           .post(
             Uri.parse('${Constants.baseUrl}/transaction/$id/revert'),
@@ -301,7 +307,7 @@ class TransactionProvider with ChangeNotifier {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $_token',
             },
-            body: json.encode(reversalTicket),
+            body: json.encode(body),
           )
           .timeout(const Duration(seconds: 30));
 

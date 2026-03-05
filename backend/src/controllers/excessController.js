@@ -25,6 +25,13 @@ exports.createExcess = async (req, res) => {
     try {
         const { product, quantity, selectedPrice, expiryDate } = req.body;
 
+        // --- Hub Restriction ---
+        const Pharmacy = mongoose.model('Pharmacy');
+        const pharmacy = await Pharmacy.findById(req.user.pharmacy);
+        if (pharmacy && pharmacy.isHub) {
+            throw { message: 'Hub pharmacies cannot create excesses. Use Purchase Invoices instead.', code: 403 };
+        }
+
         // --- Manual Validation ---
         if (!product || !quantity || !selectedPrice || !expiryDate) {
             throw { message: 'Missing required fields: product, quantity, selectedPrice, and expiryDate are required.', code: 400 };
@@ -258,7 +265,7 @@ exports.getAvailableExcesses = async (req, res) => {
         const excesses = await StockExcess.find({
             status: { $in: ['available', 'partially_fulfilled'] }
         })
-            .populate('pharmacy', 'name address phone')
+            .populate('pharmacy', 'name address phone isHub')
             .populate('product', 'name')
             .populate('volume', 'name')
             .sort({ createdAt: -1 });

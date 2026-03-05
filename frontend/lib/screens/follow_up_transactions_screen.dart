@@ -659,7 +659,7 @@ class _FollowUpTransactionsScreenState
             [],
         initialDescription: ticket['description'],
         isEditing: true,
-        onConfirm: (expenses, description) async {
+        onConfirm: (expenses, description, revertQty) async {
           final updateData = {'expenses': expenses, 'description': description};
 
           final success = await Provider.of<TransactionProvider>(
@@ -697,13 +697,13 @@ class _FollowUpTransactionsScreenState
       context: context,
       builder: (ctx) => _ReversalExpensesDialog(
         tx: tx,
-        onConfirm: (expenses, description) async {
+        onConfirm: (expenses, description, revertQty) async {
           final ticket = {'expenses': expenses, 'description': description};
 
           final success = await Provider.of<TransactionProvider>(
             context,
             listen: false,
-          ).revertTransaction(tx['_id'], ticket);
+          ).revertTransaction(tx['_id'], ticket, revertQuantity: revertQty);
 
           if (mounted) {
             Navigator.pop(ctx);
@@ -859,7 +859,7 @@ class _FollowUpTransactionsScreenState
 
 class _ReversalExpensesDialog extends StatefulWidget {
   final dynamic tx;
-  final Function(List<Map<String, dynamic>>, String) onConfirm;
+  final Function(List<Map<String, dynamic>>, String, int?) onConfirm;
   final List<Map<String, dynamic>>? initialExpenses;
   final String? initialDescription;
   final bool isEditing;
@@ -880,6 +880,7 @@ class _ReversalExpensesDialog extends StatefulWidget {
 class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
   final List<Map<String, dynamic>> _expenses = [];
   final _descriptionController = TextEditingController();
+  final _revertQtyController = TextEditingController();
 
   @override
   void initState() {
@@ -957,6 +958,19 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
                 labelStyle: const TextStyle(fontSize: 12),
               ),
             ),
+            if (widget.tx['added_to_hub'] != null &&
+                widget.tx['added_to_hub']['excessId'] != null) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _revertQtyController,
+                decoration: InputDecoration(
+                  labelText: 'Revert Quantity (Optional)',
+                  hintText: 'Max: ${widget.tx['totalQuantity']}',
+                  labelStyle: const TextStyle(fontSize: 12),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
           ],
         ),
       ),
@@ -968,7 +982,11 @@ class _ReversalExpensesDialogState extends State<_ReversalExpensesDialog> {
         ElevatedButton(
           onPressed: Provider.of<TransactionProvider>(context).isLoading
               ? null
-              : () => widget.onConfirm(_expenses, _descriptionController.text),
+              : () => widget.onConfirm(
+                  _expenses,
+                  _descriptionController.text,
+                  int.tryParse(_revertQtyController.text),
+                ),
           style: ElevatedButton.styleFrom(
             backgroundColor: widget.isEditing ? Colors.blue : Colors.red,
             foregroundColor: Colors.white,
