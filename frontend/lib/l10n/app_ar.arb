@@ -1064,5 +1064,9 @@
   "msgExportingData": "جاري تصدير البيانات...",
   "msgExportSuccess": "تم حفظ ملف إكسيل بنجاح",
   "msgExportError": "فشل في تصدير البيانات",
-  "labelMarketExcessesExport": "تصدير عروض السوق"
+  "labelMarketExcessesExport": "تصدير عروض السوق",
+  "labelQuantityTaken": "الكمية المأخوذة",
+  "labelExpiryDate": "تاريخ الانتهاء",
+  "dialogDeleteTitle": "تأكيد الحذف",
+  "dialogDeleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا العنصر؟"
 }

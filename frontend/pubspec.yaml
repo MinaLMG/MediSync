@@ -41,7 +41,7 @@ dependencies:
   dart_pusher_channels: ^1.2.3
   excel: 2.1.0
   path_provider: 2.0.11
-  open_file: 3.2.1
+  open_file: ^3.5.11
 
 dev_dependencies:
   flutter_test:

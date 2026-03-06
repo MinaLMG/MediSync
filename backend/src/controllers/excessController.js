@@ -345,18 +345,20 @@ exports.getMarketExcesses = async (req, res) => {
         const settings = await Settings.getSettings();
         const systemMinComm = settings.minimumCommission || 10;
         const commissionService = require('../services/commissionService');
-
+        let match = {
+            pharmacy: { $ne: req.user.pharmacy },
+            status: { $in: ['available', 'partially_fulfilled'] },
+            remainingQuantity: { $gt: 0 },
+            // Filter out shortage fulfillment (specific requests)
+            shortage_fulfillment: { $ne: true }
+        }
+        if (req.user.pharmacy) {
+            match.relatedPharmacy = { $ne: req.user.pharmacy }; // Cannot see own stock even in Hub
+        }
         // 1. Get raw aggregated excesses (Grouped by Product -> Price -> Expiry/Sale)
         const marketItems = await StockExcess.aggregate([
             {
-                $match: {
-                    pharmacy: { $ne: req.user.pharmacy },
-                    relatedPharmacy: { $ne: req.user.pharmacy }, // Cannot see own stock even in Hub
-                    status: { $in: ['available', 'partially_fulfilled'] },
-                    remainingQuantity: { $gt: 0 },
-                    // Filter out shortage fulfillment (specific requests)
-                    shortage_fulfillment: { $ne: true }
-                }
+                $match: match
             },
             { $sort: { expiryDate: 1 } },
             // Group by strict criteria: Product, Volume, Price, Expiry, Sale

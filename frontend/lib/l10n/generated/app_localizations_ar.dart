@@ -232,10 +232,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labelMaxQuantity => 'أقصى كمية';
 
   @override
-  String get labelQuantityTaken => 'Quantity Taken';
+  String get labelQuantityTaken => 'الكمية المأخوذة';
 
   @override
-  String get labelExpiryDate => 'Expiry Date';
+  String get labelExpiryDate => 'تاريخ الانتهاء';
 
   @override
   String get msgQuotaCreated => 'تم إنشاء الحصة بنجاح';
@@ -607,11 +607,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get actionDelete => 'حذف';
 
   @override
-  String get dialogDeleteTitle => 'Delete Item';
+  String get dialogDeleteTitle => 'تأكيد الحذف';
 
   @override
-  String get dialogDeleteConfirm =>
-      'Are you sure you want to delete this item?';
+  String get dialogDeleteConfirm => 'هل أنت متأكد من رغبتك في حذف هذا العنصر؟';
 
   @override
   String get labelVolume => 'الحجم';
