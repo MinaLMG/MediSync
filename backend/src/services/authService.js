@@ -8,9 +8,8 @@ const auditService = require('./auditService');
  * @returns {string} JWT Token
  */
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-    });
+    //let it never expire
+    return jwt.sign({ id }, process.env.JWT_SECRET);
 };
 
 /**
