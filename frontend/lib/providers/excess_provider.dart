@@ -76,11 +76,12 @@ class ExcessProvider with ChangeNotifier {
   }
 
   // Fetch Market Excesses (Pharmacy)
-  Future<void> fetchMarketExcesses() async {
-    await _fetchExcesses(
-      '/excess/market?excludeShortageFulfillment=true',
-      (data) => _marketExcesses = data,
-    );
+  Future<void> fetchMarketExcesses({bool detailed = false}) async {
+    String url = '/excess/market?excludeShortageFulfillment=true';
+    if (detailed) {
+      url += '&detailed=true';
+    }
+    await _fetchExcesses(url, (data) => _marketExcesses = data);
   }
 
   // Fetch Available Excesses (Admin/User)

@@ -27,7 +27,7 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
         context,
         listen: false,
       );
-      await excessProvider.fetchMarketExcesses();
+      await excessProvider.fetchMarketExcesses(detailed: true);
 
       if (excessProvider.errorMessage != null) {
         throw Exception(excessProvider.errorMessage);

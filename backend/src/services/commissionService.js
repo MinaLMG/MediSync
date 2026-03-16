@@ -10,7 +10,7 @@ const { Settings } = require('../models');
 exports.calculateAgreedCommission = async (originalSale) => {
     const settings = await Settings.getSettings();
     const systemMinComm = settings.minimumCommission || 10;
-    
+
     return calculateAgreedCommissionSync(originalSale, systemMinComm);
 };
 
@@ -23,9 +23,10 @@ exports.calculateAgreedCommission = async (originalSale) => {
  * @returns {{commission: number, agreedSale: number}}
  */
 exports.calculateAgreedCommissionSync = (originalSale, systemMinComm = 10) => {
-    const commission = Math.max(systemMinComm, Math.ceil(originalSale / 3));
+    // const commission = Math.max(systemMinComm, Math.ceil(originalSale / 3));
+    const commission = systemMinComm;
     const agreedSale = Math.max(0, originalSale - commission);
-    
+
     return {
         commission,
         agreedSale
