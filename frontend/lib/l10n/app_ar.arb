@@ -1047,7 +1047,6 @@
   "deleteSalesInvoice": "حذف فاتورة بيع",
   "deleteInvoiceConfirmation": "هل أنت متأكد من حذف هذه الفاتورة؟ سيؤدي ذلك إلى عكس المخزون ورصيد الخزينة.",
   "edit": "تعديل",
-  "actionEdit": "تعديل",
   "delete": "حذف",
   "salesInvoiceProfit": "أرباح مبيعات المركز",
   "punishmentRevenueLabel": "مصاريف التذاكر",
@@ -1068,5 +1067,7 @@
   "labelQuantityTaken": "الكمية المأخوذة",
   "labelExpiryDate": "تاريخ الانتهاء",
   "dialogDeleteTitle": "تأكيد الحذف",
-  "dialogDeleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا العنصر؟"
+  "dialogDeleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا العنصر؟",
+  "labelPharmacyExport": "الصيدلية",
+  "labelRelatedPharmacyExport": "الصيدلية المرتبطة"
 }

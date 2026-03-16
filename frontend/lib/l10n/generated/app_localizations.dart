@@ -4345,6 +4345,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Market Excesses Export'**
   String get labelMarketExcessesExport;
+
+  /// No description provided for @labelPharmacyExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Pharmacy'**
+  String get labelPharmacyExport;
+
+  /// No description provided for @labelRelatedPharmacyExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Related Pharmacy'**
+  String get labelRelatedPharmacyExport;
 }
 
 class _AppLocalizationsDelegate

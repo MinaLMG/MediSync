@@ -2298,4 +2298,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelMarketExcessesExport => 'Market Excesses Export';
+
+  @override
+  String get labelPharmacyExport => 'Pharmacy';
+
+  @override
+  String get labelRelatedPharmacyExport => 'Related Pharmacy';
 }

@@ -67,6 +67,8 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
               'price': price,
               'expiry': formattedExpiry,
               'sale': (item['salePercentage'] as num?)?.toDouble() ?? 0.0,
+              'pharmacyName': item['pharmacyName'] ?? '',
+              'relatedPharmacyName': item['relatedPharmacyName'] ?? '',
             });
           }
         }
@@ -82,6 +84,8 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       // Header row
       sheetObject.appendRow([
         AppLocalizations.of(context)!.labelProductName,
+        AppLocalizations.of(context)!.labelPharmacyExport,
+        AppLocalizations.of(context)!.labelRelatedPharmacyExport,
         AppLocalizations.of(context)!.labelQuantity,
         AppLocalizations.of(context)!.labelPrice,
         AppLocalizations.of(context)!.labelExpiry,
@@ -92,6 +96,8 @@ class _AdminStatsScreenState extends State<AdminStatsScreen> {
       for (var row in flattenedData) {
         sheetObject.appendRow([
           row['productName'],
+          row['pharmacyName'],
+          row['relatedPharmacyName'],
           row['quantity'],
           row['price'],
           row['expiry'],

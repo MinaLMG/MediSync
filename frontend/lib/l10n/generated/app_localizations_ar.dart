@@ -2287,4 +2287,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get labelMarketExcessesExport => 'تصدير عروض السوق';
+
+  @override
+  String get labelPharmacyExport => 'الصيدلية';
+
+  @override
+  String get labelRelatedPharmacyExport => 'الصيدلية المرتبطة';
 }
