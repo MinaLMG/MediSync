@@ -244,15 +244,24 @@ exports.getSuggestions = async (req, res) => {
 };
 
 // Approve/Reject Suggestion (Admin)
+// Supports optional `name` and `price` overrides when approving (Edit & Approve flow)
 exports.updateSuggestionStatus = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { status, adminNotes } = req.body;
+        const { status, adminNotes, name: overrideName, price: overridePrice } = req.body;
         const suggestion = await ProductSuggestion.findById(req.params.id).session(session);
 
         if (!suggestion) throw { message: 'Suggestion not found', code: 404 };
         if (suggestion.status !== 'pending') throw { message: 'Already processed', code: 400 };
+
+        // Apply admin overrides to the suggestion before saving / creating product
+        if (overrideName !== undefined && overrideName.trim()) {
+            suggestion.name = overrideName.trim();
+        }
+        if (overridePrice !== undefined && Number(overridePrice) > 0) {
+            suggestion.price = Number(overridePrice);
+        }
 
         suggestion.status = status;
         suggestion.adminNotes = adminNotes;
@@ -266,7 +275,7 @@ exports.updateSuggestionStatus = async (req, res) => {
                 unitVolume = unitVolume[0];
             }
 
-            // Create Product linked only to 'unit'
+            // Create Product using (possibly overridden) suggestion name
             product = await Product.create([{
                 name: suggestion.name,
                 status: 'active',
@@ -277,7 +286,7 @@ exports.updateSuggestionStatus = async (req, res) => {
                 }]
             }], { session });
 
-            // Create HasVolume for the 'unit' volume
+            // Create HasVolume using (possibly overridden) suggestion price
             await HasVolume.create([{
                 product: product[0]._id,
                 volume: unitVolume._id,

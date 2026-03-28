@@ -17,6 +17,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int _deliveryRequestsCount = 0;
   int _pendingAccountUpdatesCount = 0;
   int _pendingOrdersCount = 0;
+  int _activeTransactionsCount = 0;
 
   List<dynamic> get suggestions => _suggestions;
   bool get isLoading => _isLoading;
@@ -29,6 +30,7 @@ class AppSuggestionProvider with ChangeNotifier {
   int get deliveryRequestsCount => _deliveryRequestsCount;
   int get pendingAccountUpdatesCount => _pendingAccountUpdatesCount;
   int get pendingOrdersCount => _pendingOrdersCount;
+  int get activeTransactionsCount => _activeTransactionsCount;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -59,6 +61,7 @@ class AppSuggestionProvider with ChangeNotifier {
         _pendingAccountUpdatesCount =
             data['data']['pendingAccountUpdates'] ?? 0;
         _pendingOrdersCount = data['data']['pendingOrders'] ?? 0;
+        _activeTransactionsCount = data['data']['activeTransactions'] ?? 0;
         notifyListeners();
       }
     } catch (e) {}
@@ -148,5 +151,33 @@ class AppSuggestionProvider with ChangeNotifier {
         }
       }
     } catch (e) {}
+  }
+
+  Future<List<dynamic>> fetchPharmaciesSummary({String? startDate, String? endDate}) async {
+    try {
+      final token = await _getToken();
+      if (token == null) return [];
+
+      String query = '';
+      if (startDate != null) query += 'startDate=$startDate&';
+      if (endDate != null) query += 'endDate=$endDate&';
+      if (query.isNotEmpty) query = '?${query.substring(0, query.length - 1)}';
+
+      final response = await http.get(
+        Uri.parse('${Constants.baseUrl}/admin/pharmacies-summary$query'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'] as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 }

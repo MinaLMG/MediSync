@@ -77,6 +77,68 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
     }
   }
 
+  void _handleEditAndApprove(Map<String, dynamic> s) async {
+    final nameController = TextEditingController(text: s['name']);
+    final priceController = TextEditingController(text: s['price']?.toString());
+    final notesController = TextEditingController();
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+
+    final l10n = AppLocalizations.of(context)!;
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit & Approve'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Product Name'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Proposed Price'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(
+                  labelText: l10n.labelReviewerNotesOptional,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.actionCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('APPROVE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final nameStr = nameController.text.trim();
+      final priceDbl = double.tryParse(priceController.text.trim());
+      await provider.updateSuggestionStatus(
+        s['_id'],
+        'approved',
+        notes: notesController.text.trim(),
+        name: nameStr.isNotEmpty ? nameStr : null,
+        price: priceDbl,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -210,6 +272,20 @@ class _ManageSuggestionsScreenState extends State<ManageSuggestionsScreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 8),
+                                Center(
+                                  child: ElevatedButton(
+                                    onPressed: provider.isLoading
+                                        ? null
+                                        : () => _handleEditAndApprove(s),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                                    ),
+                                    child: const Text('Edit & Approve'),
+                                  ),
                                 ),
                               ],
                             ],

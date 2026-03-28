@@ -283,6 +283,8 @@ class AdminHomeTab extends StatelessWidget {
                   badgeCount = suggestionProvider.pendingAccountUpdatesCount;
                 } else if (id == 'Manage Orders') {
                   badgeCount = suggestionProvider.pendingOrdersCount;
+                } else if (id == 'View Transactions') {
+                  badgeCount = suggestionProvider.activeTransactionsCount;
                 }
 
                 return _buildMenuCard(

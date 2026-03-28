@@ -155,32 +155,78 @@ class _ShortageFollowUpScreenState extends State<ShortageFollowUpScreen>
                               }
                               showDialog(
                                 context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(l10n.dialogConfirmDelete),
-                                  content: Text(
-                                    l10n.dialogConfirmDeleteShortage,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(l10n.actionCancel),
-                                    ),
-                                    TextButton(
-                                      onPressed: provider.isLoading
-                                          ? null
-                                          : () {
-                                              Navigator.pop(ctx);
-                                              provider.deleteShortage(
-                                                item['_id'],
-                                              );
-                                            },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                      child: Text(l10n.actionDelete),
-                                    ),
-                                  ],
-                                ),
+                                barrierDismissible: false,
+                                builder: (ctx) {
+                                  bool isDeleting = false;
+                                  return StatefulBuilder(
+                                    builder: (ctx, setStateDialog) {
+                                      return AlertDialog(
+                                        title: Text(l10n.dialogConfirmDelete),
+                                        content: Text(
+                                          l10n.dialogConfirmDeleteShortage,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: isDeleting
+                                                ? null
+                                                : () => Navigator.pop(ctx),
+                                            child: Text(l10n.actionCancel),
+                                          ),
+                                          TextButton(
+                                            onPressed: isDeleting
+                                                ? null
+                                                : () async {
+                                                    setStateDialog(() =>
+                                                        isDeleting = true);
+                                                    final success = await provider
+                                                        .deleteShortage(
+                                                      item['_id'],
+                                                    );
+                                                    if (!ctx.mounted) return;
+                                                    Navigator.pop(ctx);
+                                                    if (success) {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        SnackBar(
+                                                          content: const Text(
+                                                            'Shortage deleted successfully',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      provider.fetchActiveShortages();
+                                                    } else {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            provider.errorMessage ??
+                                                                'Error deleting shortage',
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: isDeleting
+                                                ? const SizedBox(
+                                                    height: 20,
+                                                    width: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  )
+                                                : Text(l10n.actionDelete),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
                               );
                             },
                             style: TextButton.styleFrom(

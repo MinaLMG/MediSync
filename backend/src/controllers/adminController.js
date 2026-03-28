@@ -1,4 +1,5 @@
-const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion, DeliveryRequest } = require('../models');
+const { User, Pharmacy, StockExcess, ProductSuggestion, AppSuggestion, DeliveryRequest, Transaction, StockShortage } = require('../models');
+const mongoose = require('mongoose');
 const { deleteFiles } = require('../utils/fileHelper');
 const { addNotificationJob } = require('../utils/queueManager');
 const auditService = require('../services/auditService');
@@ -35,7 +36,7 @@ const reviewUser = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { status } = req.body; 
+        const { status } = req.body;
         if (!['active', 'rejected'].includes(status)) {
             throw { message: 'Invalid status', code: 400 };
         }
@@ -66,7 +67,7 @@ const reviewUser = async (req, res) => {
 
                     deleteFiles(filesToDelete);
                     await pharmacy.deleteOne({ session });
-                    
+
                     setImmediate(() => addNotificationJob(
                         user._id.toString(),
                         'system',
@@ -92,11 +93,11 @@ const reviewUser = async (req, res) => {
                         user._id.toString(),
                         'system',
                         `Congratulations! Your pharmacy "${pharmacy.name}" has been approved.`,
-                        { 
+                        {
                             priority: 'high',
                             relatedEntity: pharmacy._id,
                             relatedEntityType: 'Pharmacy'
-                        },`الصيدلية "${pharmacy.name}" تم الموافقة عليها.`
+                        }, `الصيدلية "${pharmacy.name}" تم الموافقة عليها.`
                     ));
                 }
             }
@@ -156,6 +157,7 @@ const getPendingCounts = async (req, res) => {
         const deliveryRequests = await DeliveryRequest.countDocuments({ status: 'pending' });
         const pendingAccountUpdates = await User.countDocuments({ pendingUpdate: { $ne: null } });
         const pendingOrders = await Order.countDocuments({ status: { $in: ['pending', 'partially_fulfilled'] } });
+        const activeTransactions = await Transaction.countDocuments({ status: { $in: ['pending', 'accepted'] } });
 
         res.status(200).json({
             success: true,
@@ -166,7 +168,8 @@ const getPendingCounts = async (req, res) => {
                 appSuggestions,
                 deliveryRequests,
                 pendingAccountUpdates,
-                pendingOrders
+                pendingOrders,
+                activeTransactions
             }
         });
     } catch (error) {
@@ -186,10 +189,10 @@ const suspendUser = async (req, res) => {
         if (!user) {
             throw { message: 'User not found', code: 404 };
         }
-        
+
         const oldStatus = user.status;
         const newStatus = oldStatus === 'suspended' ? 'active' : 'suspended';
-        
+
         user.status = newStatus;
         await user.save({ session });
 
@@ -276,7 +279,7 @@ const reviewUpdateData = async (req, res) => {
 
         if (action === 'approve') {
             const updates = user.pendingUpdate;
-            
+
             // Apply updates to user
             if (updates.name) {
                 changes.userName = { old: user.name, new: updates.name };
@@ -310,7 +313,7 @@ const reviewUpdateData = async (req, res) => {
                     await pharmacy.save({ session });
                 }
             }
-            
+
             setImmediate(() => addNotificationJob(
                 user._id.toString(),
                 'system',
@@ -364,8 +367,8 @@ const createDeliveryUser = async (req, res) => {
             throw { message: 'All fields are required', code: 400 };
         }
 
-        const userExists = await User.findOne({ 
-            $or: [{ email: email.toLowerCase() }, { phone }] 
+        const userExists = await User.findOne({
+            $or: [{ email: email.toLowerCase() }, { phone }]
         }).session(session);
 
         if (userExists) {
@@ -433,6 +436,144 @@ const getHubs = async (req, res) => {
     }
 };
 
+// @desc    Get pharmacies summary with financial stats
+// @route   GET /api/admin/pharmacies-summary
+// @access  Admin
+const getPharmaciesSummary = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        // Build date filter for transactions
+        const dateFilter = {};
+        if (startDate) dateFilter.$gte = new Date(startDate);
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            dateFilter.$lte = end;
+        }
+        const hasDateFilter = Object.keys(dateFilter).length > 0;
+
+        // Fetch all active pharmacies
+        const pharmacies = await Pharmacy.find({ status: 'active' }).sort({ name: 1 }).lean();
+
+        // Pre-compute: current excess value per pharmacy
+        const excessAgg = await StockExcess.aggregate([
+            { $match: { status: { $in: ['available', 'partially_fulfilled'] }, remainingQuantity: { $gt: 0 } } },
+            {
+                $group: {
+                    _id: '$pharmacy',
+                    excessValue: { $sum: { $multiply: ['$remainingQuantity', '$selectedPrice'] } }
+                }
+            }
+        ]);
+        const excessMap = {};
+        excessAgg.forEach(e => { excessMap[e._id.toString()] = e.excessValue; });
+
+        // Pre-compute: transactions as buyer per pharmacy (via shortage's pharmacy)
+        const txMatchBuyer = hasDateFilter
+            ? { status: 'completed', 'stockShortage.balanceEffect': { $exists: true }, createdAt: dateFilter }
+            : { status: 'completed', 'stockShortage.balanceEffect': { $exists: true } };
+
+        // Aggregate buyer transactions — join shortage to get pharmacy
+        const buyerAgg = await Transaction.aggregate([
+            { $match: txMatchBuyer },
+            {
+                $lookup: {
+                    from: 'stockshortages',
+                    localField: 'stockShortage.shortage',
+                    foreignField: '_id',
+                    as: 'shortageDoc'
+                }
+            },
+            { $unwind: '$shortageDoc' },
+            {
+                $group: {
+                    _id: '$shortageDoc.pharmacy',
+                    totalBuyerValue: { $sum: '$totalAmount' },
+                    lastTransaction: { $max: '$createdAt' }
+                }
+            }
+        ]);
+        const buyerMap = {};
+        buyerAgg.forEach(b => {
+            buyerMap[b._id.toString()] = {
+                totalBuyerValue: b.totalBuyerValue,
+                lastTransaction: b.lastTransaction
+            };
+        });
+
+        // Aggregate seller transactions — via stockExcessSources
+        const txMatchSeller = hasDateFilter
+            ? { status: 'completed', createdAt: dateFilter }
+            : { status: 'completed' };
+
+        const sellerAgg = await Transaction.aggregate([
+            { $match: txMatchSeller },
+            { $unwind: '$stockExcessSources' },
+            {
+                $lookup: {
+                    from: 'stockexcesses',
+                    localField: 'stockExcessSources.stockExcess',
+                    foreignField: '_id',
+                    as: 'excessDoc'
+                }
+            },
+            { $unwind: '$excessDoc' },
+            {
+                $group: {
+                    _id: '$excessDoc.pharmacy',
+                    totalSellerValue: { $sum: '$stockExcessSources.totalAmount' },
+                    lastTransaction: { $max: '$createdAt' }
+                }
+            }
+        ]);
+        const sellerMap = {};
+        sellerAgg.forEach(s => {
+            sellerMap[s._id.toString()] = {
+                totalSellerValue: s.totalSellerValue,
+                lastTransaction: s.lastTransaction
+            };
+        });
+
+        // Build summary
+        const summary = pharmacies.map(ph => {
+            const phId = ph._id.toString();
+            const buyer = buyerMap[phId] || {};
+            const seller = sellerMap[phId] || {};
+
+            // Last transaction: max of buyer and seller dates
+            let lastTx = null;
+            if (buyer.lastTransaction && seller.lastTransaction) {
+                lastTx = buyer.lastTransaction > seller.lastTransaction
+                    ? buyer.lastTransaction
+                    : seller.lastTransaction;
+            } else {
+                lastTx = buyer.lastTransaction || seller.lastTransaction || null;
+            }
+
+            const phBuyerValue = buyer.totalBuyerValue || 0;
+            const phSellerValue = seller.totalSellerValue || 0;
+
+            return {
+                _id: ph._id,
+                name: ph.name,
+                isHub: ph.isHub || false,
+                balance: ph.balance || 0,
+                totalBuyerValue: phBuyerValue,
+                totalSellerValue: phSellerValue,
+                totalTransactionsValue: phBuyerValue + phSellerValue,
+                currentExcessValue: excessMap[phId] || 0,
+                lastTransactionDate: lastTx
+            };
+        });
+        console.log('summary', summary)
+        res.status(200).json({ success: true, data: summary });
+    } catch (error) {
+        console.error('[Error] getPharmaciesSummary failed:', error);
+        res.status(error.code || 500).json({ success: false, message: error.message || 'An unexpected error occurred' });
+    }
+};
+
 module.exports = {
     getWaitingUsers,
     getActiveUsers,
@@ -445,5 +586,6 @@ module.exports = {
     resetUserPassword,
     getUsersWithPendingUpdates,
     reviewUpdateData,
-    getHubs
+    getHubs,
+    getPharmaciesSummary
 };

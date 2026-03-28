@@ -168,19 +168,28 @@ class ProductProvider with ChangeNotifier {
     String id,
     String status, {
     String? notes,
+    String? name,
+    double? price,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       final token = await _getToken();
+      final body = {
+        'status': status,
+        if (notes != null) 'adminNotes': notes,
+        if (name != null) 'name': name,
+        if (price != null) 'price': price,
+      };
+
       final response = await http.put(
         Uri.parse('${Constants.baseUrl}/products/suggestions/$id'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: json.encode({'status': status, 'adminNotes': notes}),
+        body: json.encode(body),
       );
 
       final data = json.decode(response.body);

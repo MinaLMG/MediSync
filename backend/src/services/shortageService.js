@@ -396,27 +396,32 @@ exports.cancelShortage = async (shortageId, session, req = null) => {
         await getQuotaService().decrementQuota(shortage.pharmacy, dealAttributes, shortage.quantity, session);
     }
 
-    // 3. Update Order Totals if linked
+    // 3. Update Order Totals if linked, then delete order if now empty
     if (shortage.order) {
-        // We need to update order totals. 
-        // Note: updateOrderTotals fetches *all* shortages for the order.
-        // Since we didn't delete the record, but set status to 'cancelled', 
-        // we need to make sure updateOrderTotals handles 'cancelled' correctly (invokes sync logic or ignores).
-        // Let's check updateOrderTotals logic.
-        // It fetches ALL shortages.
-        // It sums quantity * targetPrice. 
-        // If status is cancelled, should it count towards totals? Probably not.
-        // We should modify updateOrderTotals to exclude cancelled/rejected shortages from sums if that's the desired behavior.
-        // Or, since we set remainingQuantity to 0, maybe that's enough?
-        // Wait, updateOrderTotals uses `s.quantity` for total amount, not `s.remainingQuantity`.
-        // So we might need to adjust logic there too or ensure cancelled items are skipped.
-        // Let's modify updateOrderTotals as well to be safe.
         await exports.updateOrderTotals(shortage.order, session);
+        await exports.deleteOrderIfEmpty(shortage.order, session);
     }
 
-    // Log action
-
     return shortage;
+};
+
+/**
+ * Deletes an order if it has no remaining (non-cancelled) shortages.
+ * This is a reusable service that can be called from any context.
+ *
+ * @param {string|ObjectId} orderId - The ID of the order to check and potentially delete.
+ * @param {Object} session - Mongoose session.
+ */
+exports.deleteOrderIfEmpty = async (orderId, session = null) => {
+    if (!orderId) return;
+
+    const remainingItems = await StockShortage.countDocuments({
+        order: orderId,
+        status: { $ne: 'cancelled' }
+    }).session(session);
+    if (remainingItems === 0) {
+        await Order.findByIdAndDelete(orderId).session(session);
+    }
 };
 
 exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = null) => {
@@ -466,11 +471,11 @@ exports.deleteShortage = async (shortageId, pharmacyId, req = null, session = nu
             await getQuotaService().decrementQuota(pharmacyId, dealAttributes, shortage.quantity, session);
         }
 
-        // 3. Update Order Totals
+        // 3. Update Order Totals, then delete order if now empty
         if (orderId) {
             await exports.updateOrderTotals(orderId, session);
+            await exports.deleteOrderIfEmpty(orderId, session);
         }
-
 
     } catch (error) {
         throw error;
