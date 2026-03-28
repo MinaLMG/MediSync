@@ -463,7 +463,7 @@ class _FollowUpTransactionsScreenState
                         child: const Text('Cancel'),
                       ),
                       TextButton.icon(
-                        onPressed: tp.isLoading
+                        onPressed: (tp.isLoading || tx['status'] != 'pending')
                             ? null
                             : () async {
                                 final result = await Navigator.push(
@@ -490,7 +490,7 @@ class _FollowUpTransactionsScreenState
                           tx['status'] != 'cancelled' &&
                           _isShortageFulfillment(tx))
                         TextButton.icon(
-                          onPressed: tp.isLoading
+                          onPressed: (tp.isLoading || tx['status'] != 'pending')
                               ? null
                               : () => _showEditRatiosDialog(tx),
                           icon: const Icon(Icons.percent, size: 16),

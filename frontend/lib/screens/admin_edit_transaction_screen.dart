@@ -142,6 +142,7 @@ class _AdminEditTransactionScreenState
     final product = shortage['product']['name'];
     final volume = shortage['volume']['name'];
     final bool isOrder = shortage['order'] != null;
+    final bool isPending = widget.transaction['status'] == 'pending';
 
     // Original available = remaining + current portion in this tx
     final l10n = AppLocalizations.of(context)!;
@@ -162,6 +163,21 @@ class _AdminEditTransactionScreenState
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (!isPending)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.red[100],
+                    child: Text(
+                      'READ ONLY: This transaction has been accepted/finalized.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.red[900],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 // Header: Shortage Info
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -308,7 +324,7 @@ class _AdminEditTransactionScreenState
                                   Row(
                                     children: [
                                       IconButton(
-                                        onPressed: currentSelected > 0
+                                        onPressed: (currentSelected > 0 && isPending)
                                             ? () => setState(() {
                                                 _selections[excessId] =
                                                     currentSelected - 1;
@@ -332,9 +348,10 @@ class _AdminEditTransactionScreenState
                                       ),
                                       IconButton(
                                         onPressed:
-                                            currentSelected <
-                                                    totalAvailableFromExcess &&
-                                                _getTotalSelected() < maxAllowed
+                                            (currentSelected <
+                                                     totalAvailableFromExcess &&
+                                                 _getTotalSelected() < maxAllowed &&
+                                                 isPending)
                                             ? () => setState(() {
                                                 _selections[excessId] =
                                                     currentSelected + 1;
@@ -399,7 +416,8 @@ class _AdminEditTransactionScreenState
                       onPressed:
                           _isLoading ||
                               _getTotalSelected() > maxAllowed ||
-                              _getTotalSelected() == 0
+                              _getTotalSelected() == 0 ||
+                              !isPending
                           ? null
                           : _saveChanges,
                       icon: _isLoading

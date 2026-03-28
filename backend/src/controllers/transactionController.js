@@ -262,6 +262,7 @@ exports.updateTransactionStatus = async (req, res) => {
 
         res.status(200).json({ success: true, data: transaction });
     } catch (error) {
+        console.log("error in updateTransactionStatus", error);
         if (session && session.inTransaction()) {
             await session.abortTransaction();
         }
@@ -435,6 +436,7 @@ exports.revertTransaction = async (req, res) => {
 
         if (!transaction) throw { message: 'Transaction not found', code: 404 };
         if (transaction.status !== 'completed') throw { message: 'Only completed transactions can be reverted', code: 409 };
+
         if (transaction.reversalTicket) throw { message: 'Transaction already reverted', code: 409 };
 
         // --- Manual Validation for Expenses ---
@@ -462,11 +464,12 @@ exports.revertTransaction = async (req, res) => {
             return res.status(200).json({ success: true, data: transaction });
         }
 
-        // Change transaction status FIRST so sync status helpers ignore this transaction
+
+        // 1. Change status to 'cancelled' so sync status helpers ignore this transaction
         transaction.status = 'cancelled';
         await transaction.save({ session });
 
-        // 1. Restore Stock Quantities
+        // 2. Restore Stock Quantities
         const excessService = getExcessService();
         for (const source of transaction.stockExcessSources) {
             const excess = await StockExcess.findById(source.stockExcess._id).session(session);
@@ -483,7 +486,7 @@ exports.revertTransaction = async (req, res) => {
             await shortageService.syncShortageStatus(shortage, session);
         }
 
-        // 2. Restore Reservations
+        // 3. Restore Reservations
         if (shortage && shortage.order) {
             const saleToLookup = shortage.originalSalePercentage || shortage.salePercentage || 0;
             for (const source of transaction.stockExcessSources) {
@@ -503,75 +506,15 @@ exports.revertTransaction = async (req, res) => {
             }
         }
 
-        // 3. Financial Reversal (Automatic)
+        // 4. Financial Reversal (Unified Service Logic)
 
-        // Revert Buyer
-        const buyerPh = await Pharmacy.findById(transaction.stockShortage.shortage.pharmacy._id).session(session);
-        if (buyerPh && transaction.stockShortage.balanceEffect) {
-            const BalanceHistory = require('../models/BalanceHistory');
-            const prevBalance = buyerPh.balance;
-            buyerPh.balance -= transaction.stockShortage.balanceEffect; // Subtract the effect (which was negative)
-            const newBalance = buyerPh.balance;
-            await buyerPh.save({ session });
+        // Phase A: Reverse Sellers (Revenue Clawback) - Always happens if Accepted/Completed
+        await transactionService.reverseSellerSettlement(transaction, session);
 
-            // Record History
-            await BalanceHistory.create([{
-                pharmacy: buyerPh._id,
-                type: 'transaction_payment',
-                amount: -transaction.stockShortage.balanceEffect,
-                previousBalance: prevBalance,
-                newBalance: newBalance,
-                relatedEntity: transaction._id,
-                relatedEntityType: 'Transaction',
-                description: `Reversal of payment for transaction #${transaction.serial}`,
-                description_ar: `عكس عملية الدفع للمعاملة #${transaction.serial}`,
-                product: transaction.stockShortage.shortage.product,
-                quantity: transaction.stockShortage.quantityTaken,
-                details: { type: 'reversal' }
-            }], { session });
+        // Phase B: Reverse Buyer (Payment Clawback) - Only happens if it was Completed
+        await transactionService.reverseBuyerPayment(transaction, session);
 
-            // Notify buyer users
-            const users = await User.find({ pharmacy: buyerPh._id });
-            for (const user of users) {
-                sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
-            }
-        }
-
-        // Revert Sellers
-        for (const source of transaction.stockExcessSources) {
-            const sellerPh = await Pharmacy.findById(source.stockExcess.pharmacy._id).session(session);
-            if (sellerPh && source.balanceEffect) {
-                const BalanceHistory = require('../models/BalanceHistory');
-                const prevBalance = sellerPh.balance;
-                sellerPh.balance -= source.balanceEffect; // Subtract the profit given
-                const newBalance = sellerPh.balance;
-                await sellerPh.save({ session });
-
-                // Record History
-                await BalanceHistory.create([{
-                    pharmacy: sellerPh._id,
-                    type: 'transaction_revenue',
-                    amount: -source.balanceEffect,
-                    previousBalance: prevBalance,
-                    newBalance: newBalance,
-                    relatedEntity: transaction._id,
-                    relatedEntityType: 'Transaction',
-                    description: `Reversal of revenue for transaction #${transaction.serial}`,
-                    description_ar: `عكس عملية التحصيل للمعاملة #${transaction.serial}`,
-                    product: source.stockExcess.product,
-                    quantity: source.quantity,
-                    details: { type: 'reversal' }
-                }], { session });
-
-                // Notify seller users
-                const users = await User.find({ pharmacy: sellerPh._id });
-                for (const user of users) {
-                    sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
-                }
-            }
-        }
-
-        // 4. Apply Expenses
+        // 5. Apply Reversal Ticket Expenses (Punishments)
         const resolvedExpenses = [];
         if (expenses && expenses.length > 0) {
             for (const p of expenses) {
@@ -810,8 +753,8 @@ exports.updateTransactionRatios = async (req, res) => {
             throw { message: 'Transaction not found', code: 404 };
         }
 
-        if (['completed', 'cancelled'].includes(transaction.status)) {
-            throw { message: 'Cannot update ratios of a finished transaction', code: 409 };
+        if (['accepted', 'completed', 'cancelled'].includes(transaction.status)) {
+            throw { message: 'Cannot update ratios after transaction has been accepted or finished', code: 409 };
         }
 
         if (buyerCommissionRatio !== undefined) {
@@ -867,8 +810,8 @@ exports.updateTransaction = async (req, res) => {
         const transaction = await Transaction.findById(id).session(session);
         if (!transaction) throw { message: 'Transaction not found', code: 404 };
 
-        if (!['pending', 'accepted'].includes(transaction.status)) {
-            throw { message: 'Cannot modify a completed or cancelled transaction', code: 409 };
+        if (transaction.status !== 'pending') {
+            throw { message: 'Cannot modify a transaction after it has been accepted or completed', code: 409 };
         }
 
         const shortageService = require('../services/shortageService');

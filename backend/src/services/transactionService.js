@@ -159,6 +159,7 @@ exports.createTransaction = async (data, session, req = null) => {
  * @returns {Promise<Object>} The updated transaction.
  */
 exports.updateTransactionStatus = async (transactionId, status, req, session) => {
+
     const transaction = await Transaction.findById(transactionId).session(session);
 
     if (!transaction) {
@@ -169,20 +170,20 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
         throw { message: 'Cannot change status of a finished transaction', code: 409 };
     }
 
+    if (status === 'pending' && transaction.status !== 'pending') {
+        throw { message: 'Cannot move transaction back to pending state once it has been accepted or completed.', code: 409 };
+    }
+
     if (transaction.status === status) {
         return transaction; // No change detected
     }
 
     const oldStatus = transaction.status;
-    if (status !== 'completed') {// the settle transaction is the only function can set transaction status to accepted
-        transaction.status = status;
-    }
-    console.log(`[DEBUG] transaction ${transaction._id} status set to ${transaction.status} (target: ${status})`);
 
     if (status === 'cancelled' || status === 'rejected') {
+        transaction.status = status;
         const excessService = getExcessService();
         const shortageService = getShortageService();
-
         // 1. Restore excess quantities
         for (const source of transaction.stockExcessSources) {
             const excess = await StockExcess.findById(source.stockExcess).session(session);
@@ -191,7 +192,7 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
                 await excessService.syncExcessStatus(excess, session);
             }
         }
-
+        console.log("excesses restored")
         // 2. Reduce shortage fulfillment
         const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
         if (shortage) {
@@ -223,9 +224,17 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
             { status: 'rejected' },
             { session }
         );
+        // 5. Reverse seller settlement if it was already accepted
+        if (oldStatus === 'accepted') {
+            await exports.reverseSellerSettlement(transaction, session);
+            // Clear the phantom buyer effect since it was never applied to the balance
+            transaction.stockShortage.balanceEffect = 0;
+        }
     }
     // [New] Autonomous approval of DeliveryRequest for the assigned delivery user
-    else if ((status === 'accepted' || status === 'completed')) {
+    else if (status === 'accepted' || status === 'completed') {
+        if (status === 'accepted') transaction.status = 'accepted';
+
         if (transaction.delivery) {
             // Approve the active request for this transaction/user
             await DeliveryRequest.updateMany(
@@ -234,15 +243,18 @@ exports.updateTransactionStatus = async (transactionId, status, req, session) =>
                 { session }
             );
         }
-        if (status === 'completed') {
-            await exports.settleTransaction(transaction, session);
+        if (status === 'accepted' && oldStatus === 'pending') {
+            await exports.settleSellers(transaction, session);
+        } else if (status === 'completed' && oldStatus === 'accepted') {
+            await exports.settleBuyer(transaction, session);
+        } else if (status === 'completed' && oldStatus === 'pending') {
+            // Handle direct jump from pending to completed (if ever happens)
+            await exports.settleSellers(transaction, session);
+            await exports.settleBuyer(transaction, session);
         }
     }
 
-
     await transaction.save({ session });
-
-
     return transaction;
 };
 
@@ -302,17 +314,12 @@ exports.unassignTransaction = async (transactionId, session, req = null) => {
 // =============================================================================
 
 /**
- * Executes the financial settlement for a completed transaction.
- * Calculates commissions, bonuses, and hub-specific logic.
- * Updates pharmacy balances and records ledger entries.
- * 
- * @param {Object} transaction - The transaction document to settle.
- * @param {Object} session - Mongoose session.
+ * Phase 1: Executes financial settlement for sellers (revenue).
+ * Deducts from transaction total to calculate buyer payment but only settlements sellers.
  */
-exports.settleTransaction = async (transaction, session) => {
-    if (transaction.status === 'completed') {
-        return; // Already settled
-    }
+exports.settleSellers = async (transaction, session) => {
+    // If seller balanceEffect is already set, don't redo
+    if (transaction.stockExcessSources.some(s => s.balanceEffect)) return;
 
     const settings = await Settings.getSettings();
     const systemMinCommRatio = settings.minimumCommission / 100;
@@ -323,7 +330,7 @@ exports.settleTransaction = async (transaction, session) => {
     let totalBuyerEffect = 0;
     let buyerDetailsList = [];
 
-    // 1. Process Seller Effects (and accumulate Buyer effects)
+    // Process Seller Effects
     for (let i = 0; i < transaction.stockExcessSources.length; i++) {
         const source = transaction.stockExcessSources[i];
         const excess = await StockExcess.findById(source.stockExcess).session(session);
@@ -335,10 +342,7 @@ exports.settleTransaction = async (transaction, session) => {
             let sourceBuyerEffect = 0;
             let sourceBuyerDetails = {};
 
-            // --- Case A: Shortage Fulfillment (Admin Matching) ---
             if (excess.shortage_fulfillment) {
-                // CASE 1: Shortage Fulfillment
-                // If not provided at creation, use latest system settings
                 if (transaction.sellerBonusRatio === undefined) {
                     transaction.sellerBonusRatio = settings.shortageSellerReward / 100;
                 }
@@ -349,9 +353,6 @@ exports.settleTransaction = async (transaction, session) => {
                 let bonusRatio = transaction.sellerBonusRatio;
                 let commRatio = transaction.buyerCommissionRatio;
 
-                // --- Hub-Specific Overrides ---
-                // If a Hub is the seller, they don't get a bonus since it's a system transfer.
-                // If a Hub is the buyer, they don't pay commission to themselves.
                 if (sellerPh.isHub) bonusRatio = 0;
                 if (buyerPh.isHub) commRatio = 0;
 
@@ -371,30 +372,18 @@ exports.settleTransaction = async (transaction, session) => {
                 };
 
             } else {
-                // --- Case B: Regular Transaction (Market Order or Direct Match) ---
-
-                // 1. Validation: original sale percentage must match if it exists
                 if (shortage.originalSalePercentage && shortage.originalSalePercentage !== excess.salePercentage) {
-                    throw { message: `Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%. Please re-list or adjust stock.`, code: 409 };
+                    throw { message: `Data Mismatch: Original sale percentage for excess ${excess._id} is ${excess.salePercentage}%, but shortage expected ${shortage.originalSalePercentage}%.`, code: 409 };
                 }
 
-                // Commission is based on the excess sale value.
-                // The baseline system commission is used as a floor during creation, but here
-                // we use the actual percentage stored or agreed upon.
                 let sellerCommissionRatio = (excess.salePercentage !== undefined && excess.salePercentage !== null)
                     ? (excess.salePercentage / 100)
                     : systemMinCommRatio;
 
-                // 3. Calculate Sale Ratio (Buyer Receives)
-                // The sale the buyer explicitly selected and agreed on (from shortage)
                 let buyerSaleRatio = (shortage.salePercentage || 0) / 100;
 
-                // Sub-case: Hub Seller Logic
                 if (sellerPh.isHub && (excess.isHubGenerated || excess.isHubPurchase)) {
-                    // Hub selling transferred or purchased items
-                    // Use purchase price directly as positive effect
                     sellerEffect = excess.purchasePrice * source.quantity;
-
                     sellerDetails = {
                         type: excess.isHubPurchase ? 'hub_purchase_sale' : 'hub_transfer_sale',
                         baseAmount: source.totalAmount,
@@ -403,10 +392,7 @@ exports.settleTransaction = async (transaction, session) => {
                         sellingPrice: source.agreedPrice
                     };
                 } else {
-                    // Regular seller (not hub) - calculate commission normally.
-                    // The profit is (1 - commissionRatio) * totalAmount.
                     sellerEffect = (1 - sellerCommissionRatio) * source.totalAmount;
-
                     sellerDetails = {
                         type: 'excess_rebalance',
                         baseAmount: source.totalAmount,
@@ -415,23 +401,14 @@ exports.settleTransaction = async (transaction, session) => {
                     };
                 }
 
-                // Sub-case: Hub Buyer Logic (Net Zero Effect)
-                // If the buyer is a Hub, they are essentially taking stock in at the same "value" 
-                // the seller received it at, ensuring no system "leakage" during transfers.
-                if (buyerPh.isHub) {
-                    buyerSaleRatio = (excess.salePercentage || 0) / 100;
-                }
-
-                // Buyer Pays: Price * (1 - buyerSaleRatio)
+                if (buyerPh.isHub) buyerSaleRatio = (excess.salePercentage || 0) / 100;
                 sourceBuyerEffect = -(1 - buyerSaleRatio) * source.totalAmount;
-
                 sourceBuyerDetails = {
                     type: 'excess_rebalance',
                     baseAmount: source.totalAmount,
                     saleRatio: buyerSaleRatio,
                     excessId: excess._id
                 };
-
             }
 
             // Update Seller
@@ -457,7 +434,6 @@ exports.settleTransaction = async (transaction, session) => {
                 details: sellerDetails
             }], { session });
 
-            // Websocket notification
             try {
                 const sellerUsers = await User.find({ pharmacy: sellerPh._id }).session(session);
                 for (const user of sellerUsers) {
@@ -470,13 +446,33 @@ exports.settleTransaction = async (transaction, session) => {
         }
     }
 
-    // 2. Process Final Buyer Effect
+    // Save computed buyer effect for phase 2
+    transaction.stockShortage.balanceEffect = totalBuyerEffect;
+    transaction.stockShortage.details = {
+        sources: buyerDetailsList,
+        totalBuyerEffect
+    };
+
+    // Note: status remains 'accepted' (set in updateTransactionStatus)
+    await transaction.save({ session });
+};
+
+/**
+ * Phase 2: Executes financial settlement for buyer (payment).
+ */
+exports.settleBuyer = async (transaction, session) => {
+    // Check if already settled
+    if (transaction.status === 'completed') return;
+
+    const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
+    const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
+
     if (buyerPh) {
+        const totalBuyerEffect = transaction.stockShortage.balanceEffect;
         const buyerPrevBalance = buyerPh.balance;
         buyerPh.balance += totalBuyerEffect;
         const buyerNewBalance = buyerPh.balance;
 
-        transaction.stockShortage.balanceEffect = totalBuyerEffect;
         await buyerPh.save({ session });
 
         await BalanceHistory.create([{
@@ -491,10 +487,7 @@ exports.settleTransaction = async (transaction, session) => {
             description_ar: `دفع للمعاملة #${transaction.serial}`,
             product: shortage.product,
             quantity: transaction.stockShortage.quantityTaken,
-            details: {
-                sources: buyerDetailsList,
-                totalBuyerEffect
-            }
+            details: transaction.stockShortage.details
         }], { session });
 
         try {
@@ -505,17 +498,98 @@ exports.settleTransaction = async (transaction, session) => {
         } catch (err) { }
     }
 
-    // 3. Final stock sync
-    const excessService = getExcessService();
-    for (const source of transaction.stockExcessSources) {
-        const excess = await StockExcess.findById(source.stockExcess).session(session);
-        if (excess) {
-            await excessService.syncExcessStatus(excess, session);
-        }
-    }
-
     transaction.status = 'completed';
     await transaction.save({ session });
+};
+
+/**
+ * Phase 3: Reverses the buyer's payment (payment clawback).
+ * Used during transaction Reverts.
+ */
+exports.reverseBuyerPayment = async (transaction, session) => {
+    // 1. Resolve Buyer Pharmacy
+    const shortage = await StockShortage.findById(transaction.stockShortage.shortage).session(session);
+    const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
+    console.log("Buyer Ph", buyerPh);
+    if (buyerPh && transaction.stockShortage.balanceEffect) {
+        console.log(" entering in")
+        const prevBalance = buyerPh.balance;
+        // Subtract the effect. If effect was -100 (deduction), subtracting -100 adds 100 back.
+        buyerPh.balance -= transaction.stockShortage.balanceEffect;
+        const newBalance = buyerPh.balance;
+        console.log("Buyer Ph Balance", buyerPh.balance);
+        console.log("New Balance", newBalance);
+
+        await buyerPh.save({ session });
+
+        // 2. Record Reversal History
+        await BalanceHistory.create([{
+            pharmacy: buyerPh._id,
+            type: 'transaction_payment_reversal',
+            amount: -transaction.stockShortage.balanceEffect,
+            previousBalance: prevBalance,
+            newBalance: newBalance,
+            relatedEntity: transaction._id,
+            relatedEntityType: 'Transaction',
+            description: `Reversal of payment for transaction #${transaction.serial}`,
+            description_ar: `عكس عملية الدفع للمعاملة #${transaction.serial}`,
+            product: shortage.product,
+            quantity: transaction.stockShortage.quantityTaken,
+            details: { type: 'manual_reversal', originalEffect: transaction.stockShortage.balanceEffect }
+        }], { session });
+        console.log("Balance History", BalanceHistory);
+        try {
+            const buyerUsers = await User.find({ pharmacy: buyerPh._id }).session(session);
+            for (const user of buyerUsers) {
+                sendToUser(user._id.toString(), 'balanceUpdate', { balance: buyerPh.balance });
+            }
+        } catch (err) { console.log("Error in sending notification", err) }
+    }
+    console.log("Transaction", transaction);
+    // Reset indicator
+    transaction.stockShortage.balanceEffect = 0;
+};
+
+
+/**
+ * Reverses the seller payments if a transaction is cancelled/rejected after being accepted.
+ */
+exports.reverseSellerSettlement = async (transaction, session) => {
+    for (const source of transaction.stockExcessSources) {
+        if (source.balanceEffect) {
+            const excess = await StockExcess.findById(source.stockExcess).session(session);
+            const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
+            if (sellerPh) {
+                const prevBalance = sellerPh.balance;
+                sellerPh.balance -= source.balanceEffect;
+                const newBalance = sellerPh.balance;
+                await sellerPh.save({ session });
+                await BalanceHistory.create([{
+                    pharmacy: sellerPh._id,
+                    type: 'transaction_revenue_reversal',
+                    amount: -source.balanceEffect,
+                    previousBalance: prevBalance,
+                    newBalance: newBalance,
+                    relatedEntity: transaction._id,
+                    relatedEntityType: 'Transaction',
+                    description: `Reversal of revenue for transaction #${transaction.serial}`,
+                    description_ar: `عكس عملية التحصيل للمعاملة #${transaction.serial}`,
+                    product: excess.product,
+                    quantity: source.quantity,
+                    details: { type: 'reversal', originalEffect: source.balanceEffect }
+                }], { session });
+
+                try {
+                    const sellerUsers = await User.find({ pharmacy: sellerPh._id }).session(session);
+                    for (const user of sellerUsers) {
+                        sendToUser(user._id.toString(), 'balanceUpdate', { balance: sellerPh.balance });
+                    }
+                } catch (err) {
+                }
+            }
+            source.balanceEffect = 0; // Reset after reversal
+        }
+    }
 };
 
 // =============================================================================
@@ -743,10 +817,12 @@ exports.revertAddToHub = async (transaction, session, req) => {
                     }
                 } catch (e) { }
             }
+            source.balanceEffect = 0; // Reset
         }
     }
 
-    // 6. Set Transaction Status
+    // 6. Set Transaction Status and Reset remaining effects
+    transaction.stockShortage.balanceEffect = 0; // Reset
     transaction.status = 'cancelled';
     await transaction.save({ session });
     await auditService.logAction({

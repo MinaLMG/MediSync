@@ -8,7 +8,7 @@ const balanceHistorySchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['transaction_revenue', 'transaction_payment', 'expenses', 'manual', 'compensation','deposit','withdrawal','purchase_invoice','sales_invoice'],
+        enum: ['transaction_revenue', 'transaction_payment', 'transaction_revenue_reversal', 'transaction_payment_reversal', 'expenses', 'manual', 'compensation', 'deposit', 'withdrawal', 'purchase_invoice', 'sales_invoice'],
         required: true
     },
     amount: {
@@ -29,7 +29,7 @@ const balanceHistorySchema = new mongoose.Schema({
     },
     relatedEntityType: {
         type: String,
-        enum: ['Transaction', 'ReversalTicket', 'Compensation','Payment','PurchaseInvoice','SalesInvoice']
+        enum: ['Transaction', 'ReversalTicket', 'Compensation', 'Payment', 'PurchaseInvoice', 'SalesInvoice']
     },
     description: {
         type: String,
@@ -55,7 +55,7 @@ const balanceHistorySchema = new mongoose.Schema({
 balanceHistorySchema.index({ pharmacy: 1, createdAt: -1 });
 
 // Safety: Prevent any deletion of balance history as it is a critical audit trail
-balanceHistorySchema.pre(['remove', 'deleteOne', 'deleteMany', 'findOneAndDelete'], function(next) {
+balanceHistorySchema.pre(['remove', 'deleteOne', 'deleteMany', 'findOneAndDelete'], function (next) {
     next(new Error('Deletion of BalanceHistory records is strictly prohibited for data integrity and legal audit purposes.'));
 });
 
