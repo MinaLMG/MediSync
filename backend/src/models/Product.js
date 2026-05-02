@@ -33,6 +33,10 @@ const productSchema = new mongoose.Schema({
         type: String,
         enum: ['active', 'inactive'],
         default: 'active'
+    },
+    isupplyData: {
+        type: Object,
+        default: null
     }
 }, {
     timestamps: true

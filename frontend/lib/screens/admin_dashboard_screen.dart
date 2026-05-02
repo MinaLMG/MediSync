@@ -20,6 +20,7 @@ import 'admin/admin_product_quota_screen.dart';
 import 'admin_order_list_screen.dart';
 import 'admin/admin_transactions_summary_screen.dart';
 import 'admin/admin_stats_screen.dart';
+import 'admin/isupply_match_products_screen.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -235,6 +236,12 @@ class AdminHomeTab extends StatelessWidget {
         'icon': Icons.lock_clock,
         'color': Colors.blueGrey,
       },
+      {
+        'id': 'iSupply Match',
+        'title': 'iSupply Match', // No localization for now
+        'icon': Icons.link,
+        'color': Colors.lightBlue,
+      },
     ];
 
     return RefreshIndicator(
@@ -424,6 +431,13 @@ class AdminHomeTab extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const AdminProductQuotaScreen(),
+              ),
+            );
+          } else if (id == 'iSupply Match') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ISupplyMatchProductsScreen(),
               ),
             );
           }

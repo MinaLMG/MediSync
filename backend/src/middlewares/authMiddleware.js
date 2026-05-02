@@ -25,7 +25,7 @@ const protect = async (req, res, next) => {
             next();
         } catch (error) {
             console.error('❌ [Auth Middleware] Token Verification Failed:', error.message);
-            res.status(401).json({ success: false, message: 'Not authorized, token failed' });
+            return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
         }
     }
 
@@ -49,6 +49,7 @@ const authorize = (...roles) => {
 };
 
 const admin = (req, res, next) => {
+    console.log("req.user", req.user);
     if (req.user && req.user.role === 'admin') {
         next();
     } else {

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getWaitingUsers, 
-    getActiveUsers, 
-    reviewUser, 
+const {
+    getWaitingUsers,
+    getActiveUsers,
+    reviewUser,
     getAllPharmacies,
     getPendingCounts,
     createDeliveryUser,
@@ -15,6 +15,7 @@ const {
     getHubs,
     getPharmaciesSummary
 } = require('../controllers/adminController');
+const { getRandomUnmatchedProduct, matchProduct, rejectChoice } = require('../controllers/isupplyController');
 const { getPharmacyOrders } = require('../controllers/orderController');
 const { getPharmacyBalanceHistory } = require('../controllers/balanceHistoryController');
 const { protect, admin } = require('../middlewares/authMiddleware');
@@ -38,5 +39,10 @@ router.get('/hubs', getLimiter, getHubs);
 router.get('/pharmacies/:pharmacyId/orders', getLimiter, getPharmacyOrders);
 router.get('/pharmacies/:pharmacyId/balance-history', getLimiter, getPharmacyBalanceHistory);
 router.get('/pharmacies-summary', getLimiter, getPharmaciesSummary);
+
+// iSupply Integration Routes
+router.get('/isupply/random-unmatched', getRandomUnmatchedProduct);
+router.patch('/isupply/match', matchProduct);
+router.post('/isupply/reject-choice', rejectChoice);
 
 module.exports = router;
