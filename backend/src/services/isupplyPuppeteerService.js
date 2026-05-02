@@ -171,36 +171,29 @@ async function fetchProductSalesUI(isupplyTitle) {
     
     console.log(`[iSupply Puppeteer] Fetching sales for: ${isupplyTitle}`);
     
-    // 1. Navigate to products page
-    if (!page.url().includes('/best-price/products')) {
-        await page.goto('https://app.isupply.com.eg/best-price/products/search', { waitUntil: 'networkidle2' });
-    }
+    // 1. Navigate to products page (Always fresh start)
+    await page.goto('https://app.isupply.com.eg/best-price/products/search', { waitUntil: 'networkidle2' });
 
     // 2. Interact with the Select2 search
     try {
-        // Find the select2 container
-        const select2Container = '#select2-product-search-container';
-        await page.waitForSelector(select2Container, { timeout: 10000 });
-        await page.click(select2Container);
+        // Find the placeholder span and click it
+        const placeholderSelector = '.select2-selection__placeholder';
+        await page.waitForSelector(placeholderSelector, { timeout: 15000 });
+        await page.click(placeholderSelector);
         
-        // Wait for the dropdown input to appear
-        const searchInput = '.select2-search__field';
-        await page.waitForSelector(searchInput, { timeout: 5000 });
+        // After clicking, the input should be focused. We wait a moment for it to appear.
+        await new Promise(r => setTimeout(r, 1000));
         
-        // Clear and type
-        await page.evaluate(() => {
-            const input = document.querySelector('.select2-search__field');
-            if (input) input.value = '';
-        });
-        await page.type(searchInput, isupplyTitle, { delay: 100 });
+        // Type the title. Since it's focused by default after click, we just type.
+        await page.keyboard.type(isupplyTitle, { delay: 100 });
         await page.keyboard.press('Enter');
         
         // Wait for selection to settle
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2000));
 
         // 3. Click the "Search" button (class "i-search-best-btn btn bold")
         const searchBtn = '.i-search-best-btn';
-        await page.waitForSelector(searchBtn, { timeout: 5000 });
+        await page.waitForSelector(searchBtn, { timeout: 10000 });
         await page.click(searchBtn);
 
         // 4. Wait for results to load
@@ -242,8 +235,7 @@ async function fetchProductSalesUI(isupplyTitle) {
                     discount,
                     consumerPrice,
                     pharmacyPrice,
-                    seller: sellerName,
-                    fetchedAt: new Date()
+                    seller: sellerName
                 });
             });
             return results;

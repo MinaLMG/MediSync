@@ -11,16 +11,8 @@ const ProductSaleSchema = new mongoose.Schema({
         consumerPrice: Number,
         pharmacyPrice: Number,
         seller: String,
-        isupply_product_id: Number,
-        fetchedAt: {
-            type: Date,
-            default: Date.now
-        }
-    }],
-    fetchedAt: {
-        type: Date,
-        default: Date.now
-    }
+        isupply_product_id: Number
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('ProductSale', ProductSaleSchema);

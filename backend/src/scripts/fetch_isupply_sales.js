@@ -48,8 +48,7 @@ async function fetchWeeklySales() {
                 // ALWAYS create a NEW record for history, even if no sales found (to mark the attempt)
                 const newRecord = new ProductSale({
                     product: p._id,
-                    sales: sales || [],
-                    fetchedAt: new Date()
+                    sales: sales || []
                 });
 
                 await newRecord.save();
