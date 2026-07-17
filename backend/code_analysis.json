@@ -1,0 +1,3110 @@
+{
+  "controllers": {
+    "adminController.js": [
+      {
+        "name": "getWaitingUsers",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get users waiting for approval\n// @route   GET /api/admin/waiting-users\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "getActiveUsers",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get active users\n// @route   GET /api/admin/active-users\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 22
+      },
+      {
+        "name": "reviewUser",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Approve or Reject a user/pharmacy\n// @route   PUT /api/admin/review-user/:id\n// @access  Admin",
+        "modelsUsed": [
+          "User",
+          "Pharmacy"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 34
+      },
+      {
+        "name": "getAllPharmacies",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all pharmacies with owners\n// @route   GET /api/admin/pharmacies\n// @access  Admin",
+        "modelsUsed": [
+          "Pharmacy",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 128
+      },
+      {
+        "name": "getPendingCounts",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get counts of pending items for dashboard\n// @route   GET /api/admin/pending-counts\n// @access  Admin",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 150
+      },
+      {
+        "name": "suspendUser",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Suspend or Reactivate a user\n// @route   PUT /api/admin/suspend-user/:id\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 183
+      },
+      {
+        "name": "resetUserPassword",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Reset a user's password to \"00000000\"\n// @route   PUT /api/admin/reset-password/:id\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 220
+      },
+      {
+        "name": "getUsersWithPendingUpdates",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get users with pending updates\n// @route   GET /api/admin/pending-updates\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 254
+      },
+      {
+        "name": "reviewUpdateData",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Review (Approve/Reject) account update\n// @route   PUT /api/admin/review-update/:id\n// @access  Admin",
+        "modelsUsed": [
+          "User",
+          "Pharmacy"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 266
+      },
+      {
+        "name": "createDeliveryUser",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Create a delivery user manually\n// @route   POST /api/admin/create-delivery\n// @access  Admin",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 359
+      },
+      {
+        "name": "getPharmacyDetail",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get single pharmacy detail (for admin simulation)\n// @route   GET /api/admin/pharmacies/:id\n// @access  Admin",
+        "modelsUsed": [
+          "Pharmacy",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 408
+      },
+      {
+        "name": "getHubs",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all hub pharmacies\n// @route   GET /api/admin/hubs\n// @access  Admin",
+        "modelsUsed": [
+          "Pharmacy"
+        ],
+        "servicesUsed": [],
+        "startLine": 430
+      },
+      {
+        "name": "getPharmaciesSummary",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get pharmacies summary with financial stats\n// @route   GET /api/admin/pharmacies-summary\n// @access  Admin",
+        "modelsUsed": [
+          "Pharmacy",
+          "StockExcess",
+          "Transaction"
+        ],
+        "servicesUsed": [],
+        "startLine": 442
+      }
+    ],
+    "authController.js": [
+      {
+        "name": "register",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Register a new user",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "authService.registerUser",
+          "auditService.logAction"
+        ],
+        "startLine": 17
+      },
+      {
+        "name": "login",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Authenticate user & get token",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "authService.loginUser",
+          "auditService.logAction"
+        ],
+        "startLine": 36
+      },
+      {
+        "name": "getProfile",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get current user profile",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 55
+      },
+      {
+        "name": "socialLogin",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Google/Social Login",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "authService.socialLogin",
+          "auditService.logAction"
+        ],
+        "startLine": 69
+      },
+      {
+        "name": "linkPharmacy",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Link pharmacy to a pending user",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "authService.linkPharmacy",
+          "auditService.logAction"
+        ],
+        "startLine": 87
+      },
+      {
+        "name": "cleanup",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 101
+      },
+      {
+        "name": "uploadToCloudinary",
+        "params": [
+          "filePath"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 118
+      },
+      {
+        "name": "requestProfileUpdate",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Request a profile update",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "authService.updateUserDetail",
+          "auditService.logAction"
+        ],
+        "startLine": 167
+      },
+      {
+        "name": "updatePreferences",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update user preferences (language, etc.)",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 192
+      },
+      {
+        "name": "changePassword",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Change user password",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "authService.changePassword",
+          "auditService.logAction"
+        ],
+        "startLine": 227
+      }
+    ],
+    "balanceHistoryController.js": [
+      {
+        "name": "getMyBalanceHistory",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get pharmacy balance history\n// @route   GET /api/balance-history\n// @access  Private (Pharmacy owner)",
+        "modelsUsed": [
+          "BalanceHistory"
+        ],
+        "servicesUsed": [],
+        "startLine": 6
+      },
+      {
+        "name": "getPharmacyBalanceHistory",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get pharmacy balance history for admin\n// @route   GET /api/balance-history/:pharmacyId\n// @access  Admin",
+        "modelsUsed": [
+          "BalanceHistory"
+        ],
+        "servicesUsed": [],
+        "startLine": 30
+      }
+    ],
+    "compensationController.js": [
+      {
+        "name": "createCompensation",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Add compensation to pharmacy\n// @route   POST /api/compensation\n// @access  Admin only",
+        "modelsUsed": [
+          "Pharmacy",
+          "Compensation",
+          "User",
+          "BalanceHistory"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 10
+      },
+      {
+        "name": "getCompensations",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get compensations for a pharmacy\n// @route   GET /api/compensation/:pharmacyId\n// @access  Admin only",
+        "modelsUsed": [
+          "Compensation"
+        ],
+        "servicesUsed": [],
+        "startLine": 127
+      },
+      {
+        "name": "updateCompensation",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update compensation\n// @route   PUT /api/compensation/:id\n// @access  Admin only",
+        "modelsUsed": [
+          "Compensation",
+          "Pharmacy",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 146
+      },
+      {
+        "name": "deleteCompensation",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Delete compensation\n// @route   DELETE /api/compensation/:id\n// @access  Admin only",
+        "modelsUsed": [
+          "Compensation",
+          "Pharmacy",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 239
+      }
+    ],
+    "deliveryRequestController.js": [
+      {
+        "name": "createRequest",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Create a delivery request (accept or complete)\n// @route   POST /api/delivery/requests\n// @access  Delivery",
+        "modelsUsed": [
+          "Transaction",
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "getPendingRequests",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all pending delivery requests\n// @route   GET /api/delivery/requests/pending\n// @access  Admin",
+        "modelsUsed": [
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [],
+        "startLine": 64
+      },
+      {
+        "name": "reviewRequest",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Review (Approve/Reject) a delivery request\n// @route   PUT /api/delivery/requests/:id/review\n// @access  Admin",
+        "modelsUsed": [
+          "DeliveryRequest",
+          "Transaction",
+          "Service"
+        ],
+        "servicesUsed": [
+          "transactionService.updateTransactionStatus",
+          "transactionService.notifyParties"
+        ],
+        "startLine": 92
+      },
+      {
+        "name": "cleanupRequests",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Cleanup old requests (older than 1 month)\n// @route   DELETE /api/delivery/requests/cleanup\n// @access  Admin",
+        "modelsUsed": [
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [],
+        "startLine": 169
+      },
+      {
+        "name": "getMyRequests",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get delivery person's own requests\n// @route   GET /api/delivery/requests/my-requests\n// @access  Delivery",
+        "modelsUsed": [
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [],
+        "startLine": 188
+      }
+    ],
+    "excessController.js": [
+      {
+        "name": "createExcess",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// EXCESS MANAGEMENT (LIFE CYCLE)\n// =============================================================================\n// @desc    Create a new stock excess\n// @route   POST /api/excess\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "Pharmacy",
+          "Service"
+        ],
+        "servicesUsed": [
+          "excessService.createExcess",
+          "auditService.logAction"
+        ],
+        "startLine": 24
+      },
+      {
+        "name": "updateExcess",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update an existing excess\n// @route   PUT /api/excess/:id\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "excessService.updateExcess",
+          "auditService.logAction"
+        ],
+        "startLine": 71
+      },
+      {
+        "name": "deleteExcess",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 112
+      },
+      {
+        "name": "approveExcess",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Approve a pending excess\n// @route   PUT /api/excess/:id/approve\n// @access  Admin",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "excessService.approveExcess",
+          "auditService.logAction"
+        ],
+        "startLine": 145
+      },
+      {
+        "name": "rejectExcess",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "StockExcess",
+          "Product",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 169
+      },
+      {
+        "name": "getPendingExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// QUERY OPERATIONS\n// =============================================================================\n// @desc    Get all pending excesses\n// @route   GET /api/excess/pending\n// @access  Admin",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 237
+      },
+      {
+        "name": "getMyExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get excesses listed by the authenticated pharmacy\n// @route   GET /api/excess/my\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 249
+      },
+      {
+        "name": "getAvailableExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all available and partially fulfilled excesses for the market\n// @route   GET /api/excess/available\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 263
+      },
+      {
+        "name": "getFulfilledExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all fulfilled, rejected, or expired excesses\n// @route   GET /api/excess/fulfilled\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 282
+      },
+      {
+        "name": "syncExcessStatus",
+        "params": [
+          "excess",
+          "session = null"
+        ],
+        "comment": "// @desc    Synchronize the status of an excess based on its remaining quantity\n// @access  Internal (called by other services/controllers)",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "excessService.syncExcessStatus"
+        ],
+        "startLine": 300
+      },
+      {
+        "name": "addToHub",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// HUB OPERATIONS\n// =============================================================================\n// @desc    Transfer excess stock to a hub\n// @route   POST /api/excess/hub\n// @access  Admin / Pharmacy Owner",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "excessService.addToHub",
+          "auditService.logAction"
+        ],
+        "startLine": 311
+      },
+      {
+        "name": "getMarketExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get market excesses grouped by product -> prices -> items\n// @route   GET /api/excess/market\n// @access  Pharmacy Owner, Manager",
+        "modelsUsed": [
+          "StockExcess",
+          "Reservation",
+          "Pharmacy"
+        ],
+        "servicesUsed": [
+          "commissionService.calculateAgreedCommissionSync",
+          "quotaService.bulkGetRemainingQuotas"
+        ],
+        "startLine": 343
+      },
+      {
+        "name": "getMarketInsight",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get market insight (available excesses for specific product/volume/price)\n// @route   GET /api/excess/market-insight\n// @access  Pharmacy Owner, Manager",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 569
+      },
+      {
+        "name": "getPharmacyExcesses",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 612
+      },
+      {
+        "name": "getHubSystemSummary",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "hubSummaryService.getSystemSummary"
+        ],
+        "startLine": 626
+      }
+    ],
+    "isupplyController.js": [
+      {
+        "name": "getRandomUnmatchedProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get a random unmatched product and matching iSupply data\n// @route   GET /api/admin/isupply/random-unmatched\n// @access  Private/Admin",
+        "modelsUsed": [
+          "ProductChoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 8
+      },
+      {
+        "name": "extractSearchTerm",
+        "params": [
+          "name"
+        ],
+        "comment": "// Extract search term up to first digit for display/reference",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 33
+      },
+      {
+        "name": "matchProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update a MediSync Product to link to an iSupply ID\n// @route   PATCH /api/admin/isupply/match\n// @access  Private/Admin",
+        "modelsUsed": [
+          "Product",
+          "ProductChoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 61
+      },
+      {
+        "name": "rejectChoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "ProductChoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 89
+      }
+    ],
+    "listingController.js": [
+      {
+        "name": "getMyListings",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get combined listings (Excess + Shortage) for the logged-in user\n// Sorted by most recent first",
+        "modelsUsed": [
+          "StockExcess",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 5
+      }
+    ],
+    "notificationController.js": [
+      {
+        "name": "getMyNotifications",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get user notifications\n// @route   GET /api/notifications\n// @access  Private",
+        "modelsUsed": [
+          "Notification"
+        ],
+        "servicesUsed": [],
+        "startLine": 6
+      },
+      {
+        "name": "markAsSeen",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Mark notification as seen\n// @route   PUT /api/notifications/:id/seen\n// @access  Private",
+        "modelsUsed": [
+          "Notification"
+        ],
+        "servicesUsed": [],
+        "startLine": 28
+      },
+      {
+        "name": "markAllAsSeen",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Mark all as seen\n// @route   PUT /api/notifications/mark-all-seen\n// @access  Private",
+        "modelsUsed": [
+          "Notification"
+        ],
+        "servicesUsed": [],
+        "startLine": 49
+      }
+    ],
+    "orderController.js": [
+      {
+        "name": "getMyOrders",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get combined orders history (Excess + Shortage) for the logged-in user\n// Sorted by most recent first",
+        "modelsUsed": [
+          "StockExcess",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 5
+      },
+      {
+        "name": "getPharmacyOrders",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get pharmacy orders history for admin\n// @route   GET /api/orders/pharmacy/:pharmacyId\n// @access  Admin",
+        "modelsUsed": [
+          "StockExcess",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 49
+      }
+    ],
+    "ownerController.js": [
+      {
+        "name": "createOwner",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "ownerService.createOwner",
+          "auditService.logAction"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "updateOwner",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "ownerService.updateOwner",
+          "auditService.logAction"
+        ],
+        "startLine": 29
+      },
+      {
+        "name": "getOwners",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "ownerService.getOwnersByPharmacy"
+        ],
+        "startLine": 53
+      }
+    ],
+    "ownerPaymentController.js": [
+      {
+        "name": "createPayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "ownerPaymentService.processOwnerPayment",
+          "auditService.logAction"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "updatePayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "PaymentService"
+        ],
+        "servicesUsed": [
+          "ownerPaymentService.updateOwnerPayment",
+          "auditService.logAction"
+        ],
+        "startLine": 29
+      },
+      {
+        "name": "deletePayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "PaymentService"
+        ],
+        "servicesUsed": [
+          "ownerPaymentService.deleteOwnerPayment",
+          "auditService.logAction"
+        ],
+        "startLine": 59
+      },
+      {
+        "name": "getPayments",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "ownerPaymentService.getPaymentsByPharmacy"
+        ],
+        "startLine": 88
+      }
+    ],
+    "paymentController.js": [
+      {
+        "name": "createPayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Create a payment (Admin manually records a deposit/withdrawal)\n// @route   POST /api/payment\n// @access  Admin",
+        "modelsUsed": [
+          "Pharmacy",
+          "Payment",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 10
+      },
+      {
+        "name": "getPayments",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get payments\n// @route   GET /api/payment\n// @access  Admin, Pharmacy Owner",
+        "modelsUsed": [
+          "Payment"
+        ],
+        "servicesUsed": [],
+        "startLine": 123
+      },
+      {
+        "name": "updatePayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update a payment\n// @route   PUT /api/payment/:id\n// @access  Admin",
+        "modelsUsed": [
+          "Payment",
+          "Pharmacy",
+          "Hub",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 154
+      },
+      {
+        "name": "deletePayment",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Delete a payment (reverses the balance change)\n// @route   DELETE /api/payment/:id\n// @access  Admin",
+        "modelsUsed": [
+          "Payment",
+          "Pharmacy",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 262
+      },
+      {
+        "name": "getHubCashSummary",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "hubSummaryService.getCashBalanceSummary"
+        ],
+        "startLine": 341
+      }
+    ],
+    "productController.js": [
+      {
+        "name": "getAllProducts",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get all products with their volumes and prices (Optimized with Pagination and Search)",
+        "modelsUsed": [
+          "Product",
+          "Details"
+        ],
+        "servicesUsed": [],
+        "startLine": 6
+      },
+      {
+        "name": "skip",
+        "params": [
+          "page - 1"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "getProductById",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get product by ID with volumes\n// @route   GET /api/products/:id\n// @access  Protected",
+        "modelsUsed": [
+          "Product"
+        ],
+        "servicesUsed": [],
+        "startLine": 85
+      },
+      {
+        "name": "getProductsLite",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// PRODUCT QUERY (FULL & LITE)\n// =============================================================================\n// Get products lite (id, name) for dropdowns",
+        "modelsUsed": [
+          "Product"
+        ],
+        "servicesUsed": [],
+        "startLine": 169
+      },
+      {
+        "name": "suggestProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// PRODUCT SUGGESTIONS (MANAGER)\n// =============================================================================\n// Suggest a new product (Manager)",
+        "modelsUsed": [
+          "ProductSuggestion"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 200
+      },
+      {
+        "name": "getSuggestions",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get suggestions (Admin / My Suggestions)",
+        "modelsUsed": [
+          "ProductSuggestion"
+        ],
+        "servicesUsed": [],
+        "startLine": 233
+      },
+      {
+        "name": "updateSuggestionStatus",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Approve/Reject Suggestion (Admin)\n// Supports optional `name` and `price` overrides when approving (Edit & Approve flow)",
+        "modelsUsed": [
+          "ProductSuggestion",
+          "Volume",
+          "Product",
+          "HasVolume"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 248
+      },
+      {
+        "name": "createProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// PRODUCT MANAGEMENT (ADMIN)\n// =============================================================================\n// Create Product Direct (Admin)",
+        "modelsUsed": [
+          "Volume",
+          "Product",
+          "HasVolume"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 337
+      },
+      {
+        "name": "updateProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Update Product Basic Info (Admin)",
+        "modelsUsed": [
+          "Product"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 387
+      },
+      {
+        "name": "toggleProductStatus",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Toggle Product Status (Admin)",
+        "modelsUsed": [
+          "Product"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 435
+      },
+      {
+        "name": "addPriceToVolume",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Add Price to Volume (Admin)",
+        "modelsUsed": [
+          "HasVolume"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 467
+      },
+      {
+        "name": "removePriceFromVolume",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Remove Price from Volume (Admin)",
+        "modelsUsed": [
+          "HasVolume"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 498
+      },
+      {
+        "name": "updateHasVolumeValue",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Update Volume Numeric Value (Admin) - With Integrity Guard",
+        "modelsUsed": [
+          "HasVolume"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 529
+      }
+    ],
+    "productQuotaController.js": [
+      {
+        "name": "getQuotas",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all product quotas\n// @route   GET /api/quotas\n// @access  Admin",
+        "modelsUsed": [
+          "ProductQuota"
+        ],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "createQuota",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Create a new product quota\n// @route   POST /api/quotas\n// @access  Admin",
+        "modelsUsed": [
+          "ProductQuota"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 22
+      },
+      {
+        "name": "updateQuota",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update a product quota\n// @route   PUT /api/quotas/:id\n// @access  Admin",
+        "modelsUsed": [
+          "ProductQuota"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 59
+      },
+      {
+        "name": "deleteQuota",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Delete a product quota\n// @route   DELETE /api/quotas/:id\n// @access  Admin",
+        "modelsUsed": [
+          "ProductQuota"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 89
+      }
+    ],
+    "purchaseInvoiceController.js": [
+      {
+        "name": "createInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "purchaseInvoiceService.createPurchaseInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "getInvoices",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "purchaseInvoiceService.getInvoicesByPharmacy"
+        ],
+        "startLine": 29
+      },
+      {
+        "name": "updateInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "purchaseInvoiceService.updatePurchaseInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 38
+      },
+      {
+        "name": "deleteInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "purchaseInvoiceService.deletePurchaseInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 62
+      }
+    ],
+    "pusherController.js": [
+      {
+        "name": "authenticate",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Authenticate Pusher private channel\n// @route   POST /api/pusher/auth\n// @access  Private",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 6
+      }
+    ],
+    "requestsHistoryController.js": [
+      {
+        "name": "getMyRequestsHistory",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get combined requests history (Excess + Shortage) for the logged-in user\n// Sorted by most recent first",
+        "modelsUsed": [
+          "StockExcess",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 5
+      }
+    ],
+    "salesInvoiceController.js": [
+      {
+        "name": "createInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "salesInvoiceService.createSalesInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "getInvoices",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "salesInvoiceService.getInvoicesByPharmacy"
+        ],
+        "startLine": 29
+      },
+      {
+        "name": "updateInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "salesInvoiceService.updateSalesInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 38
+      },
+      {
+        "name": "deleteInvoice",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "InvoiceService"
+        ],
+        "servicesUsed": [
+          "salesInvoiceService.deleteSalesInvoice",
+          "auditService.logAction"
+        ],
+        "startLine": 62
+      }
+    ],
+    "settingsController.js": [
+      {
+        "name": "getSettings",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get system settings\n// @route   GET /api/settings\n// @access  Admin",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "updateSettings",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update system settings\n// @route   PUT /api/settings\n// @access  Admin",
+        "modelsUsed": [
+          "Doc"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 19
+      }
+    ],
+    "shortageController.js": [
+      {
+        "name": "createShortage",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// SHORTAGE CREATION (SINGLE & BULK)\n// =============================================================================\n// @desc    Create new shortage (Single request)\n// @route   POST /api/shortage\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "Pharmacy",
+          "Service"
+        ],
+        "servicesUsed": [
+          "shortageService.createShortage",
+          "auditService.logAction"
+        ],
+        "startLine": 15
+      },
+      {
+        "name": "createOrder",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Create bulk order (Multiple Shortages)\n// @route   POST /api/shortage/order\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "Pharmacy",
+          "Service"
+        ],
+        "servicesUsed": [
+          "shortageService.createOrder",
+          "auditService.logAction"
+        ],
+        "startLine": 66
+      },
+      {
+        "name": "updateShortage",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// SHORTAGE MANAGEMENT (LIFE CYCLE)\n// =============================================================================\n// @desc    Update shortage quantity\n// @route   PUT /api/shortage/:id\n// @access  Pharmacy Owner / Manager",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "shortageService.updateShortage",
+          "auditService.logAction"
+        ],
+        "startLine": 117
+      },
+      {
+        "name": "cancelShortage",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Cancel shortage (User/Admin)",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [
+          "shortageService.cancelShortage",
+          "auditService.logAction"
+        ],
+        "startLine": 156
+      },
+      {
+        "name": "deleteShortage",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Delete shortage (Admin/Owner/Manager)",
+        "modelsUsed": [
+          "StockShortage",
+          "Service"
+        ],
+        "servicesUsed": [
+          "shortageService.deleteShortage",
+          "auditService.logAction"
+        ],
+        "startLine": 196
+      },
+      {
+        "name": "getActiveShortages",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// QUERY OPERATIONS\n// =============================================================================\n// @desc    Get all active shortages\n// @route   GET /api/shortage/active\n// @access  Admin",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 230
+      },
+      {
+        "name": "getMyShortages",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get shortages for my pharmacy",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 244
+      },
+      {
+        "name": "getOrders",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get orders (Admin)",
+        "modelsUsed": [
+          "Order",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 259
+      },
+      {
+        "name": "getGlobalActiveShortages",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Global active for News Marquee",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 280
+      },
+      {
+        "name": "getFulfilledShortages",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// Get fulfilled shortages (Admin)",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 291
+      },
+      {
+        "name": "syncShortageStatus",
+        "params": [
+          "shortage",
+          "session = null"
+        ],
+        "comment": "// Export sync for internal use",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "shortageService.syncShortageStatus"
+        ],
+        "startLine": 310
+      }
+    ],
+    "suggestionController.js": [
+      {
+        "name": "createSuggestion",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "AppSuggestion"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "markAsSeen",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "AppSuggestion"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 39
+      },
+      {
+        "name": "getAllSuggestions",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "AppSuggestion"
+        ],
+        "servicesUsed": [],
+        "startLine": 75
+      }
+    ],
+    "summaryController.js": [
+      {
+        "name": "getHubCashSummary",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "hubSummaryService.getCashBalanceSummary"
+        ],
+        "startLine": 5
+      },
+      {
+        "name": "getAdminSummary",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "transactionSummaryService.getTransactionsSummary"
+        ],
+        "startLine": 14
+      },
+      {
+        "name": "getPharmaciesList",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "Pharmacy"
+        ],
+        "servicesUsed": [],
+        "startLine": 23
+      }
+    ],
+    "transactionController.js": [
+      {
+        "name": "getShortageService",
+        "params": [],
+        "comment": "// Lazy-loaded services for circular dependency safety",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 21
+      },
+      {
+        "name": "getExcessService",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 22
+      },
+      {
+        "name": "getMatchableProducts",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// MATCHING & ANALYTICS\n// =============================================================================",
+        "modelsUsed": [
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 27
+      },
+      {
+        "name": "getMatchesForProduct",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get shortages and excesses for a specific product\n// @route   GET /api/transaction/matches/:productId\n// @access  Admin",
+        "modelsUsed": [
+          "StockShortage",
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 108
+      },
+      {
+        "name": "createTransaction",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// TRANSACTION CREATION (ADMIN & SYSTEM)\n// =============================================================================\n// @desc    Create a new transaction (manual admin match)\n// @route   POST /api/transaction\n// @access  Admin",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "transactionService.createTransaction",
+          "auditService.logAction",
+          "transactionService.notifyParties"
+        ],
+        "startLine": 168
+      },
+      {
+        "name": "fulfillOrder",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Fulfill an Order Item (Admin)\n// Wraps createTransaction but specific for Order context\n// @route   POST /api/transaction/fulfill\n// @access  Admin",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 216
+      },
+      {
+        "name": "updateTransactionStatus",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// STATUS UPDATES\n// =============================================================================\n// @desc    Update transaction status (Accepted, Rejected, Completed, Cancelled)\n// @route   PUT /api/transaction/:id/status\n// @access  Admin",
+        "modelsUsed": [
+          "Service"
+        ],
+        "servicesUsed": [
+          "transactionService.updateTransactionStatus",
+          "auditService.logAction",
+          "transactionService.notifyParties"
+        ],
+        "startLine": 237
+      },
+      {
+        "name": "assignTransaction",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Assign a delivery user to a transaction\n// @route   PUT /api/transaction/:id/assign\n// @access  Delivery",
+        "modelsUsed": [
+          "Transaction"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 278
+      },
+      {
+        "name": "unassignTransaction",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Unassign a delivery user from a transaction\n// @route   PUT /api/transaction/:id/unassign\n// @access  Admin",
+        "modelsUsed": [],
+        "servicesUsed": [
+          "transactionService.unassignTransaction",
+          "auditService.logAction",
+          "transactionService.notifyParties"
+        ],
+        "startLine": 329
+      },
+      {
+        "name": "getTransactions",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Get all transactions (with filters for status)\n// @route   GET /api/transaction\n// @access  Admin, Delivery",
+        "modelsUsed": [
+          "Transaction"
+        ],
+        "servicesUsed": [],
+        "startLine": 362
+      },
+      {
+        "name": "revertTransaction",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// =============================================================================\n// REVERSALS & FINANCIAL CORRECTIONS\n// =============================================================================\n// @desc    Revert a completed transaction (restores stock, automatic balance reversal + expenses)\n// @route   POST /api/transaction/:id/revert\n// @access  Admin",
+        "modelsUsed": [
+          "Transaction",
+          "StockExcess",
+          "StockShortage",
+          "Reservation",
+          "User",
+          "Pharmacy",
+          "BalanceHistory"
+        ],
+        "servicesUsed": [
+          "transactionService.partialRevertAddToHub",
+          "transactionService.revertAddToHub",
+          "transactionService.notifyParties",
+          "excessService.syncExcessStatus",
+          "shortageService.syncShortageStatus",
+          "transactionService.reverseSellerSettlement",
+          "transactionService.reverseBuyerPayment",
+          "auditService.logAction"
+        ],
+        "startLine": 422
+      },
+      {
+        "name": "updateReversalTicket",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// #region Update Reversal Ticket\n// @desc    Update an existing reversal ticket\n// @route   PUT /api/transaction/reversal/:id\n// @access  Admin",
+        "modelsUsed": [
+          "ReversalTicket",
+          "Pharmacy",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 615
+      },
+      {
+        "name": "updateTransactionRatios",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// #endregion\n// #region Update Transaction Ratios\n// @desc    Update transaction ratios (Admin)\n// @route   PUT /api/transaction/:id/ratios\n// @access  Admin",
+        "modelsUsed": [
+          "Transaction"
+        ],
+        "servicesUsed": [
+          "auditService.logAction"
+        ],
+        "startLine": 747
+      },
+      {
+        "name": "updateTransaction",
+        "params": [
+          "req",
+          "res"
+        ],
+        "comment": "// @desc    Update an existing transaction (modify quantities and resources)\n// @route   PUT /api/transaction/:id\n// @access  Admin",
+        "modelsUsed": [
+          "Transaction",
+          "StockShortage",
+          "StockExcess",
+          "Reservation"
+        ],
+        "servicesUsed": [
+          "excessService.syncExcessStatus",
+          "shortageService.syncShortageStatus",
+          "auditService.logAction"
+        ],
+        "startLine": 793
+      }
+    ]
+  },
+  "services": {
+    "auditService.js": [
+      {
+        "name": "logAction",
+        "params": [
+          "{ user",
+          "action",
+          "entityType",
+          "entityId",
+          "changes }",
+          "req = null"
+        ],
+        "comment": "/**\n* Records an action in the audit log.\n* @param {Object} params\n* @param {string} params.user ID of the user performing the action\n* @param {string} params.action CREATE | UPDATE | DELETE | LOGIN | etc.\n* @param {string} params.entityType Model name\n* @param {string} params.entityId ID of the affected entity\n* @param {Object} [params.changes] Object containing the changes\n* @param {Object} [req] Express request object to capture IP and User Agent\n*/",
+        "modelsUsed": [
+          "AuditLog"
+        ],
+        "servicesUsed": [],
+        "startLine": 13
+      }
+    ],
+    "authService.js": [
+      {
+        "name": "generateToken",
+        "params": [
+          "id"
+        ],
+        "comment": "/**\n* Generates a JWT token for a user.\n* @param {string} id User ID\n* @returns {string} JWT Token\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "registerUser",
+        "params": [
+          "userData",
+          "req = null"
+        ],
+        "comment": "/**\n* Registers a new user and potentially links them to a pharmacy.\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 18
+      },
+      {
+        "name": "loginUser",
+        "params": [
+          "email",
+          "password",
+          "req = null"
+        ],
+        "comment": "/**\n* Authenticates a user and updates their last login.\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 60
+      },
+      {
+        "name": "socialLogin",
+        "params": [
+          "userData",
+          "req = null"
+        ],
+        "comment": "/**\n* Google/Social Login\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 84
+      },
+      {
+        "name": "linkPharmacy",
+        "params": [
+          "userId",
+          "pharmacyData",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Links pharmacy to a user.\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 114
+      },
+      {
+        "name": "changePassword",
+        "params": [
+          "userId",
+          "oldPassword",
+          "newPassword",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "/**\n* Changes user password.\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 136
+      },
+      {
+        "name": "updateUserDetail",
+        "params": [
+          "userId",
+          "updateData",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "/**\n* Updates a user's profile or pending data.\n*/",
+        "modelsUsed": [
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 153
+      }
+    ],
+    "commissionService.js": [
+      {
+        "name": "calculateAgreedCommission",
+        "params": [
+          "originalSale"
+        ],
+        "comment": "/**\n* Calculates the agreed commission and sale percentage from an original sale percentage.\n* Uses the \"sale split\" logic: comm = max(systemMinComm, ceil(sale / 3))\n*\n* @param {number} originalSale - The original sale percentage\n* @returns {Promise<{commission: number, agreedSale: number}>}\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "calculateAgreedCommissionSync",
+        "params": [
+          "originalSale",
+          "systemMinComm = 10"
+        ],
+        "comment": "/**\n* Synchronous version that accepts systemMinComm as a parameter.\n* Use this when you already have the settings loaded.\n*\n* @param {number} originalSale - The original sale percentage\n* @param {number} systemMinComm - The system minimum commission\n* @returns {{commission: number, agreedSale: number}}\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 25
+      }
+    ],
+    "excessService.js": [
+      {
+        "name": "getTransactionService",
+        "params": [],
+        "comment": "// Lazy-loaded services for circular dependency safety",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 17
+      },
+      {
+        "name": "getShortageService",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 18
+      },
+      {
+        "name": "createExcess",
+        "params": [
+          "userData",
+          "pharmacyId",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "// =============================================================================\n// EXCESS MANAGEMENT (LIFE CYCLE)\n// =============================================================================\n/**\n* Creates a new stock excess.\n* Handles shortage fulfillment logic, hub stock flags, and purchase price calculation.\n*\n* @param {Object} userData - Data for the new excess.\n* @param {string} pharmacyId - The ID of the pharmacy creating the excess.\n* @param {Object} [req=null] - The request object for audit logging.\n* @param {Object} [session=null] - Mongoose session for transactions.\n* @returns {Promise<Object>} The created StockExcess document.\n* @throws {Object} Error object with message and code if product is inactive, shortage exists, or hub purchase price is missing.\n*/",
+        "modelsUsed": [
+          "Product",
+          "StockShortage",
+          "Pharmacy",
+          "HasVolume",
+          "StockExcess"
+        ],
+        "servicesUsed": [],
+        "startLine": 35
+      },
+      {
+        "name": "approveExcess",
+        "params": [
+          "excessId",
+          "session = null"
+        ],
+        "comment": "/**\n* Approves an excess, setting its status to 'available'.\n* Handles pricing updates in HasVolume.\n*\n* @param {string} excessId - The ID of the excess to approve.\n* @param {Object} [session=null] - Mongoose session for transactions.\n* @returns {Promise<Object>} The approved StockExcess document.\n* @throws {Object} Error object with message and code if excess is not found.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "HasVolume",
+          "Vol",
+          "Product",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 172
+      },
+      {
+        "name": "updateExcess",
+        "params": [
+          "excessId",
+          "updateData",
+          "user",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "/**\n* Updates an existing excess.\n* Handles quantity changes, price/sale percentage updates, and re-approval logic.\n*\n* @param {string} excessId - The ID of the excess to update.\n* @param {Object} updateData - The data to update the excess with.\n* @param {Object} user - The user performing the update (for authorization).\n* @param {Object} [req=null] - The request object for audit logging.\n* @param {Object} [session=null] - Mongoose session for transactions.\n* @returns {Promise<Object>} The updated StockExcess document.\n* @throws {Object} Error object with message and code for various validation failures.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "HasVolume"
+        ],
+        "servicesUsed": [],
+        "startLine": 226
+      },
+      {
+        "name": "saleAmount",
+        "params": [
+          "excess.selectedPrice * (excess.salePercentage || 0"
+        ],
+        "comment": "// Centralized Sale Amount Calculation",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 325
+      },
+      {
+        "name": "syncExcessStatus",
+        "params": [
+          "excess",
+          "session = null"
+        ],
+        "comment": "/**\n* Updates excess status based on available quantity.\n* Transitions between 'available', 'partially_fulfilled', 'fulfilled', or 'cancelled'.\n*\n* @param {Object} excess - The excess document.\n* @param {Object} [session=null] - Mongoose session.\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 346
+      },
+      {
+        "name": "addToHub",
+        "params": [
+          "excessId",
+          "hubId",
+          "quantity",
+          "req = null"
+        ],
+        "comment": "// =============================================================================\n// HUB OPERATIONS\n// =============================================================================\n/**\n* Moves an existing pharmacy excess to a Hub.\n* Creates a Hub Shortage, a transaction for transfer, and a new Hub Excess.\n*\n* @param {string} excessId - Source excess ID.\n* @param {string} hubId - The ID of the target Hub pharmacy.\n* @param {number} quantity - The quantity to move to the Hub.\n* @param {Object} [req=null] - Request object for auditing.\n* @returns {Promise<Object>} An object containing success status, the transaction, and the new hub excess.\n* @throws {Object} Error object with message and code for various validation failures.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "Pharmacy",
+          "Service"
+        ],
+        "servicesUsed": [
+          "shortageService.createShortage",
+          "transactionService.createTransaction",
+          "transactionService.updateTransactionStatus",
+          "transactionService.notifyParties"
+        ],
+        "startLine": 379
+      },
+      {
+        "name": "purchasePrice",
+        "params": [
+          "1 - (excess.salePercentage / 100"
+        ],
+        "comment": "// 4. Create new excess at the hub (instantly available)",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 426
+      },
+      {
+        "name": "propagateBuyingPriceUpdate",
+        "params": [
+          "excessId",
+          "newBuyingPrice",
+          "session = null"
+        ],
+        "comment": "/**\n* Propagates buying price update to all related sales invoices.\n*/",
+        "modelsUsed": [
+          "SalesInvoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 470
+      }
+    ],
+    "hubSummaryService.js": [
+      {
+        "name": "getCashBalanceSummary",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "/**\n* Gets cash balance and its history for a hub.\n*/",
+        "modelsUsed": [
+          "Pharmacy"
+        ],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "getSystemSummary",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "/**\n* Gets system summary (optimistic value and items) for a hub.\n*/",
+        "modelsUsed": [
+          "StockExcess"
+        ],
+        "servicesUsed": [
+          "commissionService.calculateAgreedCommissionSync"
+        ],
+        "startLine": 25
+      }
+    ],
+    "isupplyPuppeteerService.js": [
+      {
+        "name": "getBrowserInstance",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "ensureAuthenticated",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 27
+      },
+      {
+        "name": "robustType",
+        "params": [
+          "selector",
+          "text"
+        ],
+        "comment": "// Robust typing for Livewire",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 64
+      },
+      {
+        "name": "searchIProductsDirect",
+        "params": [
+          "keyword"
+        ],
+        "comment": "/**\n* Direct search pattern using URL query params\n* returns [ { id, title, price }, ... ]\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 129
+      },
+      {
+        "name": "fetchProductSalesUI",
+        "params": [
+          "isupplyTitle"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 169
+      }
+    ],
+    "ownerPaymentService.js": [
+      {
+        "name": "processOwnerPayment",
+        "params": [
+          "data",
+          "pharmacyId",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Executes a payment between a hub and an owner.\n* MUST be called within a session.\n*/",
+        "modelsUsed": [
+          "Owner",
+          "Pharmacy",
+          "CashBalanceHistory"
+        ],
+        "servicesUsed": [],
+        "startLine": 9
+      },
+      {
+        "name": "updateOwnerPayment",
+        "params": [
+          "paymentId",
+          "data",
+          "pharmacyId",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Updates an owner payment and adjusts balances.\n* Records the difference in CashBalanceHistory.\n*/",
+        "modelsUsed": [
+          "OwnerPayment",
+          "Owner",
+          "Pharmacy",
+          "CashBalanceHistory"
+        ],
+        "servicesUsed": [],
+        "startLine": 57
+      },
+      {
+        "name": "deleteOwnerPayment",
+        "params": [
+          "paymentId",
+          "pharmacyId",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Deletes an owner payment and reverses balances.\n*/",
+        "modelsUsed": [
+          "OwnerPayment",
+          "Owner",
+          "Pharmacy",
+          "CashBalanceHistory"
+        ],
+        "servicesUsed": [],
+        "startLine": 102
+      },
+      {
+        "name": "getPaymentsByPharmacy",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "OwnerPayment"
+        ],
+        "servicesUsed": [],
+        "startLine": 136
+      }
+    ],
+    "ownerService.js": [
+      {
+        "name": "createOwner",
+        "params": [
+          "data",
+          "pharmacyId",
+          "session = null",
+          "req = null"
+        ],
+        "comment": "/**\n* Creates a new owner for a hub pharmacy.\n*/",
+        "modelsUsed": [
+          "Pharmacy",
+          "Owner"
+        ],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "updateOwner",
+        "params": [
+          "ownerId",
+          "data",
+          "pharmacyId",
+          "session = null",
+          "req = null"
+        ],
+        "comment": "/**\n* Updates an owner's name.\n*/",
+        "modelsUsed": [
+          "Owner"
+        ],
+        "servicesUsed": [],
+        "startLine": 32
+      },
+      {
+        "name": "getOwnersByPharmacy",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "/**\n* Gets all owners for a hub pharmacy.\n*/",
+        "modelsUsed": [
+          "Owner"
+        ],
+        "servicesUsed": [],
+        "startLine": 53
+      }
+    ],
+    "purchaseInvoiceService.js": [
+      {
+        "name": "createPurchaseInvoice",
+        "params": [
+          "data",
+          "pharmacyId",
+          "req",
+          "session"
+        ],
+        "comment": "/**\n* Creates a new purchase invoice for a hub.\n* Automatically creates a StockExcess for each item and deducts total from cashBalance.\n*/",
+        "modelsUsed": [
+          "Pharmacy",
+          "Service",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "excessService.createExcess",
+          "excessService.approveExcess"
+        ],
+        "startLine": 10
+      },
+      {
+        "name": "getInvoicesByPharmacy",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "PurchaseInvoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 121
+      },
+      {
+        "name": "updatePurchaseInvoice",
+        "params": [
+          "invoiceId",
+          "data",
+          "req",
+          "session"
+        ],
+        "comment": "/**\n* Updates an existing purchase invoice with strict per-item logic.\n*\n* Logic Rules:\n* 1. Adding new items is NOT allowed (returns error).\n* 2. Deleting existing items IS allowed ONLY if no stock has been sold/taken from the corresponding StockExcess.\n* 3. Modification rules:\n*    - Product, Volume, Excess ID: Cannot be changed.\n*    - Quantity: Can be changed but must be >= amount already taken/sold from the excess.\n*    - Buying Price: Can be changed.\n*    - Selling Price, Sale Percentage, Expiry Date: Can be changed ONLY if no stock has been taken.\n* 4. Cash balance is automatically adjusted (refunded for reductions/deletions, deducted for increases).\n*\n* @param {string} invoiceId - ID of the invoice to update.\n* @param {Object} data - Update data containing { items, date }. Items should have _id or excess.\n* @param {Object} req - Request object for context.\n* @param {Object} session - Mongoose session for transaction.\n* @returns {Promise<Object>} Updated invoice.\n*/",
+        "modelsUsed": [
+          "PurchaseInvoice",
+          "Pharmacy",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "excessService.propagateBuyingPriceUpdate",
+          "excessService.syncExcessStatus"
+        ],
+        "startLine": 147
+      },
+      {
+        "name": "deletePurchaseInvoice",
+        "params": [
+          "invoiceId",
+          "session"
+        ],
+        "comment": "/**\n* Deletes a purchase invoice and reverses its effects.\n*/",
+        "modelsUsed": [
+          "PurchaseInvoice",
+          "Pharmacy",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 340
+      }
+    ],
+    "quotaService.js": [
+      {
+        "name": "getRemainingQuota",
+        "params": [
+          "pharmacyId",
+          "dealAttributes"
+        ],
+        "comment": "/**\n* Gets the remaining quota for a pharmacy for a specific product deal.\n* @param {string} pharmacyId\n* @param {Object} dealAttributes - { product, volume, price, expiryDate, salePercentage }\n*/",
+        "modelsUsed": [
+          "ProductQuota",
+          "PharmacyQuota"
+        ],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "checkQuota",
+        "params": [
+          "pharmacyId",
+          "dealAttributes",
+          "requestedQuantity"
+        ],
+        "comment": "/**\n* Checks if a requested quantity exceeds the remaining quota for a specific deal.\n*/",
+        "modelsUsed": [
+          "Product"
+        ],
+        "servicesUsed": [],
+        "startLine": 45
+      },
+      {
+        "name": "incrementQuota",
+        "params": [
+          "pharmacyId",
+          "dealAttributes",
+          "quantity",
+          "session = null"
+        ],
+        "comment": "/**\n* Increments the quota usage for a pharmacy for a specific deal atomically.\n*/",
+        "modelsUsed": [
+          "PharmacyQuota"
+        ],
+        "servicesUsed": [],
+        "startLine": 60
+      },
+      {
+        "name": "decrementQuota",
+        "params": [
+          "pharmacyId",
+          "dealAttributes",
+          "quantity",
+          "session = null"
+        ],
+        "comment": "/**\n* Decrements the quota usage for a pharmacy for a specific deal atomically.\n*/",
+        "modelsUsed": [
+          "PharmacyQuota",
+          "QuotaUsage"
+        ],
+        "servicesUsed": [],
+        "startLine": 95
+      },
+      {
+        "name": "bulkGetRemainingQuotas",
+        "params": [
+          "pharmacyId",
+          "items"
+        ],
+        "comment": "/**\n* Bulk fetches remaining quotas for a list of items for a specific pharmacy.\n* @param {string} pharmacyId\n* @param {Array} items - List of items with dealAttributes\n*/",
+        "modelsUsed": [
+          "ProductQuota",
+          "PharmacyQuota"
+        ],
+        "servicesUsed": [],
+        "startLine": 131
+      }
+    ],
+    "salesInvoiceService.js": [
+      {
+        "name": "createSalesInvoice",
+        "params": [
+          "data",
+          "pharmacyId",
+          "session"
+        ],
+        "comment": "/**\n* Creates a sales invoice record for tracking hub revenue.\n* Handles itemized sales, stock deduction, and cash balance update.\n*/",
+        "modelsUsed": [
+          "Pharmacy",
+          "StockExcess",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 10
+      },
+      {
+        "name": "getInvoicesByPharmacy",
+        "params": [
+          "pharmacyId"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "SalesInvoice"
+        ],
+        "servicesUsed": [],
+        "startLine": 127
+      },
+      {
+        "name": "updateSalesInvoice",
+        "params": [
+          "invoiceId",
+          "data",
+          "req",
+          "session"
+        ],
+        "comment": "/**\n* Updates an existing sales invoice with strict per-item logic.\n*\n* Logic Rules:\n* 1. Adding new items is NOT allowed (returns error).\n* 2. Deleting existing items IS allowed and restores stock to the corresponding StockExcess.\n* 3. Modification rules:\n*    - Quantity: Can be changed. Increases require stock availability. Decreases restore stock.\n*    - Selling Price: Can be changed.\n*    - Buying Price: Refreshed from the original StockExcess to ensure accuracy.\n* 4. Cash balance is automatically adjusted (deducted for reductions/deletions, added for increases).\n*\n* @param {string} invoiceId - ID of the invoice to update.\n* @param {Object} data - Update data containing { items, date }. Items should have _id or excess.\n* @param {Object} req - Request object for audit logging.\n* @param {Object} session - Mongoose session for transaction.\n* @returns {Promise<Object>} Updated invoice.\n*/",
+        "modelsUsed": [
+          "SalesInvoice",
+          "Pharmacy",
+          "StockExcess",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 152
+      },
+      {
+        "name": "identifier",
+        "params": [
+          "inputItem.excess"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 197
+      },
+      {
+        "name": "deleteSalesInvoice",
+        "params": [
+          "invoiceId",
+          "session"
+        ],
+        "comment": "/**\n* Deletes a sales invoice and reverses its effects:\n* 1. Restores the quantity to the respective StockExcess records.\n* 2. Reverses the cash balance increase from the sale.\n*/",
+        "modelsUsed": [
+          "SalesInvoice",
+          "Pharmacy",
+          "StockExcess",
+          "CashBalanceHistory",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 314
+      }
+    ],
+    "serialService.js": [
+      {
+        "name": "getNextSequence",
+        "params": [
+          "id",
+          "session = null"
+        ],
+        "comment": "/**\n* Generates an atomic, unique incrementing sequence.\n* @param {string} id Unique identifier for the counter (e.g., 'transaction', 'order')\n* @param {Object} session Optional Mongoose session for atomicity\n* @returns {Promise<number>} The next sequence number\n*/",
+        "modelsUsed": [
+          "Counter"
+        ],
+        "servicesUsed": [],
+        "startLine": 9
+      },
+      {
+        "name": "generateDateSerial",
+        "params": [
+          "entityName",
+          "session = null"
+        ],
+        "comment": "/**\n* Generates a formatted serial number based on date and an atomic sequence.\n* Format: YYYYMMDD-XXXX (e.g., 20260131-0101)\n* @param {string} entityName Name of the entity (transaction, order)\n* @param {Object} session Optional Mongoose session for atomicity\n* @returns {Promise<string>} The formatted serial\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 25
+      },
+      {
+        "name": "generateOrderSerial",
+        "params": [
+          "session = null"
+        ],
+        "comment": "/**\n* Generates a formatted order serial.\n* Format: ORD-YYYYMMDD-XXXX\n* @param {Object} session Optional Mongoose session for atomicity\n* @returns {Promise<string>}\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 48
+      }
+    ],
+    "shortageService.js": [
+      {
+        "name": "getExcessService",
+        "params": [],
+        "comment": "// Lazy-loaded services for circular dependency safety",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 15
+      },
+      {
+        "name": "getQuotaService",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 16
+      },
+      {
+        "name": "createShortage",
+        "params": [
+          "data",
+          "pharmacyId",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "// =============================================================================\n// SHORTAGE CREATION (SINGLE & BULK)\n// =============================================================================\n/**\n* Creates a new stock shortage.\n* Handles serial number generation, product validation, and initial status sync.\n*\n* @param {Object} data - Shortage data.\n* @param {string} pharmacyId - Pharmacy ID.\n* @param {Object} [req] - Request for auditing.\n* @param {Object} [session] - Mongoose session.\n*/",
+        "modelsUsed": [
+          "Product",
+          "StockExcess",
+          "Pharmacy",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 31
+      },
+      {
+        "name": "createOrder",
+        "params": [
+          "orderData",
+          "pharmacyId",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "/**\n* Creates a bulk order containing multiple shortages.\n* Links all shortages to a single Order document.\n*\n* @param {Object} orderData - Data containing items array.\n* @param {string} pharmacyId - Pharmacy ID.\n* @param {Object} [req] - Request for auditing.\n* @param {Object} session - Mongoose session (Required for bulk operations).\n*/",
+        "modelsUsed": [
+          "Product",
+          "StockExcess",
+          "Reservation"
+        ],
+        "servicesUsed": [
+          "quotaService.checkQuota",
+          "quotaService.incrementQuota",
+          "serialService.generateOrderSerial"
+        ],
+        "startLine": 83
+      },
+      {
+        "name": "updateShortage",
+        "params": [
+          "shortageId",
+          "updateData",
+          "pharmacyId",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "// =============================================================================\n// SHORTAGE MANAGEMENT (LIFE CYCLE)\n// =============================================================================\n/**\n* Updates shortage quantity and synchronizes its status.\n*\n* @param {string} shortageId - Shortage ID.\n* @param {Object} updateData - Data to update.\n* @param {string} pharmacyId - Pharmacy ID (for authorization).\n* @param {Object} [req] - Request for auditing.\n* @param {Object} [session] - Mongoose session.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Reservation"
+        ],
+        "servicesUsed": [
+          "quotaService.checkQuota",
+          "quotaService.incrementQuota",
+          "quotaService.decrementQuota"
+        ],
+        "startLine": 201
+      },
+      {
+        "name": "syncShortageStatus",
+        "params": [
+          "shortage",
+          "session = null"
+        ],
+        "comment": "// =============================================================================\n// ORDER SYNCHRONIZATION\n// =============================================================================\n/**\n* Synchronizes shortage status based on remaining quantity.\n* Transitions between 'active', 'partially_fulfilled', 'fulfilled', or 'cancelled'.\n* Also triggers parent order synchronization if applicable.\n*\n* @param {Object} shortage - Shortage document.\n* @param {Object} session - Mongoose session.\n*/",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 288
+      },
+      {
+        "name": "updateOrderTotals",
+        "params": [
+          "orderId",
+          "session = null"
+        ],
+        "comment": "/**\n* Synchronizes the status and fulfillment data of a parent Order.\n* Called whenever a linked shortage changes status or quantity.\n*\n* @param {string} orderId - Order ID.\n* @param {Object} session - Mongoose session.\n*/",
+        "modelsUsed": [
+          "Order",
+          "StockShortage"
+        ],
+        "servicesUsed": [],
+        "startLine": 317
+      },
+      {
+        "name": "cancelShortage",
+        "params": [
+          "shortageId",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Deletes a shortage and cleans up its reservation and order.\n*/\n/**\n* Cancels a shortage (instead of deleting it).\n* Sets status to 'cancelled', remainingQuantity to 0, and updates linked entities.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Reservation"
+        ],
+        "servicesUsed": [],
+        "startLine": 353
+      },
+      {
+        "name": "deleteOrderIfEmpty",
+        "params": [
+          "orderId",
+          "session = null"
+        ],
+        "comment": "/**\n* Deletes an order if it has no remaining (non-cancelled) shortages.\n* This is a reusable service that can be called from any context.\n*\n* @param {string|ObjectId} orderId - The ID of the order to check and potentially delete.\n* @param {Object} session - Mongoose session.\n*/",
+        "modelsUsed": [
+          "Order"
+        ],
+        "servicesUsed": [],
+        "startLine": 415
+      },
+      {
+        "name": "deleteShortage",
+        "params": [
+          "shortageId",
+          "pharmacyId",
+          "req = null",
+          "session = null"
+        ],
+        "comment": "",
+        "modelsUsed": [
+          "StockShortage",
+          "Reservation"
+        ],
+        "servicesUsed": [],
+        "startLine": 427
+      }
+    ],
+    "transactionService.js": [
+      {
+        "name": "getShortageService",
+        "params": [],
+        "comment": "// Lazy-loaded services to avoid circular dependencies (where they reference transactionService)",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 19
+      },
+      {
+        "name": "getExcessService",
+        "params": [],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 20
+      },
+      {
+        "name": "createTransaction",
+        "params": [
+          "data",
+          "session",
+          "req = null"
+        ],
+        "comment": "// =============================================================================\n// TRANSACTION CREATION & STATUS MANAGEMENT\n// =============================================================================\n/**\n* Creates a new transaction from a shortage and one or more excess sources.\n* Validates availability, updates inventory, handles reservations, and logs the action.\n*\n* @param {Object} data - Transaction data (shortageId, quantityTaken, excessSources, etc.)\n* @param {Object} session - Mongoose session for atomicity.\n* @param {Object} [req] - Express request object for audit logging.\n* @returns {Promise<Object>} The created transaction.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Product",
+          "StockExcess",
+          "Reservation"
+        ],
+        "servicesUsed": [
+          "serialService.generateDateSerial"
+        ],
+        "startLine": 35
+      },
+      {
+        "name": "updateTransactionStatus",
+        "params": [
+          "transactionId",
+          "status",
+          "req",
+          "session"
+        ],
+        "comment": "/**\n* Updates transaction status (Accepted, Rejected, Completed, Cancelled).\n* Handles stock restoration on cancellation/rejection.\n*\n* @param {string} transactionId - The ID of the transaction to update.\n* @param {string} status - The target status.\n* @param {Object} req - Request object for audit logging.\n* @param {Object} session - Mongoose session for atomicity.\n* @returns {Promise<Object>} The updated transaction.\n*/",
+        "modelsUsed": [
+          "Transaction",
+          "StockExcess",
+          "StockShortage",
+          "Reservation",
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [
+          "excessService.syncExcessStatus",
+          "shortageService.syncShortageStatus"
+        ],
+        "startLine": 161
+      },
+      {
+        "name": "unassignTransaction",
+        "params": [
+          "transactionId",
+          "session",
+          "req = null"
+        ],
+        "comment": "/**\n* Unassigns a delivery person from a transaction.\n* Resets delivery status and notifies the delivery user.\n*\n* @param {string} transactionId - Transaction ID.\n* @param {Object} session - Mongoose session.\n* @param {Object} [req] - Request object for auditing.\n* @returns {Promise<Object>} The updated transaction.\n*/",
+        "modelsUsed": [
+          "Transaction",
+          "DeliveryRequest"
+        ],
+        "servicesUsed": [],
+        "startLine": 270
+      },
+      {
+        "name": "settleSellers",
+        "params": [
+          "transaction",
+          "session"
+        ],
+        "comment": "// =============================================================================\n// FINANCIAL SETTLEMENT & REVERSAL\n// =============================================================================\n/**\n* Phase 1: Executes financial settlement for sellers (revenue).\n* Deducts from transaction total to calculate buyer payment but only settlements sellers.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Pharmacy",
+          "StockExcess",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 320
+      },
+      {
+        "name": "sellerEffect",
+        "params": [
+          "1 + bonusRatio"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 359
+      },
+      {
+        "name": "sellerCommissionRatio",
+        "params": [
+          "excess.salePercentage !== undefined && excess.salePercentage !== null"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 379
+      },
+      {
+        "name": "buyerSaleRatio",
+        "params": [
+          "shortage.salePercentage || 0"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 383
+      },
+      {
+        "name": "sellerEffect",
+        "params": [
+          "1 - sellerCommissionRatio"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 395
+      },
+      {
+        "name": "buyerSaleRatio",
+        "params": [
+          "excess.salePercentage || 0"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 404
+      },
+      {
+        "name": "settleBuyer",
+        "params": [
+          "transaction",
+          "session"
+        ],
+        "comment": "/**\n* Phase 2: Executes financial settlement for buyer (payment).\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Pharmacy",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 463
+      },
+      {
+        "name": "reverseBuyerPayment",
+        "params": [
+          "transaction",
+          "session"
+        ],
+        "comment": "/**\n* Phase 3: Reverses the buyer's payment (payment clawback).\n* Used during transaction Reverts.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "Pharmacy",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 509
+      },
+      {
+        "name": "reverseSellerSettlement",
+        "params": [
+          "transaction",
+          "session"
+        ],
+        "comment": "/**\n* Reverses the seller payments if a transaction is cancelled/rejected after being accepted.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "Pharmacy",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 557
+      },
+      {
+        "name": "notifyParties",
+        "params": [
+          "transaction"
+        ],
+        "comment": "// =============================================================================\n// STAKEHOLDER NOTIFICATIONS\n// =============================================================================\n/**\n* Notifies all stakeholders (buyer, sellers, delivery) about a transaction status change.\n* Fires after DB commit via push notifications and WebSocket.\n*/",
+        "modelsUsed": [
+          "StockShortage",
+          "User"
+        ],
+        "servicesUsed": [],
+        "startLine": 603
+      },
+      {
+        "name": "revertAddToHub",
+        "params": [
+          "transaction",
+          "session",
+          "req"
+        ],
+        "comment": "/**\n* Reverts an \"Add to Hub\" transaction.\n* Reverses Hub stock creation, restores original user stock, and reverses all financials.\n*\n* @param {Object} transaction - Hub transfer transaction.\n* @param {Object} session - Mongoose session.\n* @param {Object} [req] - Request for auditing.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "Excess",
+          "StockShortage",
+          "Pharmacy",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "shortageService.syncShortageStatus",
+          "shortageService.cancelShortage",
+          "excessService.syncExcessStatus",
+          "auditService.logAction"
+        ],
+        "startLine": 708
+      },
+      {
+        "name": "partialRevertAddToHub",
+        "params": [
+          "transaction",
+          "revertQuantity",
+          "session",
+          "req"
+        ],
+        "comment": "/**\n* Partially reverts an \"Add to Hub\" transaction.\n* Reduces Hub stock, restores original user stock, and reverses proportional financials.\n*\n* @param {Object} transaction - Hub transfer transaction.\n* @param {number} revertQuantity - Quantity to take back from the Hub.\n* @param {Object} session - Mongoose session.\n* @param {Object} [req] - Request for auditing.\n*/",
+        "modelsUsed": [
+          "StockExcess",
+          "Excess",
+          "StockShortage",
+          "Pharmacy",
+          "Ph",
+          "BalanceHistory",
+          "User"
+        ],
+        "servicesUsed": [
+          "excessService.syncExcessStatus",
+          "shortageService.syncShortageStatus",
+          "auditService.logAction"
+        ],
+        "startLine": 846
+      }
+    ],
+    "transactionSummaryService.js": [
+      {
+        "name": "getTransactionsSummary",
+        "params": [
+          "query"
+        ],
+        "comment": "/**\n* Calculates total system revenue for the admin.\n*/",
+        "modelsUsed": [
+          "Filter",
+          "Transaction",
+          "SalesInvoice",
+          "DateFilter",
+          "ReversalTicket",
+          "Compensation"
+        ],
+        "servicesUsed": [],
+        "startLine": 7
+      },
+      {
+        "name": "totalExpenses",
+        "params": [
+          "ticket.expenses || []"
+        ],
+        "comment": "",
+        "modelsUsed": [],
+        "servicesUsed": [],
+        "startLine": 92
+      }
+    ]
+  }
+}

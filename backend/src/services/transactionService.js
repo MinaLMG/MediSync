@@ -14,6 +14,7 @@ const {
 const { sendToUser = null } = require('../utils/pusherManager') || {};
 const serialService = require('./serialService');
 const auditService = require('./auditService');
+const { round2 } = require('../utils/mathUtils');
 
 // Lazy-loaded services to avoid circular dependencies (where they reference transactionService)
 const getShortageService = () => require('./shortageService');
@@ -413,7 +414,7 @@ exports.settleSellers = async (transaction, session) => {
 
             // Update Seller
             const sellerPrevBalance = sellerPh.balance;
-            sellerPh.balance += sellerEffect;
+            sellerPh.balance = round2(sellerPh.balance + sellerEffect);
             const sellerNewBalance = sellerPh.balance;
 
             transaction.stockExcessSources[i].balanceEffect = sellerEffect;
@@ -470,7 +471,7 @@ exports.settleBuyer = async (transaction, session) => {
     if (buyerPh) {
         const totalBuyerEffect = transaction.stockShortage.balanceEffect;
         const buyerPrevBalance = buyerPh.balance;
-        buyerPh.balance += totalBuyerEffect;
+        buyerPh.balance = round2(buyerPh.balance + totalBuyerEffect);
         const buyerNewBalance = buyerPh.balance;
 
         await buyerPh.save({ session });
@@ -515,7 +516,7 @@ exports.reverseBuyerPayment = async (transaction, session) => {
         console.log(" entering in")
         const prevBalance = buyerPh.balance;
         // Subtract the effect. If effect was -100 (deduction), subtracting -100 adds 100 back.
-        buyerPh.balance -= transaction.stockShortage.balanceEffect;
+        buyerPh.balance = round2(buyerPh.balance - transaction.stockShortage.balanceEffect);
         const newBalance = buyerPh.balance;
         console.log("Buyer Ph Balance", buyerPh.balance);
         console.log("New Balance", newBalance);
@@ -561,7 +562,7 @@ exports.reverseSellerSettlement = async (transaction, session) => {
             const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
             if (sellerPh) {
                 const prevBalance = sellerPh.balance;
-                sellerPh.balance -= source.balanceEffect;
+                sellerPh.balance = round2(sellerPh.balance - source.balanceEffect);
                 const newBalance = sellerPh.balance;
                 await sellerPh.save({ session });
                 await BalanceHistory.create([{
@@ -757,7 +758,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
 
     if (buyerPh && transaction.stockShortage.balanceEffect) {
         const prevBalance = buyerPh.balance;
-        buyerPh.balance -= transaction.stockShortage.balanceEffect; // Subtract the (negative) effect
+        buyerPh.balance = round2(buyerPh.balance - transaction.stockShortage.balanceEffect); // Subtract the (negative) effect
         await buyerPh.save({ session });
 
         await BalanceHistory.create([{
@@ -792,7 +793,7 @@ exports.revertAddToHub = async (transaction, session, req) => {
             const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
             if (sellerPh) {
                 const prevBalance = sellerPh.balance;
-                sellerPh.balance -= source.balanceEffect;
+                sellerPh.balance = round2(sellerPh.balance - source.balanceEffect);
                 await sellerPh.save({ session });
 
                 await BalanceHistory.create([{
@@ -903,7 +904,7 @@ exports.partialRevertAddToHub = async (transaction, revertQuantity, session, req
     const sellerPh = await Pharmacy.findById(excess.pharmacy).session(session);
     if (sellerPh) {
         const prevBalance = sellerPh.balance;
-        sellerPh.balance -= NetRevertAmount;
+        sellerPh.balance = round2(sellerPh.balance - NetRevertAmount);
         await sellerPh.save({ session });
 
         await BalanceHistory.create([{
@@ -942,7 +943,7 @@ exports.partialRevertAddToHub = async (transaction, revertQuantity, session, req
     const buyerPh = await Pharmacy.findById(shortage.pharmacy).session(session);
     if (buyerPh) {
         const prevBalance = buyerPh.balance;
-        buyerPh.balance += NetRevertAmount;
+        buyerPh.balance = round2(buyerPh.balance + NetRevertAmount);
         await buyerPh.save({ session });
 
         await BalanceHistory.create([{

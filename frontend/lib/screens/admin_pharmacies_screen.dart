@@ -353,6 +353,10 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     final descriptionController = TextEditingController(
       text: compensation != null ? compensation['description'] : '',
     );
+    final hubs = _pharmacies.where((p) => p['isHub'] == true).toList();
+    String? selectedHubId = compensation != null
+        ? (compensation['hub'] is Map ? compensation['hub']['_id'] : compensation['hub']?.toString())
+        : null;
     bool isSubmitting = false;
     final isEdit = compensation != null;
 
@@ -367,29 +371,45 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                   ? l10n.editBalanceTitle
                   : '${l10n.adjustBalanceTitle} - $pharmacyName',
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: amountController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(
-                      context,
-                    )!.adjustmentAmountLabel,
-                    prefixIcon: const Icon(Icons.attach_money),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: "Select Hub",
+                    ),
+                    value: selectedHubId,
+                    items: hubs.map<DropdownMenuItem<String>>((h) {
+                      return DropdownMenuItem(
+                        value: h['_id'],
+                        child: Text(h['name']),
+                      );
+                    }).toList(),
+                    onChanged: (val) => setDialogState(() => selectedHubId = val),
                   ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.reasonLabel,
-                    prefixIcon: const Icon(Icons.description),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountController,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(
+                        context,
+                      )!.adjustmentAmountLabel,
+                      prefixIcon: const Icon(Icons.attach_money),
+                    ),
+                    keyboardType: TextInputType.number,
                   ),
-                  maxLines: 2,
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.reasonLabel,
+                      prefixIcon: const Icon(Icons.description),
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -405,11 +425,14 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
 
                         if (amount == null ||
                             amount == 0 ||
-                            description.isEmpty) {
+                            description.isEmpty ||
+                            selectedHubId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                AppLocalizations.of(context)!.errorRequired,
+                                selectedHubId == null
+                                    ? 'Hub selection is required'
+                                    : AppLocalizations.of(context)!.errorRequired,
                               ),
                               backgroundColor: Colors.red,
                             ),
@@ -441,6 +464,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                               if (!isEdit) 'pharmacyId': pharmacyId,
                               'amount': amount,
                               'description': description,
+                              'hubId': selectedHubId,
                             }),
                           );
 
@@ -719,6 +743,10 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     );
     String type = payment != null ? payment['type'] : 'deposit';
     String method = payment != null ? payment['method'] ?? 'cash' : 'cash';
+    final hubs = _pharmacies.where((p) => p['isHub'] == true).toList();
+    String? selectedHubId = payment != null
+        ? (payment['hub'] is Map ? payment['hub']['_id'] : payment['hub']?.toString())
+        : null;
     bool isSubmitting = false;
     final isEdit = payment != null;
 
@@ -737,6 +765,20 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: "Select Hub",
+                    ),
+                    value: selectedHubId,
+                    items: hubs.map<DropdownMenuItem<String>>((h) {
+                      return DropdownMenuItem(
+                        value: h['_id'],
+                        child: Text(h['name']),
+                      );
+                    }).toList(),
+                    onChanged: (val) => setDialogState(() => selectedHubId = val),
+                  ),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       labelText: l10n.labelPaymentType,
@@ -819,10 +861,10 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                     ? null
                     : () async {
                         final amount = double.tryParse(amountController.text);
-                        if (amount == null || amount <= 0) {
+                        if (amount == null || amount <= 0 || selectedHubId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(l10n.msgInvalidAmount),
+                              content: Text(selectedHubId == null ? 'Hub selection is required' : l10n.msgInvalidAmount),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -856,6 +898,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                               'method': method,
                               'referenceNumber': referenceController.text,
                               'adminNote': noteController.text,
+                              'hubId': selectedHubId,
                             }),
                           );
 

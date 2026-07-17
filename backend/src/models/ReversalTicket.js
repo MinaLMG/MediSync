@@ -6,6 +6,11 @@ const reversalTicketSchema = new mongoose.Schema({
         ref: 'Transaction', 
         required: true 
     },
+    hub: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pharmacy',
+        required: true
+    },
     expenses: [
         {
             user: { 

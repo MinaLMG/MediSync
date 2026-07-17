@@ -1,6 +1,7 @@
 const { SalesInvoice, Pharmacy, CashBalanceHistory, BalanceHistory, StockExcess, User } = require('../models');
 const { syncExcessStatus } = require('./excessService');
 const { sendToUser } = require('../utils/pusherManager');
+const { round2 } = require('../utils/mathUtils');
 
 
 /**
@@ -73,8 +74,8 @@ exports.createSalesInvoice = async (data, pharmacyId, session) => {
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
 
-    hub.cashBalance += totalSellingPrice;
-    hub.balance += totalBuyingPrice; // Add back purchase price to cancel inventory cost
+    hub.cashBalance = round2(hub.cashBalance + totalSellingPrice);
+    hub.balance = round2(hub.balance + totalBuyingPrice); // Add back purchase price to cancel inventory cost
 
     await hub.save({ session });
 
@@ -256,8 +257,8 @@ exports.updateSalesInvoice = async (invoiceId, data, req, session) => {
         const prevCashBalance = hub.cashBalance;
         const prevBalance = hub.balance;
 
-        hub.cashBalance += balanceDiff;
-        hub.balance += buyingPriceDiff; // Adjust inventory cost recovery
+        hub.cashBalance = round2(hub.cashBalance + balanceDiff);
+        hub.balance = round2(hub.balance + buyingPriceDiff); // Adjust inventory cost recovery
         await hub.save({ session });
 
 
@@ -332,8 +333,8 @@ exports.deleteSalesInvoice = async (invoiceId, session) => {
     const previousCashBalance = hub.cashBalance;
     const previousBalance = hub.balance;
 
-    hub.cashBalance -= invoice.totalSellingPrice;
-    hub.balance -= invoice.totalBuyingPrice; // Reverse purchase price recovery
+    hub.cashBalance = round2(hub.cashBalance - invoice.totalSellingPrice);
+    hub.balance = round2(hub.balance - invoice.totalBuyingPrice); // Reverse purchase price recovery
 
     await hub.save({ session });
 

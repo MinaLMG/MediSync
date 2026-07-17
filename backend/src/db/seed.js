@@ -59,10 +59,10 @@ const seedData = async () => {
                 name: p.name,
                 description: p.description,
                 conversions: [
-                    { 
-                        from: unitId.toString(), 
-                        to: unitId.toString(), 
-                        value: 1 
+                    {
+                        from: unitId.toString(),
+                        to: unitId.toString(),
+                        value: 1
                     }
                 ]
             });
@@ -71,7 +71,7 @@ const seedData = async () => {
             await HasVolume.create({
                 product: product._id,
                 volume: unitId,
-                value: 1, 
+                value: 1,
                 prices: [50, 45, 55]
             });
         }
@@ -80,12 +80,12 @@ const seedData = async () => {
         // 4. Create Pharmacies
         const pharmacies = [];
         const governorates = ['Cairo', 'Giza', 'Alexandria'];
-        
+
         for (let i = 1; i <= 10; i++) {
             const pharmacy = await Pharmacy.create({
                 name: `Pharmacy ${i}`,
                 phone: `010000000${i < 10 ? '0' + i : i}`,
-                email: `pharmacy${i}@medisync.cmom`,
+                email: `m${i + 1}`,
                 ownerName: `Owner ${i}`,
                 nationalId: `290010112345${i < 10 ? '0' + i : i}`,
                 pharmacistCard: `1234${i}`,
@@ -123,7 +123,7 @@ const seedData = async () => {
                 phone: pharmacies[i].phone, // Using pharmacy phone for simplicity
                 email: `m${i + 1}`,
                 hashedPassword: 'password123',
-                role: 'pharmacy_owner', 
+                role: 'pharmacy_owner',
                 pharmacy: pharmacies[i]._id,
                 status: 'active'
             });

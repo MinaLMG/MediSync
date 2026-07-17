@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const hubSummaryService = require('../services/hubSummaryService');
 const auditService = require('../services/auditService');
 const { sendToUser } = require('../utils/pusherManager');
+const { round2 } = require('../utils/mathUtils');
 
 // @desc    Create a payment (Admin manually records a deposit/withdrawal)
 // @route   POST /api/payment
@@ -38,25 +39,25 @@ exports.createPayment = async (req, res) => {
             processedAt: Date.now()
         }], { session });
 
-        // 1. Update Regular Pharmacy Balance
+        // 1. Update Target Pharmacy Balance
         const prevBalance = pharmacy.balance;
         if (type === 'deposit') {
-            pharmacy.balance += amount;
+            pharmacy.balance = round2(pharmacy.balance + amount);
         } else {
-            pharmacy.balance -= amount;
+            pharmacy.balance = round2(pharmacy.balance - amount);
         }
         await pharmacy.save({ session });
 
-        // 2. Update Hub Cash Balance
+        // 2. Update Source Hub Cash Balance
         const prevCashBalance = hub.cashBalance;
         if (type === 'deposit') {
-            hub.cashBalance += amount;
+            hub.cashBalance = round2(hub.cashBalance + amount);
         } else {
-            hub.cashBalance -= amount;
+            hub.cashBalance = round2(hub.cashBalance - amount);
         }
         await hub.save({ session });
 
-        // 3. Create History for Regular Pharmacy
+        // 3. Create History for Target Pharmacy
         await BalanceHistory.create([{
             pharmacy: pharmacy._id,
             type: type === 'deposit' ? 'deposit' : 'withdrawal',
@@ -104,7 +105,9 @@ exports.createPayment = async (req, res) => {
         // Notify Users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { 
+                balance: pharmacy.balance 
+            });
         }
 
         res.status(201).json({ success: true, data: payment[0] });
@@ -168,8 +171,8 @@ exports.updatePayment = async (req, res) => {
 
         // 1. Revert old effects
         const oldPaymentEffect = payment.type === 'deposit' ? payment.amount : -payment.amount;
-        pharmacy.balance -= oldPaymentEffect;
-        oldHub.cashBalance -= oldPaymentEffect;
+        pharmacy.balance = round2(pharmacy.balance - oldPaymentEffect);
+        oldHub.cashBalance = round2(oldHub.cashBalance - oldPaymentEffect);
 
         // 2. Update payment fields
         if (amount !== undefined && amount > 0) payment.amount = amount;
@@ -192,10 +195,10 @@ exports.updatePayment = async (req, res) => {
         const newPaymentEffect = payment.type === 'deposit' ? payment.amount : -payment.amount;
         
         const prevBalance = pharmacy.balance;
-        pharmacy.balance += newPaymentEffect;
+        pharmacy.balance = round2(pharmacy.balance + newPaymentEffect);
         
         const prevCashBalance = targetHub.cashBalance;
-        targetHub.cashBalance += newPaymentEffect;
+        targetHub.cashBalance = round2(targetHub.cashBalance + newPaymentEffect);
 
         await payment.save({ session });
         await pharmacy.save({ session });
@@ -244,7 +247,9 @@ exports.updatePayment = async (req, res) => {
         // Notify users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { 
+                balance: pharmacy.balance 
+            });
         }
 
         res.status(200).json({ success: true, data: payment });
@@ -277,8 +282,8 @@ exports.deletePayment = async (req, res) => {
         const prevCashBalance = hub.cashBalance;
         
         const effect = payment.type === 'deposit' ? payment.amount : -payment.amount;
-        pharmacy.balance -= effect;
-        hub.cashBalance -= effect;
+        pharmacy.balance = round2(pharmacy.balance - effect);
+        hub.cashBalance = round2(hub.cashBalance - effect);
 
         await pharmacy.save({ session });
         await hub.save({ session });
@@ -326,7 +331,9 @@ exports.deletePayment = async (req, res) => {
         // Notify users
         const users = await User.find({ pharmacy: pharmacy._id });
         for (const u of users) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
+            sendToUser(u._id.toString(), 'balanceUpdate', { 
+                balance: pharmacy.balance 
+            });
         }
 
         res.status(200).json({ success: true, message: 'Payment deleted and balances reversed' });

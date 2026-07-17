@@ -1,0 +1,189 @@
+{
+  "adminRoutes.js": [
+    "router.use(protect);",
+    "router.use(admin);",
+    "router.get('/waiting-users', getLimiter, getWaitingUsers);",
+    "router.get('/active-users', getLimiter, getActiveUsers);",
+    "router.put('/review-user/:id', strictLimiter, reviewUser);",
+    "router.get('/pharmacies', getLimiter, getAllPharmacies);",
+    "router.get('/pending-counts', getLimiter, getPendingCounts);",
+    "router.post('/create-delivery', strictLimiter, createDeliveryUser);",
+    "router.put('/suspend-user/:id', strictLimiter, suspendUser);",
+    "router.put('/reset-password/:id', sensitiveLimiter, resetUserPassword);",
+    "router.get('/pending-updates', getLimiter, getUsersWithPendingUpdates);",
+    "router.put('/review-update/:id', strictLimiter, reviewUpdateData);",
+    "router.get('/pharmacies/:id', getLimiter, getPharmacyDetail);",
+    "router.get('/hubs', getLimiter, getHubs);",
+    "router.get('/pharmacies/:pharmacyId/orders', getLimiter, getPharmacyOrders);",
+    "router.get('/pharmacies/:pharmacyId/balance-history', getLimiter, getPharmacyBalanceHistory);",
+    "router.get('/pharmacies-summary', getLimiter, getPharmaciesSummary);",
+    "router.get('/isupply/random-unmatched', getRandomUnmatchedProduct);",
+    "router.patch('/isupply/match', matchProduct);",
+    "router.post('/isupply/reject-choice', rejectChoice);"
+  ],
+  "authRoutes.js": [
+    "router.post('/register', strictLimiter, register);",
+    "router.post('/login', strictLimiter, login);",
+    "router.post('/social-login', strictLimiter, socialLogin);",
+    "router.get('/profile', protect, getProfile);",
+    "router.put('/profile-update-request', protect, requestProfileUpdate);",
+    "router.put('/preferences', protect, updatePreferences);",
+    "router.put('/change-password', protect, strictLimiter, changePassword);",
+    "router.post('/link-pharmacy', protect, upload.fields(["
+  ],
+  "balanceHistoryRoutes.js": [
+    "router.use(protect);",
+    "router.get('/my', getMyBalanceHistory);",
+    "router.get('/:pharmacyId', admin, getPharmacyBalanceHistory);"
+  ],
+  "compensationRoutes.js": [
+    "router.use(protect);",
+    "router.use(admin);",
+    "router.post('/', strictLimiter, createCompensation);",
+    "router.get('/:pharmacyId', getCompensations);",
+    "router.put('/:id', strictLimiter, updateCompensation);",
+    "router.delete('/:id', strictLimiter, deleteCompensation);"
+  ],
+  "deliveryRequestRoutes.js": [
+    "router.post('/', protect, authorize('delivery'), strictLimiter, deliveryRequestController.createRequest);",
+    "router.get('/my-requests', protect, authorize('delivery'), getLimiter, deliveryRequestController.getMyRequests);",
+    "router.get('/pending', protect, admin, getLimiter, deliveryRequestController.getPendingRequests);",
+    "router.put('/:id/review', protect, admin, strictLimiter, deliveryRequestController.reviewRequest);",
+    "router.delete('/cleanup', protect, admin, strictLimiter, deliveryRequestController.cleanupRequests);"
+  ],
+  "excessRoutes.js": [
+    "router.post('/', protect, authorize('pharmacy_owner'), strictLimiter, excessController.createExcess);",
+    "router.put('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, excessController.updateExcess);",
+    "router.get('/my', protect, authorize('pharmacy_owner'), getLimiter, excessController.getMyExcesses);",
+    "router.get('/market', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getMarketExcesses);",
+    "router.get('/pending', protect, authorize('admin'), getLimiter, excessController.getPendingExcesses);",
+    "router.get('/fulfilled', protect, authorize('admin'), getLimiter, excessController.getFulfilledExcesses);",
+    "router.get('/available', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getAvailableExcesses);",
+    "router.get('/pharmacy/:pharmacyId', protect, authorize('admin', 'pharmacy_owner'), getLimiter, excessController.getPharmacyExcesses);",
+    "router.get('/market-insight', protect, getLimiter, excessController.getMarketInsight);",
+    "router.put('/:id/approve', protect, authorize('admin'), strictLimiter, excessController.approveExcess);",
+    "router.put('/:id/reject', protect, authorize('admin'), strictLimiter, excessController.rejectExcess);",
+    "router.post('/add-to-hub', protect, authorize('admin'), strictLimiter, excessController.addToHub);",
+    "router.get('/hub-system', protect, excessController.getHubSystemSummary);",
+    "router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, excessController.deleteExcess);"
+  ],
+  "listingRoutes.js": [
+    "router.use(protect);",
+    "router.get('/my', authorize('pharmacy_owner'), getLimiter, getMyListings);"
+  ],
+  "notificationRoutes.js": [
+    "router.use(protect);",
+    "router.get('/', getLimiter, notificationController.getMyNotifications);",
+    "router.put('/mark-all-seen', strictLimiter, notificationController.markAllAsSeen);",
+    "router.put('/:id/seen', strictLimiter, notificationController.markAsSeen);",
+    "router.post('/test', strictLimiter, (req, res) => {"
+  ],
+  "orderRoutes.js": [
+    "router.use(protect);",
+    "router.get('/my', authorize('pharmacy_owner'), getLimiter, getMyOrders);"
+  ],
+  "ownerPaymentRoutes.js": [
+    "router.use(protect);",
+    "router.post('/', ownerPaymentController.createPayment);",
+    "router.get('/', ownerPaymentController.getPayments);",
+    "router.put('/:id', ownerPaymentController.updatePayment);",
+    "router.delete('/:id', ownerPaymentController.deletePayment);"
+  ],
+  "ownerRoutes.js": [
+    "router.use(protect);",
+    "router.post('/', ownerController.createOwner);",
+    "router.put('/:id', ownerController.updateOwner);",
+    "router.get('/', ownerController.getOwners);"
+  ],
+  "paymentRoutes.js": [
+    "router.get('/hub-cash', protect, getHubCashSummary);",
+    "router.get('/', protect, authorize('admin', 'pharmacy_owner'), getPayments);",
+    "router.post('/', protect, authorize('admin'), createPayment);",
+    "router.put('/:id', protect, authorize('admin'), updatePayment);",
+    "router.delete('/:id', protect, authorize('admin'), deletePayment);"
+  ],
+  "productQuotaRoutes.js": [
+    "router.use(protect);",
+    "router.use(authorize('admin'));",
+    "router.post('/', productQuotaController.createQuota);",
+    "router.get('/', productQuotaController.getQuotas);",
+    "router.put('/:id', productQuotaController.updateQuota);",
+    "router.delete('/:id', productQuotaController.deleteQuota);"
+  ],
+  "productRoutes.js": [
+    "router.use(protect);",
+    "router.get('/', getLimiter, productController.getAllProducts);",
+    "router.get('/lite', getLimiter, productController.getProductsLite);",
+    "router.post('/suggest', authorize('pharmacy_owner'), strictLimiter, productController.suggestProduct);",
+    "router.get('/suggestions', getLimiter, productController.getSuggestions);",
+    "router.put('/suggestions/:id', authorize('admin'), strictLimiter, productController.updateSuggestionStatus);",
+    "router.get('/:id', getLimiter, productController.getProductById);",
+    "router.post('/', authorize('admin'), strictLimiter, productController.createProduct);",
+    "router.put('/:id', authorize('admin'), strictLimiter, productController.updateProduct);",
+    "router.post('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.addPriceToVolume);",
+    "router.delete('/volume/:hasVolumeId/price', authorize('admin'), strictLimiter, productController.removePriceFromVolume);",
+    "router.patch('/volume/:hasVolumeId/value', authorize('admin'), strictLimiter, productController.updateHasVolumeValue);",
+    "router.patch('/:id/toggle-status', protect, authorize('admin'), strictLimiter, productController.toggleProductStatus);"
+  ],
+  "purchaseInvoiceRoutes.js": [
+    "router.use(protect);",
+    "router.post('/', purchaseInvoiceController.createInvoice);",
+    "router.get('/', purchaseInvoiceController.getInvoices);",
+    "router.put('/:id', purchaseInvoiceController.updateInvoice);",
+    "router.delete('/:id', purchaseInvoiceController.deleteInvoice);"
+  ],
+  "pusherRoutes.js": [
+    "router.post('/auth', protect, authenticate);"
+  ],
+  "requestsHistoryRoutes.js": [
+    "router.use(protect);",
+    "router.get('/my', authorize('pharmacy_owner'), getLimiter, getMyRequestsHistory);"
+  ],
+  "salesInvoiceRoutes.js": [
+    "router.use(protect);",
+    "router.post('/', salesInvoiceController.createInvoice);",
+    "router.get('/', salesInvoiceController.getInvoices);",
+    "router.put('/:id', salesInvoiceController.updateInvoice);",
+    "router.delete('/:id', salesInvoiceController.deleteInvoice);"
+  ],
+  "settingsRoutes.js": [
+    "router.get('/', protect, getLimiter, getSettings);",
+    "// router.put('/', protect, strictLimiter, updateSettings);"
+  ],
+  "shortageRoutes.js": [
+    "router.post('/', protect, authorize('pharmacy_owner'), strictLimiter, createShortage);",
+    "router.post('/order', protect, authorize('pharmacy_owner'), strictLimiter, createOrder);",
+    "router.put('/:id', protect, authorize('pharmacy_owner'), strictLimiter, updateShortage); // Keep generic update first",
+    "router.put('/:id/cancel', protect, authorize('pharmacy_owner'), strictLimiter, cancelShortage);",
+    "router.get('/my', protect, authorize('pharmacy_owner'), getLimiter, getMyShortages);",
+    "router.get('/orders', protect, authorize('admin'), getLimiter, getOrders);",
+    "router.get('/active', protect, authorize('admin'), getLimiter, getActiveShortages);",
+    "router.get('/fulfilled', protect, authorize('admin'), getLimiter, getFulfilledShortages);",
+    "router.get('/global-active', protect, getLimiter, getGlobalActiveShortages);",
+    "router.delete('/:id', protect, authorize('admin', 'pharmacy_owner'), strictLimiter, deleteShortage);"
+  ],
+  "suggestionRoutes.js": [
+    "router.post('/', protect, strictLimiter, suggestionController.createSuggestion);",
+    "router.put('/:id/seen', protect, admin, strictLimiter, suggestionController.markAsSeen);",
+    "router.get('/', protect, admin, getLimiter, suggestionController.getAllSuggestions);"
+  ],
+  "summaryRoutes.js": [
+    "router.get('/pharmacies-list', protect, summaryController.getPharmaciesList);",
+    "router.get('/admin', protect, admin, summaryController.getAdminSummary);"
+  ],
+  "transactionRoutes.js": [
+    "router.use(protect);",
+    "router.get('/matchable', authorize('admin'), getLimiter, getMatchableProducts);",
+    "router.get('/matches/:productId', authorize('admin'), getLimiter, getMatchesForProduct);",
+    "router.get('/', authorize('admin', 'delivery'), getLimiter, getTransactions);",
+    "router.post('/fulfill', authorize('admin'), strictLimiter, fulfillOrder); // Order specific",
+    "router.post('/', authorize('admin'), strictLimiter, createTransaction);",
+    "router.put('/:id/status', authorize('admin'), strictLimiter, updateTransactionStatus);",
+    "router.put('/:id/ratios', authorize('admin'), strictLimiter, updateTransactionRatios);",
+    "router.put('/:id', authorize('admin'), strictLimiter, updateTransaction);",
+    "router.post('/:id/revert', authorize('admin'), sensitiveLimiter, revertTransaction);",
+    "router.put('/reversal/:ticketId', authorize('admin'), sensitiveLimiter, updateReversalTicket);",
+    "router.put('/:id/assign', authorize('delivery'), strictLimiter, assignTransaction);",
+    "router.put('/:id/unassign', authorize('admin'), strictLimiter, unassignTransaction);"
+  ]
+}

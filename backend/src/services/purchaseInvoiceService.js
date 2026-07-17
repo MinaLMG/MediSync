@@ -2,6 +2,7 @@ const { PurchaseInvoice, Pharmacy, CashBalanceHistory, BalanceHistory, User } = 
 const { sendToUser } = require('../utils/pusherManager');
 const excessService = require('./excessService');
 const mongoose = require('mongoose');
+const { round2 } = require('../utils/mathUtils');
 
 /**
  * Creates a new purchase invoice for a hub.
@@ -73,8 +74,8 @@ exports.createPurchaseInvoice = async (data, pharmacyId, req, session) => {
     const previousBalance = hub.balance;
 
     // Deduct from BOTH cash balance AND regular balance
-    hub.cashBalance -= totalAmount;
-    hub.balance -= totalAmount;
+    hub.cashBalance = round2(hub.cashBalance - totalAmount);
+    hub.balance = round2(hub.balance - totalAmount);
 
     await hub.save({ session });
     console.log("hub", hub)
@@ -289,8 +290,8 @@ exports.updatePurchaseInvoice = async (invoiceId, data, req, session) => {
         const prevBalance = hub.balance;
 
         // Adjust both balances
-        hub.cashBalance -= balanceDiff;
-        hub.balance -= balanceDiff;
+        hub.cashBalance = round2(hub.cashBalance - balanceDiff);
+        hub.balance = round2(hub.balance - balanceDiff);
         await hub.save({ session });
 
 
@@ -363,8 +364,8 @@ exports.deletePurchaseInvoice = async (invoiceId, session) => {
     const previousBalance = hub.balance;
 
     // Restore both balances
-    hub.cashBalance += invoice.totalAmount;
-    hub.balance += invoice.totalAmount;
+    hub.cashBalance = round2(hub.cashBalance + invoice.totalAmount);
+    hub.balance = round2(hub.balance + invoice.totalAmount);
     await hub.save({ session });
 
     // Trigger Real-time Balance Update

@@ -3,6 +3,7 @@ const { addNotificationJob } = require('../utils/queueManager');
 const { sendToUser } = require('../utils/pusherManager');
 const auditService = require('../services/auditService');
 const mongoose = require('mongoose');
+const { round2 } = require('../utils/mathUtils');
 
 // @desc    Add compensation to pharmacy
 // @route   POST /api/compensation
@@ -12,11 +13,11 @@ exports.createCompensation = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { pharmacyId, amount, description } = req.body;
+        const { pharmacyId, amount, description, hubId } = req.body;
 
         // Validation
-        if (!pharmacyId || !amount || !description) {
-            throw { message: 'Please provide all fields: pharmacyId, amount, description', code: 400 };
+        if (!pharmacyId || !amount || !description || !hubId) {
+            throw { message: 'Please provide all fields: pharmacyId, amount, description, hubId', code: 400 };
         }
 
         if (amount <= 0) {
@@ -28,20 +29,31 @@ exports.createCompensation = async (req, res) => {
             throw { message: 'Pharmacy not found', code: 404 };
         }
 
+        const hub = await Pharmacy.findById(hubId).session(session);
+        if (!hub || !hub.isHub) {
+            throw { message: 'Selected pharmacy is not a valid Hub', code: 400 };
+        }
+
         // Create Compensation record
         const compensation = await Compensation.create([{
             pharmacy: pharmacyId,
+            hub: hubId,
             admin: req.user._id,
             amount,
             description
         }], { session });
 
-        // Update Pharmacy Balance (Increase by amount)
-        const previousBalance = pharmacy.balance;
-        pharmacy.balance += amount;
+        // Update target pharmacy balance
+        const prevBalance = pharmacy.balance;
+        pharmacy.balance = round2(pharmacy.balance + amount);
         await pharmacy.save({ session });
 
-        // Trigger Real-time Balance Update
+        // Update Source Hub cashbalance
+        const prevHubCashBalance = hub.cashBalance;
+        hub.cashBalance = round2(hub.cashBalance - amount);
+        await hub.save({ session });
+
+        // Trigger Real-time Balance Update for target pharmacy
         const users = await User.find({ pharmacy: pharmacyId });
         for (const u of users) {
             await sendToUser(u._id.toString(), 'balanceUpdate', {
@@ -49,12 +61,20 @@ exports.createCompensation = async (req, res) => {
             });
         }
 
-        // Create Balance History
+        // Trigger Real-time Balance Update for source Hub
+        const hubUsers = await User.find({ pharmacy: hubId });
+        for (const u of hubUsers) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: hub.cashBalance
+            });
+        }
+
+        // Create target pharmacy history records
         await BalanceHistory.create([{
             pharmacy: pharmacyId,
             type: 'compensation',
-            amount,
-            previousBalance,
+            amount: amount,
+            previousBalance: prevBalance,
             newBalance: pharmacy.balance,
             relatedEntity: compensation[0]._id,
             relatedEntityType: 'Compensation',
@@ -62,39 +82,33 @@ exports.createCompensation = async (req, res) => {
             description_ar: `تم إضافة تعويض: ${description}`
         }], { session });
 
-        // [NEW] Update Hub Cash Balance if applicable
-        if (pharmacy.isHub) {
-            const prevCash = pharmacy.cashBalance || 0;
-            pharmacy.cashBalance = prevCash + amount;
-            await pharmacy.save({ session });
+        // Create source Hub cash balance history (deduction)
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: hubId,
+            type: 'withdrawal',
+            amount: amount,
+            previousBalance: prevHubCashBalance,
+            newBalance: hub.cashBalance,
+            relatedEntity: compensation[0]._id,
+            relatedEntityType: 'Compensation',
+            description: `Compensation paid to pharmacy #${pharmacy.name}: ${description}`,
+            description_ar: `تعويض مدفوع للصيدلية #${pharmacy.name}: ${description}`
+        }], { session });
 
-            await mongoose.model('CashBalanceHistory').create([{
-                pharmacy: pharmacyId,
-                type: 'compensation',
-                amount,
-                previousBalance: prevCash,
-                newBalance: pharmacy.cashBalance,
-                relatedEntity: compensation[0]._id,
-                relatedEntityType: 'Compensation',
-                description: `Compensation added: ${description}`,
-                description_ar: `تم إضافة تعويض: ${description}`,
-                details: { compensationId: compensation[0]._id }
-            }], { session });
-        }
         // Notify Pharmacy Owner
         const owner = await User.findOne({ pharmacy: pharmacyId }).session(session);
         if (owner) {
-        setImmediate(() => addNotificationJob(
-            owner._id.toString(),
-            'system',
-            `You have received a compensation of ${amount} coins. Reason: ${description}`,
-            {
-                priority: 'high', // System notifs are high priority
-                relatedEntity: compensation[0]._id,
-                relatedEntityType: 'Compensation'
-            },
-            `لقد تلقيت تعويضاً بقيمة ${amount} قطعة. السبب: ${description}`
-        ));
+            setImmediate(() => addNotificationJob(
+                owner._id.toString(),
+                'system',
+                `You have received a compensation of ${amount} coins. Reason: ${description}`,
+                {
+                    priority: 'high', // System notifs are high priority
+                    relatedEntity: compensation[0]._id,
+                    relatedEntityType: 'Compensation'
+                },
+                `لقد تلقيت تعويضاً بقيمة ${amount} قطعة. السبب: ${description}`
+            ));
         }
 
         await auditService.logAction({
@@ -102,7 +116,7 @@ exports.createCompensation = async (req, res) => {
             action: 'CREATE',
             entityType: 'Compensation',
             entityId: compensation[0]._id,
-            changes: { amount, description, pharmacyId }
+            changes: { amount, description, pharmacyId, hubId }
         }, req);
 
         await session.commitTransaction();
@@ -140,15 +154,12 @@ exports.getCompensations = async (req, res) => {
     }
 };
 
-// @desc    Update compensation
-// @route   PUT /api/compensation/:id
-// @access  Admin only
 exports.updateCompensation = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        const { amount, description } = req.body;
+        const { amount, description, hubId } = req.body;
         const compensation = await Compensation.findById(req.params.id).session(session);
 
         if (!compensation) {
@@ -160,56 +171,116 @@ exports.updateCompensation = async (req, res) => {
         }
 
         const oldAmount = compensation.amount;
-        const diff = amount - oldAmount;
+        const pharmacy = await Pharmacy.findById(compensation.pharmacy).session(session);
+        if (!pharmacy) {
+            throw { message: 'Target pharmacy not found', code: 404 };
+        }
 
-        // Update Compensation
-        compensation.amount = amount;
-        compensation.description = description || compensation.description;
+        const oldHub = await Pharmacy.findById(compensation.hub).session(session);
+        if (!oldHub) {
+            throw { message: 'Original Hub not found', code: 404 };
+        }
+
+        // 1. Revert target pharmacy of oldAmount
+        pharmacy.balance = round2(pharmacy.balance - oldAmount);
+
+        // Revert old hub of oldAmount (+oldAmount since we previously deducted it)
+        oldHub.cashBalance = round2(oldHub.cashBalance + oldAmount);
+
+        // 2. Set fields
+        if (amount !== undefined) compensation.amount = amount;
+        if (description) compensation.description = description;
+
+        let targetHub = oldHub;
+        if (hubId && hubId.toString() !== compensation.hub.toString()) {
+            targetHub = await Pharmacy.findById(hubId).session(session);
+            if (!targetHub || !targetHub.isHub) throw { message: 'Invalid new Hub selected', code: 400 };
+            compensation.hub = hubId;
+        }
+
         await compensation.save({ session });
 
-        // Update Pharmacy Balance
-        const pharmacy = await Pharmacy.findById(compensation.pharmacy).session(session);
-        const previousBalance = pharmacy.balance;
-        pharmacy.balance += diff;
+        // 3. Apply new effects
+        const newAmount = compensation.amount;
+
+        const prevBalance = pharmacy.balance;
+        pharmacy.balance = round2(pharmacy.balance + newAmount);
         await pharmacy.save({ session });
 
-        // Log Adjustment
-        if (diff !== 0) {
-            await BalanceHistory.create([{
-                pharmacy: pharmacy._id,
-                type: 'compensation', // Keep type uniform
-                amount: diff,
-                previousBalance,
-                newBalance: pharmacy.balance,
-                relatedEntity: compensation._id,
-                relatedEntityType: 'Compensation',
-                description: `Compensation updated: ${oldAmount} -> ${amount}. Reason: ${description}`,
-                description_ar: `تم تحديث التعويض: ${oldAmount} -> ${amount}. السبب: ${description}`
-            }], { session });
+        const prevHubCashBalance = targetHub.cashBalance;
+        targetHub.cashBalance = round2(targetHub.cashBalance - newAmount);
+
+        // Save hubs
+        if (oldHub._id.toString() !== targetHub._id.toString()) {
+            await oldHub.save({ session });
         }
+        await targetHub.save({ session });
+
+        // 4. Create history records
+        // Target pharmacy
+        await BalanceHistory.create([{
+            pharmacy: pharmacy._id,
+            type: 'compensation',
+            amount: newAmount - oldAmount,
+            previousBalance: prevBalance,
+            newBalance: pharmacy.balance,
+            relatedEntity: compensation._id,
+            relatedEntityType: 'Compensation',
+            description: `Compensation updated: ${oldAmount} -> ${newAmount}. Reason: ${description}`,
+            description_ar: `تم تحديث التعويض: ${oldAmount} -> ${newAmount}. السبب: ${description}`
+        }], { session });
+
+        // Target Hub history
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: targetHub._id,
+            type: 'withdrawal',
+            amount: newAmount,
+            previousBalance: prevHubCashBalance,
+            newBalance: targetHub.cashBalance,
+            relatedEntity: compensation._id,
+            relatedEntityType: 'Compensation',
+            description: `Payment compensation adjusted (via ${pharmacy.name})`,
+            description_ar: `تعديل دفع التعويض (عبر ${pharmacy.name})`,
+            details: { compensationId: compensation._id, pharmacyName: pharmacy.name }
+        }], { session });
 
         // Notify Pharmacy Owner
         const owner = await User.findOne({ pharmacy: compensation.pharmacy }).session(session);
         if (owner) {
-        setImmediate(() => addNotificationJob(
-            owner._id.toString(),
-            'system',
-            `Compensation updated: ${oldAmount} -> ${amount}. Reason: ${description}`,
-            {
-                priority: 'high', // System notifs are high priority
-                relatedEntity: compensation._id,
-                relatedEntityType: 'Compensation'
-            },
-            `تم تحديث التعويض: ${oldAmount} -> ${amount}. السبب: ${description}`
-        ));
+            setImmediate(() => addNotificationJob(
+                owner._id.toString(),
+                'system',
+                `Compensation updated: ${oldAmount} -> ${newAmount}. Reason: ${description}`,
+                {
+                    priority: 'high',
+                    relatedEntity: compensation._id,
+                    relatedEntityType: 'Compensation'
+                },
+                `تم تحديث التعويض: ${oldAmount} -> ${newAmount}. السبب: ${description}`
+            ));
         }
 
-        // Trigger Real-time Balance Update for all pharmacy users
+        // Trigger Real-time Balance Update for target pharmacy
         const users = await User.find({ pharmacy: pharmacy._id });
-        if (users.length > 0) {
-            for (const u of users) {
-                 await sendToUser(u._id.toString(), 'balanceUpdate', {
-                    balance: pharmacy.balance
+        for (const u of users) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: pharmacy.balance
+            });
+        }
+
+        // Trigger Real-time Balance Update for hubs
+        const hubUsers = await User.find({ pharmacy: targetHub._id });
+        for (const u of hubUsers) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: targetHub.cashBalance
+            });
+        }
+
+        if (oldHub._id.toString() !== targetHub._id.toString()) {
+            const oldHubUsers = await User.find({ pharmacy: oldHub._id });
+            for (const u of oldHubUsers) {
+                await sendToUser(u._id.toString(), 'balanceUpdate', {
+                    balance: oldHub.cashBalance
                 });
             }
         }
@@ -219,7 +290,7 @@ exports.updateCompensation = async (req, res) => {
             action: 'UPDATE',
             entityType: 'Compensation',
             entityId: compensation._id,
-            changes: { amount, oldAmount, description, diff }
+            changes: { amount, oldAmount, description, hubId }
         }, req);
 
         await session.commitTransaction();
@@ -248,23 +319,42 @@ exports.deleteCompensation = async (req, res) => {
         }
 
         const pharmacy = await Pharmacy.findById(compensation.pharmacy).session(session);
-        const previousBalance = pharmacy.balance;
-        
-        // Revert Balance
-        pharmacy.balance -= compensation.amount;
+        const hub = await Pharmacy.findById(compensation.hub).session(session);
+
+        const prevBalance = pharmacy.balance;
+        // Revert Balance from target pharmacy
+        pharmacy.balance = round2(pharmacy.balance - compensation.amount);
         await pharmacy.save({ session });
 
-        // Log Reversal
+        // Revert Hub cash balance (+compensation.amount)
+        const prevHubCashBalance = hub.cashBalance;
+        hub.cashBalance = round2(hub.cashBalance + compensation.amount);
+        await hub.save({ session });
+
+        // Log target pharmacy History
         await BalanceHistory.create([{
             pharmacy: pharmacy._id,
             type: 'compensation',
             amount: -compensation.amount,
-            previousBalance,
+            previousBalance: prevBalance,
             newBalance: pharmacy.balance,
-            relatedEntity: compensation._id, // Keep ID even if deleted? Or null? Let's keep ID for reference.
+            relatedEntity: compensation._id,
             relatedEntityType: 'Compensation',
             description: `Compensation reverted/deleted: -${compensation.amount}`,
             description_ar: `تم عكس/حذف التعويض: -${compensation.amount}`
+        }], { session });
+
+        // Log Hub History (restore cash balance)
+        await mongoose.model('CashBalanceHistory').create([{
+            pharmacy: hub._id,
+            type: 'deposit',
+            amount: compensation.amount,
+            previousBalance: prevHubCashBalance,
+            newBalance: hub.cashBalance,
+            relatedEntity: compensation._id,
+            relatedEntityType: 'Compensation',
+            description: `Reverted compensation paid: +${compensation.amount}`,
+            description_ar: `تم التراجع عن دفع التعويض: +${compensation.amount}`
         }], { session });
 
         // Delete Compensation
@@ -272,12 +362,18 @@ exports.deleteCompensation = async (req, res) => {
 
         // Trigger Real-time Balance Update for all pharmacy users
         const users = await User.find({ pharmacy: pharmacy._id });
-        if (users.length > 0) {
-            for (const u of users) {
-                 await sendToUser(u._id.toString(), 'balanceUpdate', {
-                    balance: pharmacy.balance
-                });
-            }
+        for (const u of users) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: pharmacy.balance
+            });
+        }
+
+        // Trigger Real-time Balance Update for all hub users
+        const hubUsers = await User.find({ pharmacy: hub._id });
+        for (const u of hubUsers) {
+            await sendToUser(u._id.toString(), 'balanceUpdate', {
+                balance: hub.cashBalance
+            });
         }
 
         await auditService.logAction({
@@ -290,7 +386,7 @@ exports.deleteCompensation = async (req, res) => {
 
         await session.commitTransaction();
 
-        res.status(200).json({ success: true, message: 'Compensation deleted and balance reverted' });
+        res.status(200).json({ success: true, message: 'Compensation deleted and balances reverted' });
     } catch (error) {
         if (session && session.inTransaction()) await session.abortTransaction();
         res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });

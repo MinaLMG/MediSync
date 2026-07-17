@@ -1,6 +1,7 @@
 const { OwnerPayment, Owner, Pharmacy, CashBalanceHistory } = require('../models');
 const mongoose = require('mongoose');
 const auditService = require('./auditService');
+const { round2 } = require('../utils/mathUtils');
 
 /**
  * Executes a payment between a hub and an owner.
@@ -17,8 +18,8 @@ exports.processOwnerPayment = async (data, pharmacyId, session, req = null) => {
 
     // Update balances
     const previousCashBalance = hub.cashBalance;
-    hub.cashBalance += value;
-    owner.balance -= value;
+    hub.cashBalance = round2(hub.cashBalance + value);
+    owner.balance = round2(owner.balance - value);
 
     await hub.save({ session });
     await owner.save({ session });
@@ -67,8 +68,8 @@ exports.updateOwnerPayment = async (paymentId, data, pharmacyId, session, req = 
 
     // Adjust balances
     const previousCashBalance = hub.cashBalance;
-    hub.cashBalance += diff;
-    owner.balance -= diff;
+    hub.cashBalance = round2(hub.cashBalance + diff);
+    owner.balance = round2(owner.balance - diff);
 
     await hub.save({ session });
     await owner.save({ session });
@@ -108,8 +109,8 @@ exports.deleteOwnerPayment = async (paymentId, pharmacyId, session, req = null) 
 
     // Reverse balances
     const previousCashBalance = hub.cashBalance;
-    hub.cashBalance -= payment.value;
-    owner.balance += payment.value;
+    hub.cashBalance = round2(hub.cashBalance - payment.value);
+    owner.balance = round2(owner.balance + payment.value);
 
     await hub.save({ session });
     await owner.save({ session });

@@ -6,6 +6,11 @@ const compensationSchema = new mongoose.Schema({
         ref: 'Pharmacy',
         required: true
     },
+    hub: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pharmacy',
+        required: true
+    },
     admin: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

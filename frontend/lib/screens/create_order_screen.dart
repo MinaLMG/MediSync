@@ -19,6 +19,33 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String _searchQuery = '';
+  String _sortBy = 'name'; // 'name', 'date', 'sale'
+  bool _sortAscending = true;
+
+  DateTime? _getMinExpiryDate(Map<String, dynamic> item) {
+    DateTime? minDate;
+    final prices = item['prices'] as List<dynamic>? ?? [];
+    for (var p in prices) {
+      final items = p['items'] as List<dynamic>? ?? [];
+      for (var it in items) {
+        final expiry = it['expiryDate'] as String?;
+        if (expiry != null && expiry.isNotEmpty) {
+          try {
+            final parts = expiry.split('/');
+            if (parts.length == 2) {
+              final month = int.parse(parts[0]);
+              final year = int.parse('20${parts[1]}');
+              final date = DateTime(year, month);
+              if (minDate == null || date.isBefore(minDate)) {
+                minDate = date;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+    return minDate;
+  }
 
   @override
   void initState() {
@@ -719,11 +746,37 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     // Data is already grouped by product/volume from the API
     final filteredItems = _searchQuery.isEmpty
-        ? excesses
+        ? List.from(excesses)
         : excesses.where((item) {
             final productName = item['product']['name'].toString();
             return SearchUtils.matches(productName, _searchQuery);
           }).toList();
+
+    filteredItems.sort((a, b) {
+      int cmp = 0;
+      if (_sortBy == 'name') {
+        final nameA = (a['product']?['name'] ?? '').toString().toLowerCase();
+        final nameB = (b['product']?['name'] ?? '').toString().toLowerCase();
+        cmp = nameA.compareTo(nameB);
+      } else if (_sortBy == 'date') {
+        final dateA = _getMinExpiryDate(a);
+        final dateB = _getMinExpiryDate(b);
+        if (dateA == null && dateB == null) {
+          cmp = 0;
+        } else if (dateA == null) {
+          cmp = 1;
+        } else if (dateB == null) {
+          cmp = -1;
+        } else {
+          cmp = dateA.compareTo(dateB);
+        }
+      } else if (_sortBy == 'sale') {
+        final saleA = (a['maxSale'] as num? ?? 0.0).toDouble();
+        final saleB = (b['maxSale'] as num? ?? 0.0).toDouble();
+        cmp = saleA.compareTo(saleB);
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -787,6 +840,57 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               onChanged: (value) {
                 setState(() => _searchQuery = value);
               },
+            ),
+          ),
+
+          // Sorting Controls
+          Padding(
+            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelText: l10n.sortBy,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    value: _sortBy,
+                    items: [
+                      DropdownMenuItem(
+                        value: 'name',
+                        child: Text(l10n.labelName),
+                      ),
+                      DropdownMenuItem(
+                        value: 'date',
+                        child: Text(l10n.labelExpiry),
+                      ),
+                      DropdownMenuItem(
+                        value: 'sale',
+                        child: Text(l10n.labelSalePercentage),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _sortBy = val);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: Icon(
+                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: Colors.blue[800],
+                  ),
+                  onPressed: () {
+                    setState(() => _sortAscending = !_sortAscending);
+                  },
+                  tooltip: _sortAscending ? "Ascending" : "Descending",
+                ),
+              ],
             ),
           ),
 
