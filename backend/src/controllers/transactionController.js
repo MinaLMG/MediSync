@@ -425,7 +425,7 @@ exports.revertTransaction = async (req, res) => {
     session.startTransaction();
     try {
         const { id } = req.params;
-        const { expenses, description, revertQuantity, hubId } = req.body; // Array of { userId, amount }
+        const { expenses, description, revertQuantity } = req.body; // Array of { userId, amount }
 
         const transaction = await Transaction.findById(id).populate({
             path: 'stockShortage.shortage',
@@ -442,10 +442,6 @@ exports.revertTransaction = async (req, res) => {
 
         // --- Manual Validation for Expenses ---
         if (expenses && expenses.length > 0) {
-            if (!hubId) throw { message: 'hubId is required to process reversal ticket expenses', code: 400 };
-            const hubCheck = await Pharmacy.findById(hubId).session(session);
-            if (!hubCheck || !hubCheck.isHub) throw { message: 'Selected pharmacy is not a valid Hub', code: 400 };
-
             for (const p of expenses) {
                 if (p.amount < 0) {
                     throw { message: 'Expense amount cannot be negative', code: 400 };
@@ -522,7 +518,6 @@ exports.revertTransaction = async (req, res) => {
         // 5. Apply Reversal Ticket Expenses (Punishments)
         const resolvedExpenses = [];
         if (expenses && expenses.length > 0) {
-            const hub = await Pharmacy.findById(hubId).session(session);
             for (const p of expenses) {
                 let pharmacy = null;
                 let targetUser = null;
@@ -546,11 +541,6 @@ exports.revertTransaction = async (req, res) => {
                     pharmacy.balance = round2(pharmacy.balance - p.amount);
                     await pharmacy.save({ session });
 
-                    // Add to selected Hub's cash balance
-                    const prevHubCash = hub.cashBalance;
-                    hub.cashBalance = round2(hub.cashBalance + p.amount);
-                    await hub.save({ session });
-
                     // Record target pharmacy History
                     const BalanceHistory = require('../models/BalanceHistory');
                     await BalanceHistory.create([{
@@ -564,20 +554,6 @@ exports.revertTransaction = async (req, res) => {
                         description: `Expense ticket for transaction #${transaction.serial}`,
                         description_ar: `تذكرة مصروفات للمعاملة #${transaction.serial}`,
                         details: { type: 'expenses' }
-                    }], { session });
-
-                    // Record Hub History (receipt of penalty)
-                    await mongoose.model('CashBalanceHistory').create([{
-                        pharmacy: hub._id,
-                        type: 'deposit',
-                        amount: p.amount,
-                        previousBalance: prevHubCash,
-                        newBalance: hub.cashBalance,
-                        relatedEntity: transaction._id,
-                        relatedEntityType: 'Transaction',
-                        description: `Expense penalty collected from pharmacy #${pharmacy.name}`,
-                        description_ar: `غرامة تم تحصيلها من صيدلية #${pharmacy.name}`,
-                        details: { type: 'expense_collection', pharmacyId: pharmacy._id }
                     }], { session });
 
                     // Notify users
@@ -595,18 +571,11 @@ exports.revertTransaction = async (req, res) => {
                     });
                 }
             }
-
-            // Notify source hub users
-            const hubUsers = await User.find({ pharmacy: hub._id });
-            for (const u of hubUsers) {
-                sendToUser(u._id.toString(), 'balanceUpdate', { balance: hub.cashBalance });
-            }
         }
 
         // 5. Create Reversal Ticket
         const ticket = new ReversalTicket({
             transaction: transaction._id,
-            hub: hubId,
             expenses: resolvedExpenses,
             description: description || 'Automatic reversal of original transaction'
         });
@@ -647,27 +616,19 @@ exports.updateReversalTicket = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { expenses, description, hubId } = req.body;
+        const { expenses, description } = req.body;
         const ticketId = req.params.ticketId || req.params.id;
         const ticket = await ReversalTicket.findById(ticketId).session(session);
 
         if (!ticket) throw { message: 'Ticket not found', code: 404 };
 
-        const oldHub = await Pharmacy.findById(ticket.hub).session(session);
-        if (!oldHub) throw { message: 'Original Hub not found', code: 404 };
-
-        // 1. Revert Old Expenses from target pharmacies and the old Hub
+        // 1. Revert Old Expenses from target pharmacies
         for (const p of ticket.expenses) {
             const pharmacy = await Pharmacy.findById(p.pharmacy).session(session);
             if (pharmacy) {
                 const prevBalance = pharmacy.balance;
                 pharmacy.balance = round2(pharmacy.balance + p.amount); // Add back the deducted expense
                 await pharmacy.save({ session });
-
-                // Deduct collected penalty back from old hub
-                const prevHubCash = oldHub.cashBalance;
-                oldHub.cashBalance = round2(oldHub.cashBalance - p.amount);
-                await oldHub.save({ session });
 
                 // Record history for target pharmacy
                 const BalanceHistory = require('../models/BalanceHistory');
@@ -684,20 +645,6 @@ exports.updateReversalTicket = async (req, res) => {
                     details: { type: 'expense_reversal' }
                 }], { session });
 
-                // Record history for old Hub
-                await mongoose.model('CashBalanceHistory').create([{
-                    pharmacy: oldHub._id,
-                    type: 'withdrawal',
-                    amount: p.amount,
-                    previousBalance: prevHubCash,
-                    newBalance: oldHub.cashBalance,
-                    relatedEntity: ticket.transaction,
-                    relatedEntityType: 'Transaction',
-                    description: `Reversal of collected expense penalty (refunded/adjusted)`,
-                    description_ar: `عكس تحصيل غرامة مصروفات (مستردة/معدلة)`,
-                    details: { type: 'expense_reversal', pharmacyId: pharmacy._id }
-                }], { session });
-
                 const users = await User.find({ pharmacy: pharmacy._id });
                 for (const u of users) {
                     sendToUser(u._id.toString(), 'balanceUpdate', { balance: pharmacy.balance });
@@ -705,15 +652,7 @@ exports.updateReversalTicket = async (req, res) => {
             }
         }
 
-        // 2. Resolve target Hub
-        let targetHub = oldHub;
-        if (hubId && hubId.toString() !== ticket.hub.toString()) {
-            targetHub = await Pharmacy.findById(hubId).session(session);
-            if (!targetHub || !targetHub.isHub) throw { message: 'Invalid new Hub selected', code: 400 };
-            ticket.hub = hubId;
-        }
-
-        // 3. Apply New Expenses
+        // 2. Apply New Expenses
         const resolvedExpenses = [];
         if (expenses && expenses.length > 0) {
             for (const p of expenses) {
@@ -741,11 +680,6 @@ exports.updateReversalTicket = async (req, res) => {
                     pharmacy.balance = round2(pharmacy.balance - p.amount); // Deduct new amount
                     await pharmacy.save({ session });
 
-                    // Add to selected Hub's cash balance
-                    const prevHubCash = targetHub.cashBalance;
-                    targetHub.cashBalance = round2(targetHub.cashBalance + p.amount);
-                    await targetHub.save({ session });
-
                     // Record history for target pharmacy
                     const BalanceHistory = require('../models/BalanceHistory');
                     await BalanceHistory.create([{
@@ -759,20 +693,6 @@ exports.updateReversalTicket = async (req, res) => {
                         description: `Adjusted expense for transaction #${ticket.transaction.toString().slice(-6)}`,
                         description_ar: `تم تعديل تكاليف المعاملة #${ticket.transaction.toString().slice(-6)}`,
                         details: { type: 'expense_adjustment' }
-                    }], { session });
-
-                    // Record history for target Hub
-                    await mongoose.model('CashBalanceHistory').create([{
-                        pharmacy: targetHub._id,
-                        type: 'deposit',
-                        amount: p.amount,
-                        previousBalance: prevHubCash,
-                        newBalance: targetHub.cashBalance,
-                        relatedEntity: ticket.transaction,
-                        relatedEntityType: 'Transaction',
-                        description: `Adjusted expense penalty collected from pharmacy #${pharmacy.name}`,
-                        description_ar: `تم تعديل تحصيل غرامة من صيدلية #${pharmacy.name}`,
-                        details: { type: 'expense_collection', pharmacyId: pharmacy._id }
                     }], { session });
 
                     const users = await User.find({ pharmacy: pharmacy._id });
@@ -789,34 +709,17 @@ exports.updateReversalTicket = async (req, res) => {
             }
         }
 
-        // 4. Update Ticket
+        // 3. Update Ticket
         ticket.expenses = resolvedExpenses;
         if (description) ticket.description = description;
         await ticket.save({ session });
-
-        if (oldHub._id.toString() !== targetHub._id.toString()) {
-            await oldHub.save({ session });
-        }
-        await targetHub.save({ session });
-
-        // Notify Hub users
-        const hubUsers = await User.find({ pharmacy: targetHub._id });
-        for (const u of hubUsers) {
-            sendToUser(u._id.toString(), 'balanceUpdate', { balance: targetHub.cashBalance });
-        }
-        if (oldHub._id.toString() !== targetHub._id.toString()) {
-            const oldHubUsers = await User.find({ pharmacy: oldHub._id });
-            for (const u of oldHubUsers) {
-                sendToUser(u._id.toString(), 'balanceUpdate', { balance: oldHub.cashBalance });
-            }
-        }
 
         await auditService.logAction({
             user: req.user._id,
             action: 'UPDATE',
             entityType: 'ReversalTicket',
             entityId: ticket._id,
-            changes: { expenses: resolvedExpenses, description, hubId }
+            changes: { expenses: resolvedExpenses, description }
         }, req);
 
         await ticket.populate([

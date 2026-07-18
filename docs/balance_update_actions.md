@@ -121,12 +121,11 @@ Applies to **completed** transactions only. Full financial reversal + optional e
 | **Buyer pharmacy** | `balance` | **−** `stockShortage.balanceEffect` (subtracts a negative = adds back) | `transaction_payment_reversal` |
 
 #### Phase C — Expense Deductions (Reversal Ticket)
-Optional punishments assigned to any pharmacy at admin discretion, credited to the selected Hub's cash balance:
+Optional punishments assigned to any pharmacy at admin discretion (does not affect Hub cash balance):
 
 | Who | Field | Change | History Type | Condition |
 |---|---|---|---|---|
 | **Any designated pharmacy** | `balance` | **−** `expense.amount` | `expenses` | Always |
-| **Selected Hub** | `cashBalance` | **+** `expense.amount` | `deposit` | Always (CashBalanceHistory) |
 
 ---
 
@@ -139,13 +138,11 @@ Corrects the expense penalties on an existing reversal ticket:
 | Who | Field | Change | History Type | Condition |
 |---|---|---|---|---|
 | **Previously penalised pharmacy** | `balance` | **+** `old expense.amount` | `expenses` (expense_reversal) | Always |
-| **Old Hub** | `cashBalance` | **−** `old expense.amount` | `withdrawal` | Always |
 
 **Step 2 — Apply new expenses:**
 | Who | Field | Change | History Type | Condition |
 |---|---|---|---|---|
 | **Newly designated pharmacy** | `balance` | **−** `new expense.amount` | `expenses` (expense_adjustment) | Always |
-| **Selected Hub** | `cashBalance` | **+** `new expense.amount` | `deposit` | Always |
 
 ---
 
@@ -229,38 +226,34 @@ History type: reversed (`withdrawal` for what was a `deposit`, and vice versa).
 ---
 
 ### 3.1 `POST /api/compensation` — Create Compensation
-> Admin grants a compensation amount (from a source Hub's cash balance) to a pharmacy.
+> Admin grants a compensation amount (does not affect Hub cash balance) to a pharmacy.
 
 | Who | Field | Change | History Type | Condition |
 |---|---|---|---|---|
 | **Pharmacy** | `balance` | **+** amount | `compensation` | Always |
-| **Source Hub** | `cashBalance` | **−** amount | `withdrawal` | Always (CashBalanceHistory) |
 
 ---
 
 ### 3.2 `PUT /api/compensation/:id` — Update Compensation
-> Adjusts the compensation amount and/or source Hub. Old values are reverted and new values applied.
+> Adjusts the compensation amount. Old values are reverted and new values applied.
 
 **Step 1 — Revert old:**
 ```
 pharmacy.balance     -= oldAmount (BalanceHistory)
-oldHub.cashBalance   += oldAmount (CashBalanceHistory)
 ```
 
 **Step 2 — Apply new:**
 ```
 pharmacy.balance     += newAmount (BalanceHistory)
-newHub.cashBalance   -= newAmount (CashBalanceHistory)
 ```
 
 ---
 
 ### 3.3 `DELETE /api/compensation/:id` — Delete Compensation
-> Reverts both the pharmacy's received balance and the source Hub's cashBalance.
+> Reverts the pharmacy's received balance.
 
 ```
 pharmacy.balance     -= compensation.amount (BalanceHistory)
-hub.cashBalance      -= compensation.amount (CashBalanceHistory)
 ```
 
 ---

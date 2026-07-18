@@ -13,11 +13,11 @@ exports.createCompensation = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { pharmacyId, amount, description, hubId } = req.body;
+        const { pharmacyId, amount, description } = req.body;
 
         // Validation
-        if (!pharmacyId || !amount || !description || !hubId) {
-            throw { message: 'Please provide all fields: pharmacyId, amount, description, hubId', code: 400 };
+        if (!pharmacyId || !amount || !description) {
+            throw { message: 'Please provide all fields: pharmacyId, amount, description', code: 400 };
         }
 
         if (amount <= 0) {
@@ -29,15 +29,9 @@ exports.createCompensation = async (req, res) => {
             throw { message: 'Pharmacy not found', code: 404 };
         }
 
-        const hub = await Pharmacy.findById(hubId).session(session);
-        if (!hub || !hub.isHub) {
-            throw { message: 'Selected pharmacy is not a valid Hub', code: 400 };
-        }
-
         // Create Compensation record
         const compensation = await Compensation.create([{
             pharmacy: pharmacyId,
-            hub: hubId,
             admin: req.user._id,
             amount,
             description
@@ -48,24 +42,11 @@ exports.createCompensation = async (req, res) => {
         pharmacy.balance = round2(pharmacy.balance + amount);
         await pharmacy.save({ session });
 
-        // Update Source Hub cashbalance
-        const prevHubCashBalance = hub.cashBalance;
-        hub.cashBalance = round2(hub.cashBalance - amount);
-        await hub.save({ session });
-
         // Trigger Real-time Balance Update for target pharmacy
         const users = await User.find({ pharmacy: pharmacyId });
         for (const u of users) {
             await sendToUser(u._id.toString(), 'balanceUpdate', {
                 balance: pharmacy.balance
-            });
-        }
-
-        // Trigger Real-time Balance Update for source Hub
-        const hubUsers = await User.find({ pharmacy: hubId });
-        for (const u of hubUsers) {
-            await sendToUser(u._id.toString(), 'balanceUpdate', {
-                balance: hub.cashBalance
             });
         }
 
@@ -80,19 +61,6 @@ exports.createCompensation = async (req, res) => {
             relatedEntityType: 'Compensation',
             description: `Compensation added: ${description}`,
             description_ar: `تم إضافة تعويض: ${description}`
-        }], { session });
-
-        // Create source Hub cash balance history (deduction)
-        await mongoose.model('CashBalanceHistory').create([{
-            pharmacy: hubId,
-            type: 'withdrawal',
-            amount: amount,
-            previousBalance: prevHubCashBalance,
-            newBalance: hub.cashBalance,
-            relatedEntity: compensation[0]._id,
-            relatedEntityType: 'Compensation',
-            description: `Compensation paid to pharmacy #${pharmacy.name}: ${description}`,
-            description_ar: `تعويض مدفوع للصيدلية #${pharmacy.name}: ${description}`
         }], { session });
 
         // Notify Pharmacy Owner
@@ -116,7 +84,7 @@ exports.createCompensation = async (req, res) => {
             action: 'CREATE',
             entityType: 'Compensation',
             entityId: compensation[0]._id,
-            changes: { amount, description, pharmacyId, hubId }
+            changes: { amount, description, pharmacyId }
         }, req);
 
         await session.commitTransaction();
@@ -159,7 +127,7 @@ exports.updateCompensation = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { amount, description, hubId } = req.body;
+        const { amount, description } = req.body;
         const compensation = await Compensation.findById(req.params.id).session(session);
 
         if (!compensation) {
@@ -176,27 +144,12 @@ exports.updateCompensation = async (req, res) => {
             throw { message: 'Target pharmacy not found', code: 404 };
         }
 
-        const oldHub = await Pharmacy.findById(compensation.hub).session(session);
-        if (!oldHub) {
-            throw { message: 'Original Hub not found', code: 404 };
-        }
-
         // 1. Revert target pharmacy of oldAmount
         pharmacy.balance = round2(pharmacy.balance - oldAmount);
-
-        // Revert old hub of oldAmount (+oldAmount since we previously deducted it)
-        oldHub.cashBalance = round2(oldHub.cashBalance + oldAmount);
 
         // 2. Set fields
         if (amount !== undefined) compensation.amount = amount;
         if (description) compensation.description = description;
-
-        let targetHub = oldHub;
-        if (hubId && hubId.toString() !== compensation.hub.toString()) {
-            targetHub = await Pharmacy.findById(hubId).session(session);
-            if (!targetHub || !targetHub.isHub) throw { message: 'Invalid new Hub selected', code: 400 };
-            compensation.hub = hubId;
-        }
 
         await compensation.save({ session });
 
@@ -206,15 +159,6 @@ exports.updateCompensation = async (req, res) => {
         const prevBalance = pharmacy.balance;
         pharmacy.balance = round2(pharmacy.balance + newAmount);
         await pharmacy.save({ session });
-
-        const prevHubCashBalance = targetHub.cashBalance;
-        targetHub.cashBalance = round2(targetHub.cashBalance - newAmount);
-
-        // Save hubs
-        if (oldHub._id.toString() !== targetHub._id.toString()) {
-            await oldHub.save({ session });
-        }
-        await targetHub.save({ session });
 
         // 4. Create history records
         // Target pharmacy
@@ -228,20 +172,6 @@ exports.updateCompensation = async (req, res) => {
             relatedEntityType: 'Compensation',
             description: `Compensation updated: ${oldAmount} -> ${newAmount}. Reason: ${description}`,
             description_ar: `تم تحديث التعويض: ${oldAmount} -> ${newAmount}. السبب: ${description}`
-        }], { session });
-
-        // Target Hub history
-        await mongoose.model('CashBalanceHistory').create([{
-            pharmacy: targetHub._id,
-            type: 'withdrawal',
-            amount: newAmount,
-            previousBalance: prevHubCashBalance,
-            newBalance: targetHub.cashBalance,
-            relatedEntity: compensation._id,
-            relatedEntityType: 'Compensation',
-            description: `Payment compensation adjusted (via ${pharmacy.name})`,
-            description_ar: `تعديل دفع التعويض (عبر ${pharmacy.name})`,
-            details: { compensationId: compensation._id, pharmacyName: pharmacy.name }
         }], { session });
 
         // Notify Pharmacy Owner
@@ -268,29 +198,12 @@ exports.updateCompensation = async (req, res) => {
             });
         }
 
-        // Trigger Real-time Balance Update for hubs
-        const hubUsers = await User.find({ pharmacy: targetHub._id });
-        for (const u of hubUsers) {
-            await sendToUser(u._id.toString(), 'balanceUpdate', {
-                balance: targetHub.cashBalance
-            });
-        }
-
-        if (oldHub._id.toString() !== targetHub._id.toString()) {
-            const oldHubUsers = await User.find({ pharmacy: oldHub._id });
-            for (const u of oldHubUsers) {
-                await sendToUser(u._id.toString(), 'balanceUpdate', {
-                    balance: oldHub.cashBalance
-                });
-            }
-        }
-
         await auditService.logAction({
             user: req.user._id,
             action: 'UPDATE',
             entityType: 'Compensation',
             entityId: compensation._id,
-            changes: { amount, oldAmount, description, hubId }
+            changes: { amount, oldAmount, description }
         }, req);
 
         await session.commitTransaction();
@@ -319,17 +232,11 @@ exports.deleteCompensation = async (req, res) => {
         }
 
         const pharmacy = await Pharmacy.findById(compensation.pharmacy).session(session);
-        const hub = await Pharmacy.findById(compensation.hub).session(session);
 
         const prevBalance = pharmacy.balance;
         // Revert Balance from target pharmacy
         pharmacy.balance = round2(pharmacy.balance - compensation.amount);
         await pharmacy.save({ session });
-
-        // Revert Hub cash balance (+compensation.amount)
-        const prevHubCashBalance = hub.cashBalance;
-        hub.cashBalance = round2(hub.cashBalance + compensation.amount);
-        await hub.save({ session });
 
         // Log target pharmacy History
         await BalanceHistory.create([{
@@ -344,19 +251,6 @@ exports.deleteCompensation = async (req, res) => {
             description_ar: `تم عكس/حذف التعويض: -${compensation.amount}`
         }], { session });
 
-        // Log Hub History (restore cash balance)
-        await mongoose.model('CashBalanceHistory').create([{
-            pharmacy: hub._id,
-            type: 'deposit',
-            amount: compensation.amount,
-            previousBalance: prevHubCashBalance,
-            newBalance: hub.cashBalance,
-            relatedEntity: compensation._id,
-            relatedEntityType: 'Compensation',
-            description: `Reverted compensation paid: +${compensation.amount}`,
-            description_ar: `تم التراجع عن دفع التعويض: +${compensation.amount}`
-        }], { session });
-
         // Delete Compensation
         await compensation.deleteOne({ session });
 
@@ -365,14 +259,6 @@ exports.deleteCompensation = async (req, res) => {
         for (const u of users) {
             await sendToUser(u._id.toString(), 'balanceUpdate', {
                 balance: pharmacy.balance
-            });
-        }
-
-        // Trigger Real-time Balance Update for all hub users
-        const hubUsers = await User.find({ pharmacy: hub._id });
-        for (const u of hubUsers) {
-            await sendToUser(u._id.toString(), 'balanceUpdate', {
-                balance: hub.cashBalance
             });
         }
 

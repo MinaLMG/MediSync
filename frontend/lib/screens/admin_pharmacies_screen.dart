@@ -353,10 +353,6 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
     final descriptionController = TextEditingController(
       text: compensation != null ? compensation['description'] : '',
     );
-    final hubs = _pharmacies.where((p) => p['isHub'] == true).toList();
-    String? selectedHubId = compensation != null
-        ? (compensation['hub'] is Map ? compensation['hub']['_id'] : compensation['hub']?.toString())
-        : null;
     bool isSubmitting = false;
     final isEdit = compensation != null;
 
@@ -375,20 +371,6 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: "Select Hub",
-                    ),
-                    value: selectedHubId,
-                    items: hubs.map<DropdownMenuItem<String>>((h) {
-                      return DropdownMenuItem(
-                        value: h['_id'],
-                        child: Text(h['name']),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setDialogState(() => selectedHubId = val),
-                  ),
-                  const SizedBox(height: 16),
                   TextField(
                     controller: amountController,
                     decoration: InputDecoration(
@@ -425,14 +407,11 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
 
                         if (amount == null ||
                             amount == 0 ||
-                            description.isEmpty ||
-                            selectedHubId == null) {
+                            description.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                selectedHubId == null
-                                    ? 'Hub selection is required'
-                                    : AppLocalizations.of(context)!.errorRequired,
+                                AppLocalizations.of(context)!.errorRequired,
                               ),
                               backgroundColor: Colors.red,
                             ),
@@ -464,7 +443,6 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                               if (!isEdit) 'pharmacyId': pharmacyId,
                               'amount': amount,
                               'description': description,
-                              'hubId': selectedHubId,
                             }),
                           );
 
@@ -510,7 +488,7 @@ class _AdminPharmaciesScreenState extends State<AdminPharmaciesScreen> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    )
                     : Text(
                         isEdit
                             ? AppLocalizations.of(context)!.actionUpdate
