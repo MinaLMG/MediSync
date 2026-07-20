@@ -49,7 +49,31 @@ const addNotificationJob = async (userId, type, message, metadata = {}, messageA
     }
 };
 
+/**
+ * Adds a delayed shopping tour reminder job to the queue
+ * @param {string} userId - ID of the user to receive the reminder
+ * @param {number} delayMs - Delay in milliseconds before job is processed
+ */
+const addDelayedReminderJob = async (userId, delayMs) => {
+    try {
+        await notificationQueue.add('shoppingTourReminder', {
+            userId
+        }, {
+            delay: delayMs,
+            attempts: 3,
+            backoff: {
+                type: 'exponential',
+                delay: 1000,
+            }
+        });
+        console.log(`[QueueManager] 📤 Delayed reminder job enqueued | User: ${userId} | Delay: ${delayMs}ms`);
+    } catch (error) {
+        console.error('[QueueManager] ❌ Error adding delayed reminder job:', error);
+    }
+};
+
 module.exports = {
     addNotificationJob,
+    addDelayedReminderJob,
     redisConnection
 };

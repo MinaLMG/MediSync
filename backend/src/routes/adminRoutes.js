@@ -13,7 +13,8 @@ const {
     reviewUpdateData,
     getPharmacyDetail,
     getHubs,
-    getPharmaciesSummary
+    getPharmaciesSummary,
+    sendCustomNotification
 } = require('../controllers/adminController');
 const { getRandomUnmatchedProduct, matchProduct, rejectChoice } = require('../controllers/isupplyController');
 const { getPharmacyOrders } = require('../controllers/orderController');
@@ -39,6 +40,7 @@ router.get('/hubs', getLimiter, getHubs);
 router.get('/pharmacies/:pharmacyId/orders', getLimiter, getPharmacyOrders);
 router.get('/pharmacies/:pharmacyId/balance-history', getLimiter, getPharmacyBalanceHistory);
 router.get('/pharmacies-summary', getLimiter, getPharmaciesSummary);
+router.post('/send-custom-notification', strictLimiter, sendCustomNotification);
 
 // iSupply Integration Routes
 router.get('/isupply/random-unmatched', getRandomUnmatchedProduct);

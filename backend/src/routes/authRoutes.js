@@ -1,7 +1,7 @@
 const validate = require('../middlewares/validationMiddleware');
 const express = require('express');
 const router = express.Router();
-const { register, login, socialLogin, getProfile, requestProfileUpdate, changePassword, linkPharmacy, updatePreferences } = require('../controllers/authController');
+const { register, login, socialLogin, getProfile, requestProfileUpdate, changePassword, linkPharmacy, updatePreferences, registerFcmToken, deregisterFcmToken, enterShoppingTour } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 const { strictLimiter, } = require('../middlewares/rateLimiter');
 const upload = require('../config/uploadConfig');
@@ -13,6 +13,9 @@ router.get('/profile', protect, getProfile);
 router.put('/profile-update-request', protect, requestProfileUpdate);
 router.put('/preferences', protect, updatePreferences);
 router.put('/change-password', protect, strictLimiter, changePassword);
+router.patch('/fcm-token', protect, registerFcmToken);
+router.post('/logout-fcm', protect, deregisterFcmToken);
+router.post('/shopping-tour/enter', protect, enterShoppingTour);
 router.post('/link-pharmacy', protect, upload.fields([
     { name: 'pharmacistCard', maxCount: 1 },
     { name: 'commercialRegistry', maxCount: 1 },

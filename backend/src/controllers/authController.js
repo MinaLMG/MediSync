@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const { User } = require('../models');
+const { addDelayedReminderJob } = require('../utils/queueManager');
 const auditService = require('../services/auditService');
 const { deleteFiles } = require('../utils/fileHelper');
 const cloudinary = require('cloudinary').v2;
@@ -245,5 +246,64 @@ exports.changePassword = async (req, res) => {
         res.status(error.code || 400).json({ success: false, message: error.message || 'An unexpected error occurred' });
     } finally {
         session.endSession();
+    }
+};
+
+// @desc    Register a new FCM device token for the user
+// @route   PATCH /api/auth/fcm-token
+exports.registerFcmToken = async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        if (!fcmToken) {
+            return res.status(400).json({ success: false, message: 'fcmToken is required.' });
+        }
+
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: { fcmTokens: fcmToken }
+        });
+
+        res.status(200).json({ success: true, message: 'FCM Token registered successfully.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Deregister an FCM device token
+// @route   POST /api/auth/logout-fcm
+exports.deregisterFcmToken = async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        if (!fcmToken) {
+            return res.status(400).json({ success: false, message: 'fcmToken is required.' });
+        }
+
+        await User.findByIdAndUpdate(req.user._id, {
+            $pull: { fcmTokens: fcmToken }
+        });
+
+        res.status(200).json({ success: true, message: 'FCM Token deregistered successfully.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Register when a pharmacy owner enters the shopping tour and schedule a delayed reminder
+// @route   POST /api/auth/shopping-tour/enter
+exports.enterShoppingTour = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // 1. Update the user record
+        await User.findByIdAndUpdate(userId, {
+            enteredShoppingTourAt: new Date()
+        });
+
+        // 2. Schedule the delayed reminder job (30 minutes = 30 * 60 * 1000 ms)
+        const delayPeriod = 30 * 60 * 1000;
+        await addDelayedReminderJob(userId.toString(), delayPeriod);
+
+        res.status(200).json({ success: true, message: 'Entered shopping tour and scheduled reminder.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };

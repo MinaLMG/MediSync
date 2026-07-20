@@ -574,6 +574,53 @@ const getPharmaciesSummary = async (req, res) => {
     }
 };
 
+// @desc    Send custom notifications from admin panel to targeted user groups or all users or specific users
+// @route   POST /api/admin/send-custom-notification
+// @access  Admin
+const sendCustomNotification = async (req, res) => {
+    try {
+        const { message, messageAr, targetGroup, userIds } = req.body;
+        if (!message) {
+            return res.status(400).json({ success: false, message: 'Message is required.' });
+        }
+
+        let query = { status: 'active' };
+        if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+            query._id = { $in: userIds };
+        } else if (targetGroup === 'pharmacies') {
+            query.role = { $in: ['pharmacy_owner', 'pharmacy_manager'] };
+        } else if (targetGroup === 'delivery') {
+            query.role = 'delivery';
+        } else if (targetGroup === 'hubs') {
+            const hubs = await Pharmacy.find({ isHub: true, status: 'active' }).select('_id');
+            const hubIds = hubs.map(h => h._id);
+            query.pharmacy = { $in: hubIds };
+        }
+
+        const users = await User.find(query);
+
+        // Queue notifications using our queue manager
+        const promises = users.map(user =>
+            addNotificationJob(
+                user._id.toString(),
+                'custom',
+                message,
+                { actionUrl: '/notifications' },
+                messageAr || null
+            )
+        );
+        await Promise.all(promises);
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully queued custom notifications for ${users.length} users.`,
+            count: users.length
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getWaitingUsers,
     getActiveUsers,
@@ -587,5 +634,6 @@ module.exports = {
     getUsersWithPendingUpdates,
     reviewUpdateData,
     getHubs,
-    getPharmaciesSummary
+    getPharmaciesSummary,
+    sendCustomNotification
 };

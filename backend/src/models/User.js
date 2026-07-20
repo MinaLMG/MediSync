@@ -59,6 +59,13 @@ const userSchema = new mongoose.Schema({
     pendingUpdate: {
         type: Object,
         default: null
+    },
+    fcmTokens: {
+        type: [String],
+        default: []
+    },
+    enteredShoppingTourAt: {
+        type: Date
     }
 }, {
     timestamps: true

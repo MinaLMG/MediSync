@@ -10,6 +10,8 @@ const {
 } = require('../models');
 const serialService = require('./serialService');
 const auditService = require('./auditService');
+const { notifyAdmins } = require('../utils/adminNotifier');
+const { addNotificationJob } = require('../utils/queueManager');
 
 // Lazy-loaded services for circular dependency safety
 const getExcessService = () => require('./excessService');
@@ -67,6 +69,16 @@ exports.createShortage = async (data, pharmacyId, req = null, session = null) =>
 
     // Note: Quota check is skipped for standalone shortages per last refinement
 
+    if (shortageDoc.type === 'request') {
+        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
+        const pharmacyName = pharmacy ? pharmacy.name : 'Unknown Pharmacy';
+        notifyAdmins(
+            'alert',
+            `New stock shortage request created by pharmacy "${pharmacyName}" for "${product.name}"`,
+            { relatedEntity: shortageDoc._id.toString(), relatedEntityType: 'StockShortage', actionUrl: '/admin/shortages' },
+            `تم إنشاء طلب نقص مخزون جديد بواسطة صيدلية "${pharmacyName}" للمنتج "${product.name}"`
+        ).catch(err => console.error('Error notifying admins about shortage creation:', err));
+    }
 
     return shortageDoc;
 };
@@ -178,6 +190,15 @@ exports.createOrder = async (orderData, pharmacyId, req = null, session = null) 
             }
         }
 
+        // Notify admins about the new order
+        const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
+        const pharmacyName = pharmacy ? pharmacy.name : 'Unknown Pharmacy';
+        notifyAdmins(
+            'alert',
+            `New order ${order.serial} created by pharmacy "${pharmacyName}"`,
+            { relatedEntity: order._id.toString(), relatedEntityType: 'Order', actionUrl: '/admin/orders' },
+            `تم إنشاء طلب جديد ${order.serial} بواسطة صيدلية "${pharmacyName}"`
+        ).catch(err => console.error('Error notifying admins about order creation:', err));
 
         return order;
     } catch (error) {
@@ -330,6 +351,7 @@ exports.updateOrderTotals = async (orderId, session = null) => {
     }, 0);
 
     // 3. Update Order Status
+    const oldStatus = order.status;
     if (order.totalItems === 0) {
         order.status = 'fulfilled';
     } else if (order.fulfilledItems === order.totalItems) {
@@ -341,6 +363,38 @@ exports.updateOrderTotals = async (orderId, session = null) => {
     }
 
     await order.save({ session });
+
+    // Notify pharmacy owners if order status has transitioned
+    if (oldStatus !== order.status) {
+        const { User } = require('../models');
+        const users = await User.find({ pharmacy: order.pharmacy, status: 'active' });
+        
+        const statusMapEn = {
+            'pending': 'Pending',
+            'partially_fulfilled': 'Partially Fulfilled',
+            'fulfilled': 'Fulfilled',
+            'cancelled': 'Cancelled'
+        };
+        const statusMapAr = {
+            'pending': 'تحت المراجعة',
+            'partially_fulfilled': 'مكتمل جزئياً',
+            'fulfilled': 'مكتمل',
+            'cancelled': 'ملغي'
+        };
+        const statusEn = statusMapEn[order.status] || order.status;
+        const statusAr = statusMapAr[order.status] || order.status;
+
+        const promises = users.map(user => 
+            addNotificationJob(
+                user._id.toString(),
+                'transaction',
+                `Your order ${order.serial} status has been updated to "${statusEn}"`,
+                { relatedEntity: order._id.toString(), relatedEntityType: 'Order', actionUrl: '/orders' },
+                `تم تحديث حالة طلبك ${order.serial} إلى "${statusAr}"`
+            )
+        );
+        Promise.all(promises).catch(err => console.error('Error notifying users about order status change:', err));
+    }
 };
 
 /**

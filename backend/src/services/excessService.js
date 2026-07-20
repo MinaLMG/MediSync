@@ -12,6 +12,7 @@ const {
 } = require('../models');
 const auditService = require('./auditService');
 const serialService = require('./serialService');
+const { notifyAdmins } = require('../utils/adminNotifier');
 
 // Lazy-loaded services for circular dependency safety
 const getTransactionService = () => require('./transactionService');
@@ -156,6 +157,15 @@ exports.createExcess = async (userData, pharmacyId, req = null, session = null) 
         ? (await StockExcess.create([excessData], { session }))[0]
         : await StockExcess.create(excessData);
 
+    // Notify admins about the new pending excess listing
+    const pharmacy = await Pharmacy.findById(pharmacyId).session(session);
+    const pharmacyName = pharmacy ? pharmacy.name : 'Unknown Pharmacy';
+    notifyAdmins(
+        'alert',
+        `New stock excess listing created by pharmacy "${pharmacyName}" for "${productObj.name}"`,
+        { relatedEntity: excess._id.toString(), relatedEntityType: 'StockExcess', actionUrl: '/admin/excesses' },
+        `تم إنشاء عرض زيادة مخزون جديد بواسطة صيدلية "${pharmacyName}" للمنتج "${productObj.name}"`
+    ).catch(err => console.error('Error notifying admins about excess creation:', err));
 
     return excess;
 };

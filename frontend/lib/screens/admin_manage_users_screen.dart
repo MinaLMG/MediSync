@@ -22,13 +22,19 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
   List<dynamic> _waitingUsers = [];
   List<dynamic> _activeUsers = [];
   String _searchQuery = '';
+  final Set<String> _selectedUserIds = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.indexIsChanging) _fetchUsers();
+      if (_tabController.indexIsChanging) {
+        _fetchUsers();
+        setState(() {
+          _selectedUserIds.clear();
+        });
+      }
     });
     _fetchUsers();
   }
@@ -61,6 +67,13 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
 
   @override
   Widget build(BuildContext context) {
+    final filteredActiveUsers = _activeUsers.where((u) {
+      return SearchUtils.matches(u['name'], _searchQuery) ||
+          SearchUtils.matches(u['email'], _searchQuery) ||
+          SearchUtils.matches(u['phone'], _searchQuery) ||
+          SearchUtils.matches(u['pharmacy']?['name'], _searchQuery);
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.manageUsersTitle),
@@ -88,6 +101,44 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
               onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
+          if (_tabController.index == 1 && filteredActiveUsers.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _selectedUserIds.isNotEmpty &&
+                        filteredActiveUsers.every((u) => _selectedUserIds.contains(u['_id'])),
+                    onChanged: (bool? checked) {
+                      setState(() {
+                        if (checked == true) {
+                          _selectedUserIds.addAll(filteredActiveUsers.map((u) => u['_id'] as String));
+                        } else {
+                          for (var u in filteredActiveUsers) {
+                            _selectedUserIds.remove(u['_id']);
+                          }
+                        }
+                      });
+                    },
+                  ),
+                  const Text('Select All'),
+                  const Spacer(),
+                  if (_selectedUserIds.isNotEmpty)
+                    TextButton.icon(
+                      icon: const Icon(Icons.clear_all, size: 18),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      label: Text('Clear (${_selectedUserIds.length})'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedUserIds.clear();
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -107,7 +158,11 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
                 context,
               )!.dialogCreateDeliveryAccount,
             )
-          : null,
+          : FloatingActionButton(
+              onPressed: _showSendNotificationDialog,
+              child: const Icon(Icons.send),
+              tooltip: 'Send Custom Notification',
+            ),
     );
   }
 
@@ -142,6 +197,20 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
+              leading: !isWaiting
+                  ? Checkbox(
+                      value: _selectedUserIds.contains(user['_id']),
+                      onChanged: (bool? checked) {
+                        setState(() {
+                          if (checked == true) {
+                            _selectedUserIds.add(user['_id']);
+                          } else {
+                            _selectedUserIds.remove(user['_id']);
+                          }
+                        });
+                      },
+                    )
+                  : null,
               title: Text(user['name']),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,6 +789,154 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen>
       if (mounted) setState(() => _isLoading = false);
     }
     return success;
+  }
+
+  void _showSendNotificationDialog() {
+    final messageController = TextEditingController();
+    final messageArController = TextEditingController();
+    String selectedTarget = _selectedUserIds.isNotEmpty ? 'selected' : 'all';
+    final formKey = GlobalKey<FormState>();
+    bool isDialogLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Send Push Notification'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_selectedUserIds.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        'Target: ${_selectedUserIds.length} selected users.',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                      ),
+                    )
+                  else ...[
+                    const Text('Target Group:'),
+                    DropdownButton<String>(
+                      value: selectedTarget,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All Active Users')),
+                        DropdownMenuItem(value: 'pharmacies', child: Text('Pharmacy Owners & Managers')),
+                        DropdownMenuItem(value: 'delivery', child: Text('Delivery Users')),
+                        DropdownMenuItem(value: 'hubs', child: Text('Hub Pharmacies')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedTarget = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextFormField(
+                    controller: messageController,
+                    decoration: const InputDecoration(
+                      labelText: 'Message (English)',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                    validator: (v) => v == null || v.isEmpty ? 'Message is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: messageArController,
+                    decoration: const InputDecoration(
+                      labelText: 'Message (Arabic - Optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDialogLoading ? null : () => Navigator.pop(context),
+              child: Text(AppLocalizations.of(context)!.actionCancel),
+            ),
+            ElevatedButton(
+              onPressed: isDialogLoading
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        setDialogState(() => isDialogLoading = true);
+                        final token = Provider.of<AuthProvider>(context, listen: false).token;
+                        
+                        final Map<String, dynamic> body = {
+                          'message': messageController.text,
+                          'messageAr': messageArController.text.isNotEmpty ? messageArController.text : null,
+                        };
+
+                        if (_selectedUserIds.isNotEmpty) {
+                          body['userIds'] = _selectedUserIds.toList();
+                        } else {
+                          body['targetGroup'] = selectedTarget;
+                        }
+
+                        try {
+                          final response = await http.post(
+                            Uri.parse('${Constants.baseUrl}/admin/send-custom-notification'),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': 'Bearer $token',
+                            },
+                            body: json.encode(body),
+                          );
+
+                          final data = json.decode(response.body);
+                          if (data['success']) {
+                            if (mounted) {
+                              Navigator.pop(context);
+                              setState(() {
+                                _selectedUserIds.clear();
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(data['message'] ?? 'Notification sent successfully.')),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(data['message'] ?? 'Failed to send notification.')),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        } finally {
+                          setDialogState(() => isDialogLoading = false);
+                        }
+                      }
+                    },
+              child: isDialogLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Send'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

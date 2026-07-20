@@ -313,14 +313,15 @@ module.exports = mongoose.model('User', UserSchema);
 
 ### Step 3: Firebase Admin Setup & Notification Service
 
-Implement checking logic, payload formats per platform, and self-cleaning mechanism to prune inactive/dead device tokens. In typical configurations, credentials JSON is saved under `FIREBASE_SERVICE_ACCOUNT` in runtime environment arrays (`.env`).
+Implement checking logic, payload formats per platform, and self-cleaning mechanism to prune inactive/dead device tokens. In typical configurations, credentials JSON can be saved either as stringified JSON directly or as a file path under the `FIREBASE_SERVICE_ACCOUNT` environment variable.
 
 ```javascript
-// services/notificationService.js
+// utils/fcmManager.js
 const admin = require('firebase-admin');
-const User = require('../models/User');
+const path = require('path');
+const { User } = require('../models');
 
-class NotificationService {
+class FcmManager {
     constructor() {
         this.isInitialized = false;
         this._initializeFirebase();
@@ -328,10 +329,21 @@ class NotificationService {
 
     _initializeFirebase() {
         try {
-            if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-                // Parse credentials safely from string environmental variable
-                const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            const credentialsEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+            if (credentialsEnv) {
+                let serviceAccount;
+                const trimmed = credentialsEnv.trim();
                 
+                // Support both inline JSON string and file path
+                if (trimmed.startsWith('{')) {
+                    serviceAccount = JSON.parse(trimmed);
+                } else {
+                    const absolutePath = path.isAbsolute(trimmed) 
+                        ? trimmed 
+                        : path.resolve(process.cwd(), trimmed);
+                    serviceAccount = require(absolutePath);
+                }
+
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount)
                 });
@@ -339,7 +351,7 @@ class NotificationService {
                 this.isInitialized = true;
                 console.log('Firebase Admin SDK initialized successfully.');
             } else {
-                console.warn('FIREBASE_SERVICE_ACCOUNT environmental config not found. Push notifications disabled.');
+                console.warn('FIREBASE_SERVICE_ACCOUNT not configured. FCM push notifications disabled.');
             }
         } catch (error) {
             console.error('Failed to initialize Firebase Admin:', error);
@@ -350,28 +362,41 @@ class NotificationService {
      * Sends custom notifications to all user registered tokens.
      * Includes self-cleaning logic for dead tokens.
      */
-    async sendPushAlert(userId, title, content) {
+    async sendFcmNotification(userId, title, body, titleAr = null, bodyAr = null, data = {}) {
         try {
             const user = await User.findById(userId);
             if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
                 return;
             }
 
+            const isArabic = user.language === 'ar';
+            const selectedTitle = (isArabic && titleAr) ? titleAr : (title || 'MediSync');
+            const selectedBody = (isArabic && bodyAr) ? bodyAr : body;
+
             if (!this.isInitialized) {
-                console.log(`[Mock Notification Log] User: ${user.email} | Title: ${title} | Content: ${content}`);
+                console.log(`[Mock Notification Log] User: ${user.email} | Title: ${selectedTitle} | Content: ${selectedBody}`);
                 return;
             }
 
             const invalidTokens = [];
+            const sanitizedData = {};
+            if (data) {
+                for (const key in data) {
+                    if (data[key] !== undefined && data[key] !== null) {
+                        sanitizedData[key] = String(data[key]);
+                    }
+                }
+            }
+
             const sendPromises = user.fcmTokens.map(async (token) => {
                 try {
-                    // Structure payload with platform specific configurations
                     const message = {
                         token: token,
                         notification: {
-                            title: title,
-                            body: content,
+                            title: selectedTitle,
+                            body: selectedBody,
                         },
+                        data: sanitizedData,
                         android: {
                             priority: 'high',
                             notification: {
@@ -392,7 +417,7 @@ class NotificationService {
                                 Urgency: 'high'
                             },
                             notification: {
-                                body: content,
+                                body: selectedBody,
                                 icon: '/favicon.png'
                             }
                         }
@@ -401,7 +426,7 @@ class NotificationService {
                     await admin.messaging().send(message);
                     console.log(`FCM Alert pushed to ${user.email} for device token ${token.substring(0, 12)}...`);
                 } catch (error) {
-                    // Self-cleaning filters: Identify expired or inactive device registers
+                    // Identify expired or inactive device registers
                     if (error.code === 'messaging/registration-token-not-registered' ||
                         error.code === 'messaging/invalid-registration-token') {
                         invalidTokens.push(token);
@@ -422,12 +447,12 @@ class NotificationService {
             }
 
         } catch (error) {
-            console.error('Error in sendPushAlert:', error);
+            console.error('Error in sendFcmNotification:', error);
         }
     }
 }
 
-module.exports = new NotificationService();
+module.exports = new FcmManager();
 ```
 
 ### Step 4: Token Registration API Endpoints
@@ -436,57 +461,56 @@ Add routes to update the backend on login/logout changes:
 
 ```javascript
 // controllers/authController.js
-const User = require('../models/User');
+const { User } = require('../models');
 
-// @desc    Register a new device token for the user
+// @desc    Register a new FCM device token for the user
 // @route   PATCH /api/auth/fcm-token
-exports.registerToken = async (req, res) => {
+exports.registerFcmToken = async (req, res) => {
     try {
         const { fcmToken } = req.body;
         if (!fcmToken) {
-            return res.status(400).json({ message: 'fcmToken is required.' });
+            return res.status(400).json({ success: false, message: 'fcmToken is required.' });
         }
 
-        // Add token using $addToSet to avoid duplicates in the array
-        await User.findByIdAndUpdate(req.user.id, {
+        await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { fcmTokens: fcmToken }
         });
 
-        res.status(200).json({ message: 'Token registered successfully.' });
+        res.status(200).json({ success: true, message: 'FCM Token registered successfully.' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Deregister a device token (Invoked during logout)
-// @route   POST /api/auth/logout
-exports.logout = async (req, res) => {
+// @desc    Deregister an FCM device token
+// @route   POST /api/auth/logout-fcm
+exports.deregisterFcmToken = async (req, res) => {
     try {
         const { fcmToken } = req.body;
-        
-        // Remove token from database if it exists
-        if (fcmToken) {
-            await User.findByIdAndUpdate(req.user.id, {
-                $pull: { fcmTokens: fcmToken }
-            });
+        if (!fcmToken) {
+            return res.status(400).json({ success: false, message: 'fcmToken is required.' });
         }
 
-        res.status(200).json({ message: 'Logged out and token deregistered successfully.' });
+        await User.findByIdAndUpdate(req.user._id, {
+            $pull: { fcmTokens: fcmToken }
+        });
+
+        res.status(200).json({ success: true, message: 'FCM Token deregistered successfully.' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 ```
 
-Apply auth middleware to secure the PATCH endpoint inside `routes/authRoutes.js`:
+Apply auth middleware to secure the routes inside `routes/authRoutes.js`:
 ```javascript
 const express = require('express');
 const router = express.Router();
-const { registerToken, logout } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware'); // Standard JWT validation middleware
+const { registerFcmToken, deregisterFcmToken } = require('../controllers/authController');
+const { protect } = require('../middlewares/authMiddleware'); // Standard JWT validation middleware
 
-router.patch('/fcm-token', protect, registerToken);
-router.post('/logout', protect, logout);
+router.patch('/fcm-token', protect, registerFcmToken);
+router.post('/logout-fcm', protect, deregisterFcmToken);
 
 module.exports = router;
 ```

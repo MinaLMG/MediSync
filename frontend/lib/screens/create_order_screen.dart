@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/excess_provider.dart';
 import '../providers/shortage_provider.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -52,7 +53,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMarketItems();
+      _notifyShoppingTourEntry();
     });
+  }
+
+  void _notifyShoppingTourEntry() {
+    Provider.of<AuthProvider>(context, listen: false).enterShoppingTour();
   }
 
   Future<void> _fetchMarketItems() async {

@@ -327,4 +327,38 @@ class AuthProvider with ChangeNotifier {
       });
     }
   }
+
+  Future<bool> enterShoppingTour() async {
+    if (_token == null) return false;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.baseUrl}/auth/shopping-tour/enter'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      final data = json.decode(response.body);
+      _isLoading = false;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = data['message'] ?? 'Failed to enter shopping tour';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Connection error: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

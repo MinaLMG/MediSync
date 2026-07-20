@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Pharmacy } = require('../models');
+const { notifyAdmins } = require('../utils/adminNotifier');
 const auditService = require('./auditService');
 
 /**
@@ -125,6 +126,14 @@ exports.linkPharmacy = async (userId, pharmacyData, session, req = null) => {
     user.status = 'waiting';
     await user.save({ session });
 
+    // Notify admins about the new linked pharmacy waiting approval
+    notifyAdmins(
+        'system',
+        `Pharmacy "${pharmacy.name}" registered by user "${user.name}" is waiting for approval.`,
+        { relatedEntity: pharmacy._id.toString(), relatedEntityType: 'Pharmacy', actionUrl: '/admin/manage-users' },
+        `الصيدلية "${pharmacy.name}" التي سجلها المستخدم "${user.name}" في انتظار موافقة مدير النظام.`
+    ).catch(err => console.error('Error notifying admins in linkPharmacy:', err));
+
 
     await user.populate('pharmacy');
     return { user, pharmacy };
@@ -169,6 +178,14 @@ exports.updateUserDetail = async (userId, updateData, req = null, session = null
 
     user.pendingUpdate = updateData;
     await user.save({ session });
+
+    // Notify admins about user profile pending update request
+    notifyAdmins(
+        'system',
+        `User "${user.name}" submitted a profile update request.`,
+        { relatedEntity: user._id.toString(), relatedEntityType: 'User', actionUrl: '/admin/manage-users' },
+        `طلب المستخدم "${user.name}" تحديث بيانات ملفه الشخصي.`
+    ).catch(err => console.error('Error notifying admins in updateUserDetail:', err));
 
 
     await user.populate('pharmacy');

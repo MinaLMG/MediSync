@@ -1,7 +1,8 @@
 require('dotenv').config();
 const { Worker } = require('bullmq');
-const { redisConnection } = require('./src/utils/queueManager');
+const { redisConnection, addNotificationJob } = require('./src/utils/queueManager');
 const { sendToUser } = require('./src/utils/pusherManager');
+const fcmManager = require('./src/utils/fcmManager');
 const connectDB = require('./src/db/mongoose');
 const Notification = require('./src/models/Notification');
 
@@ -11,7 +12,7 @@ if (require('mongoose').connection.readyState === 0) {
     connectDB();
 }
 
-const { PharmacyQuota } = require('./src/models');
+const { PharmacyQuota, User, Order } = require('./src/models');
 
 console.log('👷 Notification Worker initialized...');
 
@@ -51,6 +52,39 @@ scheduleDailyCleanup();
 
 const worker = new Worker('notificationQueue', async (job) => {
     console.log('📦 Job received:', job.id, job.name);
+
+    if (job.name === 'shoppingTourReminder') {
+        const { userId } = job.data;
+        try {
+            const user = await User.findById(userId);
+            if (!user || !user.pharmacy || !user.enteredShoppingTourAt) {
+                return;
+            }
+
+            const orderExists = await Order.exists({
+                pharmacy: user.pharmacy,
+                createdAt: { $gte: user.enteredShoppingTourAt }
+            });
+
+            if (!orderExists) {
+                await addNotificationJob(
+                    userId.toString(),
+                    'alert',
+                    "Don't forget to complete your order! You still have products in your shopping tour.",
+                    { actionUrl: '/create-order' },
+                    "لا تنسى إكمال طلبك! لا يزال لديك منتجات في جولة التسوق الخاصة بك."
+                );
+                console.log(`[Worker] Sent shopping tour reminder notification for user: ${userId}`);
+            } else {
+                console.log(`[Worker] User: ${userId} placed an order since entering the tour. No reminder sent.`);
+            }
+        } catch (err) {
+            console.error('[Worker] Error processing shoppingTourReminder job:', err);
+            throw err;
+        }
+        return;
+    }
+
     const { userId, type, message, message_ar, relatedEntity, relatedEntityType, actionUrl, priority } = job.data;
 
     console.log(`Processing notification for user: ${userId}, Type: ${type}`);
@@ -77,6 +111,31 @@ const worker = new Worker('notificationQueue', async (job) => {
         } catch (pusherError) {
             // Log but don't fail the job - notification is already in DB
             console.error(`⚠️ Pusher notification failed (non-critical):`, pusherError);
+        }
+
+        // 3. Push to user via Firebase Cloud Messaging in parallel
+        try {
+            const alertTitle = type ? `${type.charAt(0).toUpperCase() + type.slice(1)} Alert` : 'MediSync Notification';
+            const alertTitleAr = type ? `تنبيه ${type}` : 'إشعار ميدي سينك';
+            
+            const fcmData = {
+                notificationId: notification._id.toString(),
+                type: type || 'system',
+                relatedEntity: relatedEntity ? relatedEntity.toString() : '',
+                relatedEntityType: relatedEntityType || '',
+                actionUrl: actionUrl || ''
+            };
+
+            await fcmManager.sendFcmNotification(
+                userId.toString(),
+                alertTitle,
+                message,
+                alertTitleAr,
+                message_ar,
+                fcmData
+            );
+        } catch (fcmError) {
+            console.error(`⚠️ FCM notification failed (non-critical):`, fcmError);
         }
 
         return notification;
